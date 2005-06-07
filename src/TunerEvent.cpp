@@ -138,12 +138,15 @@ HRESULT TunerEvent::Fire_Event(GUID eventID)
 
 HRESULT TunerEvent::DoChannelChange()
 {
-	HRESULT hr;
+	HRESULT hr = S_FALSE;
 
 	ITSFileSource   *pProgram;    // Pointer to the filter's custom interface.
 	hr = m_pTSFileSourceFilter->QueryInterface(IID_ITSFileSource, (void**)(&pProgram));
 	if(SUCCEEDED(hr))
 	{
+//TCHAR sz[100];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz, TEXT("DoChannelChange"), MB_OK);
 		m_bNPControlSave = m_pDemux->get_NPControl(); //Save NP Control mode
 		m_pDemux->set_NPControl(false); //Turn off NP Control else we will loop
 
@@ -159,5 +162,4 @@ HRESULT TunerEvent::DoChannelChange()
 		pProgram->Release();
 	}
 	return hr;
-
 }

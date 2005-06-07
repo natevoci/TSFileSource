@@ -69,6 +69,9 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pFileReader = new FileReader();
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser);
+
+//*********************************************************************************************
+
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, m_pFileReader, m_pPidParser, phr);
 
 	if (m_pPin == NULL) {
@@ -182,42 +185,27 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 
 //*********************************************************************************************
 //wait for Growing File Additions
-
+/*
 		__int64	fileSize = 0;
 		m_pFileReader->GetFileSize(&fileSize);
+
 		//Check if file is being recorded
 		if(fileSize < 2000000)
 		{
-			int count = 0;
-			__int64 fileSizeSave = fileSize;
-			while (fileSize < 20000000 && count < 20)
+			if (m_pPidParser->RefreshPids() == S_OK)
 			{
-				while (fileSize < fileSizeSave + 2000000 && count < 20)
-				{
-					Sleep(200);
-					m_pFileReader->GetFileSize(&fileSize);
-					count++;
-				}
-				count++;
-				fileSizeSave = fileSize;
-				RefreshPids(); 
-				if (m_pPidParser->m_ONetworkID != 0 && m_pPidParser->m_NetworkID != 0)
-				{
-					count = 20;
-					break;
-				}
+				LoadPgmReg();
+				m_pPin->DeliverBeginFlush();
+				m_pDemux->AOnConnect(GetFilterGraph());
+				m_pPin->DeliverEndFlush();
+				RefreshDuration();
 			}
-			LoadPgmReg();
-			m_pPin->DeliverBeginFlush();
-			m_pPin->SetDuration(m_pPidParser->pids.dur);
-			m_pDemux->AOnConnect(GetFilterGraph());
-			m_pPin->DeliverEndFlush();
-			RefreshDuration();
 
 		}
-
+*/
 
 //*********************************************************************************************
+
 
 	REFERENCE_TIME start, stop;
 		m_pPin->GetPositions(&start, &stop);
@@ -259,8 +247,6 @@ HRESULT CTSFileSourceFilter::Pause()
 
 STDMETHODIMP CTSFileSourceFilter::Stop()
 {
-	CAutoLock cObjectLock(m_pLock);
-	CAutoLock lock(&m_Lock);
 
 //*********************************************************************************************
 //NP Control Additions
@@ -269,6 +255,8 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 
 //*********************************************************************************************
 
+	CAutoLock cObjectLock(m_pLock);
+	CAutoLock lock(&m_Lock);
 	m_pFileReader->CloseFile();
 	return CSource::Stop();
 }
@@ -333,6 +321,22 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	hr = m_pFileReader->OpenFile();
 	if (FAILED(hr))
 		return VFW_E_INVALIDMEDIATYPE;
+
+//**********************************************************************************************
+//wait for Growing File Additions
+
+	__int64	fileSize = 0;
+	m_pFileReader->GetFileSize(&fileSize);
+	//If this a file start then return null.
+	if(fileSize < 2000000)
+	{
+//		CAutoLock lock(&m_Lock);
+		m_pFileReader->CloseFile();
+		return hr;
+	}
+
+//*********************************************************************************************
+
 
 	RefreshPids();
 
@@ -681,12 +685,12 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	{
 		PgmNumber = 0;
 	}
-
 	m_pPin->DeliverBeginFlush();
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pDemux->AOnConnect(GetFilterGraph());
 	m_pPin->DeliverEndFlush();
+
 	return NOERROR;
 	
 //Removed	PgmNumb -= 1;
@@ -726,11 +730,13 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	{
 		PgmNumb = 0;
 	}
+//	m_pTunerEvent->SetEventFlag(true);
 	m_pPin->DeliverBeginFlush();
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pDemux->AOnConnect(GetFilterGraph());
 	m_pPin->DeliverEndFlush();
+//	m_pTunerEvent->SetEventFlag(false);
 	return NOERROR;
 }
 
@@ -760,7 +766,16 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	return NOERROR;
 }
 
+//wait for Growing File Additions
+
+HRESULT CTSFileSourceFilter::GetFileSize(__int64 *pfilesize)
+{
+	CAutoLock lock(&m_Lock);
+	return m_pFileReader->GetFileSize(pfilesize);
+}
+
 //**********************************************************************************************
+
 STDMETHODIMP CTSFileSourceFilter::GetTsArray(ULONG *pPidArray)
 {
 	if(!pPidArray)
@@ -892,6 +907,7 @@ STDMETHODIMP CTSFileSourceFilter::SetNPSlave(WORD NPSlave)
 
 STDMETHODIMP CTSFileSourceFilter::SetTunerEvent(void)
 {
+	CAutoLock lock(&m_Lock);
 
 	if (SUCCEEDED(m_pTunerEvent->HookupGraphEventService(GetFilterGraph())))
 	{
@@ -1079,6 +1095,7 @@ STDMETHODIMP CTSFileSourceFilter::GetRegStore(LPTSTR nameReg)
 
 STDMETHODIMP CTSFileSourceFilter::SetRegSettings()
 {
+	CAutoLock lock(&m_Lock);
 	SetRegStore("user");
     return NOERROR;
 }
@@ -1086,6 +1103,7 @@ STDMETHODIMP CTSFileSourceFilter::SetRegSettings()
 
 STDMETHODIMP CTSFileSourceFilter::GetRegSettings()
 {
+	CAutoLock lock(&m_Lock);
 	GetRegStore("user");
     return NOERROR;
 }

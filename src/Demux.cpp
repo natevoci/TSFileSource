@@ -46,8 +46,7 @@
 
 //*********************************************************************************************
 
-
-Demux::Demux(PidParser *pPidParser) :
+ Demux::Demux(PidParser *pPidParser) :
 	m_bAuto(TRUE),
 	m_bMPEG2AudioMediaType(TRUE),
 
@@ -63,6 +62,7 @@ Demux::Demux(PidParser *pPidParser) :
 //NP Slave Additions
 
 	m_bNPSlave(FALSE),
+	OnConnectBusyFlag(false),
 
 //*********************************************************************************************
 
@@ -71,39 +71,64 @@ Demux::Demux(PidParser *pPidParser) :
 	m_bCreateTSPinOnDemux(FALSE)
 {
 	m_pPidParser = pPidParser;
+//*********************************************************************************************
+//Bug fix
+
+	m_pGraphBuilder = NULL;
+	m_pFilterChain = NULL;
+	m_pMediaControl = NULL;
+
+//*********************************************************************************************
 
 }
 
 Demux::~Demux()
 {
+//*********************************************************************************************
+//Bug fix
+
+	if (m_pMediaControl != NULL){m_pMediaControl->Release(); m_pMediaControl = NULL;}
+	if (m_pFilterChain != NULL){m_pFilterChain->Release();	m_pFilterChain = NULL;}
+	if (m_pGraphBuilder != NULL){m_pGraphBuilder->Release(); m_pGraphBuilder = NULL;}
+
+//*********************************************************************************************
+
 }
 
 HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 {
-	// Check if Enabled
 
 //*********************************************************************************************
-//NP Control & Slave Additions
+//Bug fix
 
-	if (!m_bAuto && !m_bNPControl && !m_bNPSlave)
-	{
-		return S_FALSE;
-	}
-
-//Removed	if (!m_bAuto)
+	if (m_pGraphBuilder == NULL)
 
 //*********************************************************************************************
 
-	if(FAILED(pGraph->QueryInterface(IID_IGraphBuilder, (void **) &m_pGraphBuilder)))
-	{
-		return S_FALSE;
-	}
+		if(FAILED(pGraph->QueryInterface(IID_IGraphBuilder, (void **) &m_pGraphBuilder)))
+		{
+			return S_FALSE;
+		}
 
-	if(FAILED(pGraph->QueryInterface(IID_IFilterChain, (void **) &m_pFilterChain)))
-	{
-		m_pGraphBuilder->Release();
-		return S_FALSE;
-	}
+//*********************************************************************************************
+//Bug fix
+
+	if (m_pFilterChain == NULL)
+
+//*********************************************************************************************
+
+		if(FAILED(pGraph->QueryInterface(IID_IFilterChain, (void **) &m_pFilterChain)))
+		{
+			m_pGraphBuilder->Release();
+			return S_FALSE;
+		}
+
+//*********************************************************************************************
+//Bug fix
+
+	if (m_pMediaControl == NULL)
+
+//*********************************************************************************************
 
 	// if there is no streaming, the following variables will not be initialized.
 	if(m_pGraphBuilder != NULL){
@@ -114,6 +139,22 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 			return S_FALSE;
 		}
 	}
+
+//*********************************************************************************************
+//NP Control & Slave Additions
+	if (OnConnectBusyFlag)
+		return S_FALSE;
+
+	// Check if Enabled
+	if (!m_bAuto && !m_bNPControl && !m_bNPSlave)
+		return S_FALSE;
+
+	OnConnectBusyFlag = true;
+
+//Removed	if (!m_bAuto)
+//Removed		return S_FALSE;
+
+//*********************************************************************************************
 
 	m_WasPlaying = FALSE;
 	m_TimeOut[0] = 0;
@@ -191,12 +232,19 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 		}
 	}
 
-	m_pMediaControl->Release();
-	m_pMediaControl = NULL;
-	m_pFilterChain->Release();
-	m_pFilterChain = NULL;
-	m_pGraphBuilder->Release();
-	m_pGraphBuilder = NULL;
+//	m_pMediaControl->Release();
+//	m_pMediaControl = NULL;
+//	m_pFilterChain->Release();
+//	m_pFilterChain = NULL;
+//	m_pGraphBuilder->Release();
+//	m_pGraphBuilder = NULL;
+
+//*********************************************************************************************
+//NP Control Additions
+
+	OnConnectBusyFlag = false;
+
+//*********************************************************************************************
 
 	return NOERROR;
 }
@@ -225,6 +273,9 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 	if(SUCCEEDED(pDemux->QueryInterface (&muxInterface)))
 	{
 
+//TCHAR sz[100];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz, TEXT("UpdateDemuxPins"), MB_OK);
 //*********************************************************************************************
 //TIF Additions
 
@@ -496,6 +547,9 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
     hr = pNetworkProvider->QueryInterface(__uuidof (ITuner), reinterpret_cast <void**> (&pITuner));
     if(SUCCEEDED (hr))
     {
+//TCHAR sz[100];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz, TEXT("UpdateNetworkProvider"), MB_OK);
 		//Setup to get the tune request
 		CComPtr <ITuneRequest> pNewTuneRequest;			
 		CComQIPtr <IDVBTuneRequest> pDVBTTuneRequest (pNewTuneRequest);
@@ -512,7 +566,11 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 
 			if (Onid != m_pPidParser->m_ONetworkID && Tsid != m_pPidParser->m_TStreamID)
 			{
-//				m_pPidParser->ParseFromFile();
+//TCHAR sz[100];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz, TEXT("RefreshPids"), MB_OK);
+//				m_pPidParser->RefreshPids();
+			
 			}
 
 			long Sid = 0;
@@ -550,6 +608,9 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 		pDVBTTuneRequest.Release();
 		pNewTuneRequest.Release();
 		pITuner->Release();
+//TCHAR sz[100];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz, TEXT("put_TuneRequest"), MB_OK);
 	}
 	return hr;
 }
@@ -558,11 +619,6 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 HRESULT Demux::SetTIFState(IFilterGraph *pGraph, REFERENCE_TIME tStart)
 {
 	HRESULT hr = S_FALSE;
-
-	if(FAILED(pGraph->QueryInterface(IID_IGraphBuilder, (void **) &m_pGraphBuilder)))
-	{
-		return hr;
-	}
 
 	// declare local variables
 	IEnumFilters* EnumFilters;

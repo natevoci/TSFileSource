@@ -155,7 +155,29 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	CheckPointer(pSample, E_POINTER);
 	if (m_pFileReader->IsFileInvalid())
 	{
-		return NOERROR;
+
+//**********************************************************************************************
+//wait for Growing File Additions
+
+		int count = 0;
+		__int64	fileSize = 0;
+		m_pFileReader->GetFileSize(&fileSize);
+		//If this a file start then return null.
+		while(fileSize < 500000 && count < 10)
+		{
+			Sleep(100);
+			m_pFileReader->GetFileSize(&fileSize);
+			count++;
+		}
+
+		CheckPointer(pSample, E_POINTER);
+		if (m_pFileReader->IsFileInvalid())
+			return NOERROR;
+
+//Removed		return NOERROR;
+
+//**********************************************************************************************
+
 	}
 
 	if (m_bSeeking)
@@ -392,6 +414,38 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 {
 	m_llPrevPCR = -1;
 	debugcount = 0;
+
+
+//*********************************************************************************************
+//wait for Growing File Additions
+
+	
+	__int64	fileSize = 0;
+	if (SUCCEEDED(m_pTSFileSourceFilter->GetFileSize(&fileSize)))
+	{
+//TCHAR sz[100];
+//sprintf(sz, "%lu", (double)fileSize);
+//MessageBox(NULL, sz, TEXT("OnThreadStartPlay1"), MB_OK);
+		//Check if file is being recorded
+		if(fileSize < 2000000)
+		{
+//TCHAR sz[100];
+//sprintf(sz, "%lu", (double)fileSize);
+//MessageBox(NULL, sz, TEXT("OnThreadStartPlay2"), MB_OK);
+			if (m_pPidParser->RefreshPids() == S_OK)
+			{
+				m_pTSFileSourceFilter->LoadPgmReg();
+				DeliverBeginFlush();
+//					m_pTSFileSourceFilter->OnConnect();
+				DeliverEndFlush();
+				m_pTSFileSourceFilter->RefreshDuration();
+			}
+
+		}
+
+		}
+//*********************************************************************************************
+
 
 	CAutoLock lock(&m_SeekLock);
 
@@ -658,4 +712,8 @@ void CTSFileSourcePin::Debug(LPCTSTR lpOutputString)
 	::OutputDebugString(sz);
 	debugcount++;
 }
+
+//TCHAR sz[100];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz, TEXT("CheckForNID"), MB_OK);
 

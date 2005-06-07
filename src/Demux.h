@@ -32,7 +32,11 @@
 class Demux
 {
 public:
+
 	Demux(PidParser *pPidParser);
+
+//*********************************************************************************************
+//Bug fix
 	virtual ~Demux();
 
 	STDMETHODIMP AOnConnect(IFilterGraph *pGraph);
@@ -126,6 +130,10 @@ protected:
 	BOOL   m_bAuto;
 
 //*********************************************************************************************
+//Bug fix
+
+	bool	OnConnectBusyFlag;
+
 //NP Control Additions
 
 	BOOL 	m_bNPControl;

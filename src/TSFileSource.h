@@ -108,6 +108,10 @@ public:
 
 	HRESULT LoadPgmReg(void);
 
+//wait for Growing File Additions
+
+HRESULT GetFileSize(__int64 *pfilesize);
+
 //**********************************************************************************************
 
 	//PidParser *get_Pids();

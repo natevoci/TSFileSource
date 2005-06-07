@@ -68,6 +68,7 @@ long CTSBuffer::Count()
 
 HRESULT CTSBuffer::Require(long nBytes)
 {
+
 	long bytesAvailable = Count();
 
 	while (nBytes > bytesAvailable)

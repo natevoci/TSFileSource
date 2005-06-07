@@ -97,6 +97,11 @@ public:
         return S_OK;
     }
 
+    void SetEventFlag(bool flag)
+    {
+		EventBusyFlag = flag;
+	}
+
     TunerEvent(Demux *pDemux, IUnknown *pUnk) : m_dwBroadcastEventCookie(0), m_nRefCount(1)
 	{
 		m_pTSFileSourceFilter = pUnk;
@@ -109,6 +114,8 @@ public: //private
     HRESULT RegisterForTunerEvents();
     HRESULT UnRegisterForTunerEvents();
     HRESULT Fire_Event(GUID eventID);
+
+protected:
 	HRESULT DoChannelChange(void);
 
 

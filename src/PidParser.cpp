@@ -74,6 +74,13 @@ HRESULT PidParser::ParseFromFile()
 	m_pFileReader->Read(pData, ulDataLength, &ulDataRead);
 	
 //***********************************************************************************************
+// Bug Fix
+
+//TCHAR sz[100];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz, TEXT("ParseFromFile"), MB_OK);
+	pids.Clear();
+	
 //NID Additions
 
 	m_ATSCFlag = false;
@@ -321,6 +328,7 @@ HRESULT PidParser::ParseFromFile()
 		m_pgmnumb = 0;
 
 		//GetPidArray(m_pgmnumb);
+		pids.Clear();
 		pids.CopyFrom(&pidArray[m_pgmnumb]);
 
 //		filepoint = 0;
@@ -376,6 +384,36 @@ HRESULT PidParser::ParseFromFile()
 
 HRESULT PidParser::RefreshPids()
 {
+//*********************************************************************************************
+//wait for Growing File Additions
+
+	__int64	fileSize = 0;
+	m_pFileReader->GetFileSize(&fileSize);
+
+	//Check if file is being recorded
+	if(fileSize < 2100000)
+	{
+		int count = 0;
+		__int64 fileSizeSave = fileSize;
+		while (fileSize < 20000000 && count < 20)
+		{
+			while (fileSize < fileSizeSave + 2000000 && count < 20)
+			{
+				Sleep(200);
+				m_pFileReader->GetFileSize(&fileSize);
+				count++;
+			}
+			count++;
+			fileSizeSave = fileSize;
+			pids.Clear();
+			ParseFromFile(); 
+			if (m_ONetworkID != 0 && m_NetworkID != 0)
+				return S_OK;
+		}
+	}
+	return S_FALSE;
+
+//*********************************************************************************************
 	//TODO:
 	return S_OK;
 }
