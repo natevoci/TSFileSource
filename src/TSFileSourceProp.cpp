@@ -490,6 +490,12 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 					break;
 				}
+				case IDC_REFRESH:
+					{
+						OnRefreshProgram();
+						break;
+					}
+				
 			};
 			return TRUE;
 		}

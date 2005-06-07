@@ -233,7 +233,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 			// If TIF was found
 
 		
-//		} Just wanted to see if this would work and it did.
+//		} //Just wanted to see if this would work and it did.
 	
 //*********************************************************************************************
 
@@ -505,10 +505,16 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 		//Test if we are in NP Slave mode
 		if (m_bNPSlave && !m_bNPControl)
 		{
-//			long Onid = 0;
-//			pDVBTTuneRequest->get_ONID(&Onid);
-//			long Tsid = 0;
-//			pDVBTTuneRequest->get_TSID(&Tsid);
+			long Onid = 0;
+			pDVBTTuneRequest->get_ONID(&Onid);
+			long Tsid = 0;
+			pDVBTTuneRequest->get_TSID(&Tsid);
+
+			if (Onid != m_pPidParser->m_ONetworkID && Tsid != m_pPidParser->m_TStreamID)
+			{
+//				m_pPidParser->ParseFromFile();
+			}
+
 			long Sid = 0;
 			pDVBTTuneRequest->get_SID(&Sid); //Get the SID from the NP
 
@@ -519,9 +525,20 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 		if (m_bNPControl)
 		{
 			//Must be in control mode to get this far then setup the NP tune request
-			pDVBTTuneRequest->put_ONID((long)m_pPidParser->m_ONetworkID);
-			pDVBTTuneRequest->put_SID((long)m_pPidParser->pids.sid); 
-			pDVBTTuneRequest->put_TSID((long)m_pPidParser->m_TStreamID);
+			if (m_pPidParser->m_ONetworkID == 0)
+				pDVBTTuneRequest->put_ONID((long)-1);
+			else
+				pDVBTTuneRequest->put_ONID((long)m_pPidParser->m_ONetworkID);
+
+			if (m_pPidParser->pids.sid == 0)
+				pDVBTTuneRequest->put_SID((long)-1);
+			else
+				pDVBTTuneRequest->put_SID((long)m_pPidParser->pids.sid);
+			
+			if (m_pPidParser->m_TStreamID == 0)
+				pDVBTTuneRequest->put_TSID((long)-1);
+			else
+				pDVBTTuneRequest->put_TSID((long)m_pPidParser->m_TStreamID);
 
 //			hr = pDVBTTuneRequest->QueryInterface(&pNewTuneRequest);//IID_ITuneRequest,(void **)
 			//If the tune request is valid then tune.
@@ -537,7 +554,56 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 	return hr;
 }
 
+//Stop TIF Additions
+HRESULT Demux::SetTIFState(IFilterGraph *pGraph, REFERENCE_TIME tStart)
+{
+	HRESULT hr = S_FALSE;
+
+	if(FAILED(pGraph->QueryInterface(IID_IGraphBuilder, (void **) &m_pGraphBuilder)))
+	{
+		return hr;
+	}
+
+	// declare local variables
+	IEnumFilters* EnumFilters;
+
+	// Parse only the existing TIF Filter
+	// in the filter graph, we do this by looking for filters
+	// that implement the GuideData interface while
+	// the count is still active.
+	if(SUCCEEDED(pGraph->EnumFilters(&EnumFilters)))
+	{
+		IBaseFilter* m_pTIF;
+		ULONG Fetched(0);
+		while(EnumFilters->Next(1, &m_pTIF, &Fetched) == S_OK)
+		{
+			if(m_pTIF != NULL)
+			{
+				// Get the GuideData interface from the TIF filter
+				IGuideData* pGuideData;
+				hr = m_pTIF->QueryInterface(&pGuideData);
+				if (SUCCEEDED(hr))
+				{
+					if (tStart == 0)
+					{
+						m_pTIF->Pause();
+						m_pTIF->Stop();
+					}
+					else
+						m_pTIF->Run(tStart);
+
+					pGuideData->Release();
+				}
 	
+				m_pTIF->Release();
+				m_pTIF = NULL;
+			}
+		}
+		EnumFilters->Release();
+	}
+	return hr;
+}
+
 //TIF Additions
 HRESULT Demux::CheckTIFPin(IBaseFilter* pDemux)
 {
@@ -617,6 +683,7 @@ HRESULT Demux::CheckTIFPin(IBaseFilter* pDemux)
 												mpegComponent->get_ProgramNumber(&progSID);
 												if (progSID == m_pPidParser->pids.sid)
 													foundSID = true;
+
 //				TCHAR sz[100];
 //				sprintf(sz, "%u", progSID);
 //				MessageBox(NULL, sz, TEXT("progSID"), MB_OK);
@@ -638,6 +705,7 @@ HRESULT Demux::CheckTIFPin(IBaseFilter* pDemux)
 					}
 					pGuideData->Release();
 				}
+//				m_pTIF->Stop();
 				m_pTIF->Release();
 			}
 			pIPin->Release();

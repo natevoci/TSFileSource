@@ -41,6 +41,7 @@
 #define IDC_AUDIO2MODE                  1028
 #define IDC_NPCTRL                      1029
 #define IDC_NPSLAVE                     1030
+#define IDC_REFRESH                     1031
 
 // Next default values for new objects
 // 

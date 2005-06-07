@@ -80,7 +80,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 //*********************************************************************************************
 //NP Slave Additions
 
-	m_pTunerEvent = new TunerEvent(m_pDemux);
+	m_pTunerEvent = new TunerEvent(m_pDemux, GetOwner());
 
 //*********************************************************************************************
 
@@ -108,7 +108,7 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 //NP Slave Additions
 
 	m_pTunerEvent->UnRegisterForTunerEvents();
-	m_pTunerEvent->Release();
+	delete 	m_pTunerEvent;
 
 //*********************************************************************************************
 
@@ -180,7 +180,46 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		if (FAILED(hr))
 			return hr;
 
-		REFERENCE_TIME start, stop;
+//*********************************************************************************************
+//wait for Growing File Additions
+
+		__int64	fileSize = 0;
+		m_pFileReader->GetFileSize(&fileSize);
+		//Check if file is being recorded
+		if(fileSize < 2000000)
+		{
+			int count = 0;
+			__int64 fileSizeSave = fileSize;
+			while (fileSize < 20000000 && count < 20)
+			{
+				while (fileSize < fileSizeSave + 2000000 && count < 20)
+				{
+					Sleep(200);
+					m_pFileReader->GetFileSize(&fileSize);
+					count++;
+				}
+				count++;
+				fileSizeSave = fileSize;
+				RefreshPids(); 
+				if (m_pPidParser->m_ONetworkID != 0 && m_pPidParser->m_NetworkID != 0)
+				{
+					count = 20;
+					break;
+				}
+			}
+			LoadPgmReg();
+			m_pPin->DeliverBeginFlush();
+			m_pPin->SetDuration(m_pPidParser->pids.dur);
+			m_pDemux->AOnConnect(GetFilterGraph());
+			m_pPin->DeliverEndFlush();
+			RefreshDuration();
+
+		}
+
+
+//*********************************************************************************************
+
+	REFERENCE_TIME start, stop;
 		m_pPin->GetPositions(&start, &stop);
 
 		if (start > 0)
@@ -202,6 +241,11 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 	return hr2;
 */
 //Removed	return CSource::Run(tStart);
+
+//NP Control Additions
+
+	SetTunerEvent();
+
 	return CSource::Run(tStart);
 //**********************************************************************************************
 
@@ -217,6 +261,14 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 {
 	CAutoLock cObjectLock(m_pLock);
 	CAutoLock lock(&m_Lock);
+
+//*********************************************************************************************
+//NP Control Additions
+
+	m_pTunerEvent->UnRegisterForTunerEvents();
+
+//*********************************************************************************************
+
 	m_pFileReader->CloseFile();
 	return CSource::Stop();
 }
@@ -248,7 +300,6 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 		__int64 nFileIndex;
 		nFileIndex = filelength * (seektime>>14) / (m_pPidParser->pids.dur>>14);
 		m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
-
 	}
 
 	return S_OK;
@@ -256,30 +307,8 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 HRESULT CTSFileSourceFilter::OnConnect()
 {
-
-//*********************************************************************************************
-//NP Slave Additions
-
-	if (SUCCEEDED(m_pTunerEvent->HookupGraphEventService(GetFilterGraph())))
-	{
-		m_pTunerEvent->RegisterForTunerEvents();
-	}
-
-//*********************************************************************************************
-
 	return m_pDemux->AOnConnect(GetFilterGraph());
 }
-
-/*PidParser *CTSFileSourceFilter::get_Pids()
-{
-	return m_pPidParser;
-}
-
-FileReader *CTSFileSourceFilter::get_FileReader()
-{
-	return m_pFileReader;
-}*/
-
 
 STDMETHODIMP CTSFileSourceFilter::GetPages(CAUUID *pPages)
 {
@@ -310,6 +339,27 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 //**********************************************************************************************
 //Program Registry Additions
 
+	LoadPgmReg();
+
+//*********************************************************************************************
+
+	RefreshDuration();
+
+	CAutoLock lock(&m_Lock);
+	m_pFileReader->CloseFile();
+
+	return hr;
+}
+
+
+//*********************************************************************************************
+//Program Registry Additions
+
+HRESULT CTSFileSourceFilter::LoadPgmReg(void)
+{
+
+	HRESULT hr = S_OK;
+
 	if (m_pPidParser->m_TStreamID && m_pPidParser->pidArray.Count() >= 2)
 	{
 		std::string saveName = m_pSettingsStore->getName();
@@ -322,24 +372,14 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 
 		if (m_pPidParser->set_ProgramSID() == S_OK)
 		{
-			WORD pgmNumber = m_pPidParser->get_ProgramNumber();
-			m_pPin->DeliverBeginFlush();
-			m_pPidParser->set_ProgramNumber(pgmNumber);
-			m_pPin->SetDuration(m_pPidParser->pids.dur);
-			m_pPin->DeliverEndFlush();
 		}
 		m_pSettingsStore->setName(saveName);
 	}
+	return hr;
+}
 
 //*********************************************************************************************
 
-	RefreshDuration();
-
-	CAutoLock lock(&m_Lock);
-	m_pFileReader->CloseFile();
-
-	return hr;
-}
 
 HRESULT CTSFileSourceFilter::RefreshPids()
 {
@@ -849,6 +889,17 @@ STDMETHODIMP CTSFileSourceFilter::SetNPSlave(WORD NPSlave)
 	m_pDemux->AOnConnect(GetFilterGraph());
 	return NOERROR;
 }
+
+STDMETHODIMP CTSFileSourceFilter::SetTunerEvent(void)
+{
+
+	if (SUCCEEDED(m_pTunerEvent->HookupGraphEventService(GetFilterGraph())))
+	{
+		m_pTunerEvent->RegisterForTunerEvents();
+	}
+	return NOERROR;
+}
+
 //*********************************************************************************************
 
 STDMETHODIMP CTSFileSourceFilter::GetDelayMode(WORD *DelayMode)
@@ -1102,16 +1153,6 @@ STDMETHODIMP CTSFileSourceFilter::ShowFilterProperties()
 //////////////////////////////////////////////////////////////////////////
 // End of interface implementations
 //////////////////////////////////////////////////////////////////////////
-//MessageBox(NULL, name, TEXT("name"), MB_OK);
-//MessageBox(NULL, user, TEXT("user"), MB_OK);
-//MessageBox(NULL, ddefault, TEXT("ddefault"), MB_OK);
-//TCHAR sz[100];
-//sprintf(sz, "%u", m_pPidParser->get_ProgramNumber()+1);
-//MessageBox(NULL, sz, TEXT("m_pPidParser"), MB_OK);
-
-
-
-///////////////////////////////////////////////////////////////////////////////////////
 
 
 

@@ -44,8 +44,10 @@
 class TunerEvent : public IBroadcastEvent
 {
 
-private:
+protected:
     long m_nRefCount; // Holds the reference count.
+
+	IUnknown *m_pTSFileSourceFilter;
 	Demux *m_pDemux;
 	IFilterGraph *m_pFilterGraph;
 
@@ -85,29 +87,21 @@ public:
     // The one IBroadcastEvent method.
     STDMETHOD(Fire)(GUID eventID)
     {
-        // The one defined event.
-        if (eventID == EVENTID_TuningChanged)
+		// The tuner changed stations or channels.
+        if (eventID == EVENTID_TuningChanged && !EventBusyFlag)
         {
-			// The tuner changed stations or channels.
-
-			int bNPControl = m_pDemux->get_NPControl(); //Save NP Control mode
-			m_pDemux->set_NPControl(false); //Turn off NP Control else we will loop
-
-			int bNPSlave = m_pDemux->get_NPSlave(); //Save NP Slave mode
-			m_pDemux->set_NPSlave(true); //Turn on NP Slave mode to change SID to set Demux control
-
-			m_pDemux->AOnConnect(m_pFilterGraph); //Update Demux Pins & Pid mapping
-
-			m_pDemux->set_NPControl(bNPControl); //Restore NP Control mode
-			m_pDemux->set_NPSlave(bNPSlave); //Restore NP Control mode
+			EventBusyFlag = true; //set Event flag to prevent looping
+			DoChannelChange(); //Change The Channel
+			EventBusyFlag = false; //Reset set Event flag to prevent looping
         }
-        
         return S_OK;
     }
 
-    TunerEvent(Demux *pDemux) : m_dwBroadcastEventCookie(0), m_nRefCount(1)
+    TunerEvent(Demux *pDemux, IUnknown *pUnk) : m_dwBroadcastEventCookie(0), m_nRefCount(1)
 	{
+		m_pTSFileSourceFilter = pUnk;
 		m_pDemux = pDemux;
+		m_spBroadcastEvent = NULL;
 	};
 
 public: //private
@@ -115,9 +109,16 @@ public: //private
     HRESULT RegisterForTunerEvents();
     HRESULT UnRegisterForTunerEvents();
     HRESULT Fire_Event(GUID eventID);
+	HRESULT DoChannelChange(void);
+
+
+protected:
 
     CComPtr <IBroadcastEvent> m_spBroadcastEvent; 
     DWORD m_dwBroadcastEventCookie;
+	bool EventBusyFlag;
+	int m_bNPSlaveSave;
+	int m_bNPControlSave;
 };
 
 #endif

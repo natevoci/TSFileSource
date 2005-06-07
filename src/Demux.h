@@ -51,6 +51,10 @@ public:
 	BOOL get_NPSlave();
 	void set_NPSlave(BOOL bNPSlave);
 
+//Stop TIF Additions
+
+	HRESULT SetTIFState(IFilterGraph *pGraph, REFERENCE_TIME tStart);
+
 //*********************************************************************************************
 
 	BOOL get_AC3Mode();

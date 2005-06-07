@@ -43,7 +43,8 @@ class CTSFileSourceFilter;
 #include "RegStore.h"
 #include "SettingsStore.h"
 
-//TIF Additions
+//NP Slave Additions
+
 #include "TunerEvent.h"
 
 //**********************************************************************************************
@@ -98,6 +99,14 @@ public:
 //Property Page Additions
 
 	STDMETHODIMP ShowFilterProperties();
+
+//NP Slave Additions
+
+	STDMETHODIMP SetTunerEvent(void);
+
+//Program Registry Additions
+
+	HRESULT LoadPgmReg(void);
 
 //**********************************************************************************************
 

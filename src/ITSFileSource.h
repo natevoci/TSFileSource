@@ -111,6 +111,7 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown)
 
 	STDMETHOD(GetNPSlave) (THIS_ WORD *pNPSlave) PURE;
 	STDMETHOD(SetNPSlave) (THIS_ WORD pNPSlave) PURE;
+	STDMETHOD(SetTunerEvent) (void) PURE;
 
 //*********************************************************************************************
 

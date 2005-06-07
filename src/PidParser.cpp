@@ -1415,6 +1415,7 @@ HRESULT PidParser::set_ProgramSID()
 		{
 			//now copy the pids from the SID program found
 			m_pgmnumb = c;
+			pids.Clear();
 			pids.CopyFrom(&pidArray[m_pgmnumb]);
 			return S_OK;
 		}

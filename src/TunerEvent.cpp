@@ -24,8 +24,9 @@
 */
 
 #include "TunerEvent.h"
+#include "ITSFileSource.h"
 
-TunerEvent::TunerEvent(Demux *pDemux);
+TunerEvent::TunerEvent(Demux *pDemux, IUnknown *pUnk);
 TunerEvent:: ~TunerEvent();
 
 
@@ -76,10 +77,13 @@ HRESULT TunerEvent::HookupGraphEventService(IFilterGraph *pGraph)
 HRESULT TunerEvent::RegisterForTunerEvents()
 {
 
+	EventBusyFlag = false; //Make sure that we have Reset
+
 	if (!m_spBroadcastEvent)
     {
         return E_FAIL;  // Forgot to call HookupGraphEventService.
     }
+
     if(m_dwBroadcastEventCookie)
     {
         return S_FALSE;  // There is already a connection; nothing to do.
@@ -90,6 +94,7 @@ HRESULT TunerEvent::RegisterForTunerEvents()
     {
         return E_NOINTERFACE;
     }
+
     return spConnectionPoint->Advise(static_cast<IBroadcastEvent*>(this),
         &m_dwBroadcastEventCookie);
 }
@@ -128,5 +133,31 @@ HRESULT TunerEvent::Fire_Event(GUID eventID)
         return E_FAIL; // Forgot to call HookupGraphEventService.
     }
     return m_spBroadcastEvent->Fire(eventID);
+
+}
+
+HRESULT TunerEvent::DoChannelChange()
+{
+	HRESULT hr;
+
+	ITSFileSource   *pProgram;    // Pointer to the filter's custom interface.
+	hr = m_pTSFileSourceFilter->QueryInterface(IID_ITSFileSource, (void**)(&pProgram));
+	if(SUCCEEDED(hr))
+	{
+		m_bNPControlSave = m_pDemux->get_NPControl(); //Save NP Control mode
+		m_pDemux->set_NPControl(false); //Turn off NP Control else we will loop
+
+		m_bNPSlaveSave = m_pDemux->get_NPSlave(); //Save NP Slave mode
+		m_pDemux->set_NPSlave(true); //Turn on NP Slave mode to change SID to set Demux control
+
+		USHORT pgmNumb;
+		pProgram->GetPgmNumb(&pgmNumb);
+		pProgram->SetPgmNumb(pgmNumb);
+		m_pDemux->set_NPControl(m_bNPControlSave); //Restore NP Control mode
+		m_pDemux->set_NPSlave(m_bNPSlaveSave); //Restore NP Control mode
+
+		pProgram->Release();
+	}
+	return hr;
 
 }
