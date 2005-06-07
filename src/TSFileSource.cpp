@@ -39,6 +39,13 @@
 #include "TSFileSource.h"
 #include "TSFileSourceGuids.h"
 
+//*********************************************************************************************
+//NP Slave Additions
+
+#include "TunerEvent.h"
+
+//*********************************************************************************************
+
 CUnknown * WINAPI CTSFileSourceFilter::CreateInstance(LPUNKNOWN punk, HRESULT *phr)
 {
 	ASSERT(phr);
@@ -70,6 +77,14 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
+//*********************************************************************************************
+//NP Slave Additions
+
+	m_pTunerEvent = new TunerEvent(m_pDemux);
+
+//*********************************************************************************************
+
+
 //**********************************************************************************************
 //Registry Additions
 
@@ -88,6 +103,14 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
 {
+
+//*********************************************************************************************
+//NP Slave Additions
+
+	m_pTunerEvent->UnRegisterForTunerEvents();
+	m_pTunerEvent->Release();
+
+//*********************************************************************************************
 
 //**********************************************************************************************
 //Registry Additions
@@ -233,6 +256,17 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 HRESULT CTSFileSourceFilter::OnConnect()
 {
+
+//*********************************************************************************************
+//NP Slave Additions
+
+	if (SUCCEEDED(m_pTunerEvent->HookupGraphEventService(GetFilterGraph())))
+	{
+		m_pTunerEvent->RegisterForTunerEvents();
+	}
+
+//*********************************************************************************************
+
 	return m_pDemux->AOnConnect(GetFilterGraph());
 }
 
@@ -775,6 +809,48 @@ STDMETHODIMP CTSFileSourceFilter::SetAutoMode(WORD AutoMode)
 	return NOERROR;
 }
 
+//*********************************************************************************************
+//NP Control Additions
+
+STDMETHODIMP CTSFileSourceFilter::GetNPControl(WORD *NPControl)
+{
+	if(!NPControl)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*NPControl = m_pDemux->get_NPControl();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetNPControl(WORD NPControl)
+{
+	CAutoLock lock(&m_Lock);
+	m_pDemux->set_NPControl(NPControl);
+	m_pDemux->AOnConnect(GetFilterGraph());
+	return NOERROR;
+}
+
+//NP Slave Additions
+
+STDMETHODIMP CTSFileSourceFilter::GetNPSlave(WORD *NPSlave)
+{
+	if(!NPSlave)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*NPSlave = m_pDemux->get_NPSlave();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetNPSlave(WORD NPSlave)
+{
+	CAutoLock lock(&m_Lock);
+	m_pDemux->set_NPSlave(NPSlave);
+	m_pDemux->AOnConnect(GetFilterGraph());
+	return NOERROR;
+}
+//*********************************************************************************************
+
 STDMETHODIMP CTSFileSourceFilter::GetDelayMode(WORD *DelayMode)
 {
 	if(!DelayMode)
@@ -888,6 +964,15 @@ STDMETHODIMP CTSFileSourceFilter::SetRegStore(LPTSTR nameReg)
 		m_pSettingsStore->setDelayModeReg((BOOL)delay);
 		m_pSettingsStore->setRateControlModeReg((BOOL)m_pPin->get_RateControl());
 		m_pSettingsStore->setAutoModeReg((BOOL)m_pDemux->get_Auto());
+
+//NP Control Additions
+
+		m_pSettingsStore->setNPControlReg((BOOL)m_pDemux->get_NPControl());
+
+//NP Slave Additions
+
+		m_pSettingsStore->setNPSlaveReg((BOOL)m_pDemux->get_NPSlave());
+
 		m_pSettingsStore->setMP2ModeReg((BOOL)m_pDemux->get_MPEG2AudioMediaType());
 		m_pSettingsStore->setAudio2ModeReg((BOOL)m_pDemux->get_MPEG2Audio2Mode());
 		m_pSettingsStore->setAC3ModeReg((BOOL)m_pDemux->get_AC3Mode());
@@ -921,6 +1006,15 @@ STDMETHODIMP CTSFileSourceFilter::GetRegStore(LPTSTR nameReg)
 		{	
 			m_pFileReader->set_DelayMode(m_pSettingsStore->getDelayModeReg());
 			m_pDemux->set_Auto(m_pSettingsStore->getAutoModeReg());
+
+//NP Control Additions
+
+			m_pDemux->set_NPControl(m_pSettingsStore->getNPControlReg());
+
+//NP Slave Additions
+
+			m_pDemux->set_NPSlave(m_pSettingsStore->getNPSlaveReg());
+
 			m_pDemux->set_MPEG2AudioMediaType(m_pSettingsStore->getMP2ModeReg());
 			m_pDemux->set_MPEG2Audio2Mode(m_pSettingsStore->getAudio2ModeReg());
 			m_pDemux->set_AC3Mode(m_pSettingsStore->getAC3ModeReg());

@@ -50,7 +50,14 @@ public:
 	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes);
 	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod);
 
-	HRESULT get_ReadOnly(WORD *AutoMode);
+//***********************************************************************************************
+//Found this bug
+	
+	HRESULT get_ReadOnly(WORD *ReadOnly);
+
+// Removed	HRESULT get_ReadOnly(WORD *AutoMode);
+
+//**********************************************************************************************
 	HRESULT get_DelayMode(WORD *DelayMode);
 	HRESULT set_DelayMode(WORD DelayMode);
 

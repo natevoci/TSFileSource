@@ -46,20 +46,40 @@ public:
 
 	
 	BOOL getAutoModeReg();
-	BOOL getMP2ModeReg();
-	BOOL getAC3ModeReg();
-	BOOL getCreateTSPinOnDemuxReg();
-	BOOL getDelayModeReg();
-	BOOL getRateControlModeReg();
-	BOOL getAudio2ModeReg();
-	int  getProgramSIDReg();
 	void setAutoModeReg(BOOL bAuto);
+
+//*********************************************************************************************
+//NP Control Additions
+
+	BOOL getNPControlReg();
+	void setNPControlReg(BOOL bNPConrtol);
+
+//NP Slave Additions
+
+	BOOL getNPSlaveReg();
+	void setNPSlaveReg(BOOL bNPSlave);
+
+//*********************************************************************************************
+
+	BOOL getMP2ModeReg();
 	void setMP2ModeReg(BOOL bMP2);
+
+	BOOL getAC3ModeReg();
 	void setAC3ModeReg(BOOL bAC3);
+
+	BOOL getCreateTSPinOnDemuxReg();
 	void setCreateTSPinOnDemuxReg(BOOL bTSPin);
+
+	BOOL getDelayModeReg();
 	void setDelayModeReg(BOOL bDelay);
+
+	BOOL getRateControlModeReg();
 	void setRateControlModeReg(BOOL bRate);
+
+	BOOL getAudio2ModeReg();
 	void setAudio2ModeReg(BOOL bAudio2);
+
+	int  getProgramSIDReg();
 	void setProgramSIDReg(int bSID);
 
 private:
@@ -69,6 +89,18 @@ private:
 
 
 	BOOL 	autoMode;
+
+//*********************************************************************************************
+//NP Control Additions
+
+	BOOL 	nPControl;
+
+//NP Slave Additions
+
+	BOOL 	nPSlave;
+
+//*********************************************************************************************
+
 	BOOL	mp2Mode;
 	BOOL	ac3Mode;
 	BOOL	tsPinMode;

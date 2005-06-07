@@ -108,6 +108,37 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		}
 		setStore->setAutoModeReg(regAuto);
 
+//*********************************************************************************************
+//NP Control Additions
+
+		BOOL regNPControl(TRUE);
+		datalen = 1;
+		type = 0;
+
+		resp = RegQueryValueEx(settingsKey, "enableNPControl", NULL, &type, (BYTE*)&regNPControl, &datalen);
+		if(resp != ERROR_SUCCESS)
+		{
+			RegCloseKey(settingsKey);
+			return FALSE;
+		}
+		setStore->setNPControlReg(regNPControl);
+
+//NP Slave Additions
+
+		BOOL regNPSlave(TRUE);
+		datalen = 1;
+		type = 0;
+
+		resp = RegQueryValueEx(settingsKey, "enableNPSlave", NULL, &type, (BYTE*)&regNPSlave, &datalen);
+		if(resp != ERROR_SUCCESS)
+		{
+			RegCloseKey(settingsKey);
+			return FALSE;
+		}
+		setStore->setNPSlaveReg(regNPSlave);
+
+//*********************************************************************************************
+
 		BOOL regMP2(TRUE);
 		datalen = 1;
 		type = 0;
@@ -227,6 +258,19 @@ BOOL CRegStore::setSettingsInfo(CSettingsStore *setStore)
 	{
 		BOOL regAuto = setStore->getAutoModeReg();
 		resp = RegSetValueEx(settingsKey, "enableAuto", NULL, REG_BINARY, (BYTE*)&regAuto, 1);
+
+//*********************************************************************************************
+//NP Control Additions
+
+		BOOL regNPControl = setStore->getNPControlReg();
+		resp = RegSetValueEx(settingsKey, "enableNPControl", NULL, REG_BINARY, (BYTE*)&regNPControl, 1);
+
+//NP Slave Additions
+
+		BOOL regNPSlave = setStore->getNPSlaveReg();
+		resp = RegSetValueEx(settingsKey, "enableNPSlave", NULL, REG_BINARY, (BYTE*)&regNPSlave, 1);
+
+//*********************************************************************************************
 
 		BOOL regMP2 = setStore->getMP2ModeReg();
 		resp = RegSetValueEx(settingsKey, "enableMP2", NULL, REG_BINARY, (BYTE*)&regMP2, 1);

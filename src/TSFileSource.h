@@ -43,6 +43,9 @@ class CTSFileSourceFilter;
 #include "RegStore.h"
 #include "SettingsStore.h"
 
+//TIF Additions
+#include "TunerEvent.h"
+
 //**********************************************************************************************
 
 #include "PidInfo.h"
@@ -175,10 +178,23 @@ protected:
 
 //**********************************************************************************************
 
-	STDMETHODIMP GetAutoMode(WORD* pDelayMode);
+	STDMETHODIMP GetAutoMode(WORD* pAutoMode);
 	STDMETHODIMP SetAutoMode(WORD AutoMode);
 
-	STDMETHODIMP GetDelayMode(WORD* pAutoMode);
+//**********************************************************************************************
+//NP Control Additions
+
+	STDMETHODIMP GetNPControl(WORD* pNPControl);
+	STDMETHODIMP SetNPControl(WORD NPControl);
+
+//NP Slave Additions
+
+	STDMETHODIMP GetNPSlave(WORD* pNPSlave);
+	STDMETHODIMP SetNPSlave(WORD NPSlave);
+
+//**********************************************************************************************
+
+	STDMETHODIMP GetDelayMode(WORD* pDelayMode);
 	STDMETHODIMP SetDelayMode(WORD DelayMode);
 
 	STDMETHODIMP GetRateControlMode(WORD* pRateControl);
@@ -218,6 +234,13 @@ protected:
 //Property Page Additions
 
 	BOOL	m_PropOpen;
+
+//**********************************************************************************************
+
+//*********************************************************************************************
+//NP Slave Additions
+
+	TunerEvent *m_pTunerEvent;
 
 //**********************************************************************************************
 

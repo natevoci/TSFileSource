@@ -39,6 +39,8 @@
 #define IDC_DATARATE                    1026
 #define IDC_PREV                        1027
 #define IDC_AUDIO2MODE                  1028
+#define IDC_NPCTRL                      1029
+#define IDC_NPSLAVE                     1030
 
 // Next default values for new objects
 // 

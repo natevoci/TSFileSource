@@ -60,6 +60,22 @@ BOOL CSettingsStore::getAutoModeReg()
 	return autoMode;
 }
 
+//*********************************************************************************************
+//NP Control Additions
+
+BOOL CSettingsStore::getNPControlReg()
+{
+	return nPControl;
+}
+
+//NP Slave Additions
+
+BOOL CSettingsStore::getNPSlaveReg()
+{
+	return nPSlave;
+}
+//*********************************************************************************************
+
 BOOL CSettingsStore::getMP2ModeReg()
 {
 	return mp2Mode;
@@ -100,6 +116,24 @@ void CSettingsStore::setAutoModeReg(BOOL bAuto)
 	autoMode = bAuto;
 	return;
 }
+
+//*********************************************************************************************
+//NP Control Additions
+
+void CSettingsStore::setNPControlReg(BOOL bNPControl)
+{
+	nPControl = bNPControl;
+	return;
+}
+
+//NP Slave Additions
+void CSettingsStore::setNPSlaveReg(BOOL bNPSlave)
+{
+	nPSlave = bNPSlave;
+	return;
+}
+
+//*********************************************************************************************
 
 void CSettingsStore::setMP2ModeReg(BOOL bMP2)
 {

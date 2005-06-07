@@ -32,6 +32,20 @@
 
 #include "Demux.h"
 
+//*********************************************************************************************
+//NP Control Additions
+
+#include "Bdatif.h"
+#include "tuner.h"
+#include <commctrl.h>
+#include <atlbase.h>
+
+//NP Slave Additions
+
+#include "TunerEvent.h"
+
+//*********************************************************************************************
+
 
 Demux::Demux(PidParser *pPidParser) :
 	m_bAuto(TRUE),
@@ -41,6 +55,14 @@ Demux::Demux(PidParser *pPidParser) :
 //Audio2 Additions
 
 	m_bMPEG2Audio2Mode(FALSE),
+
+//NP Control Additions
+
+	m_bNPControl(TRUE),
+
+//NP Slave Additions
+
+	m_bNPSlave(FALSE),
 
 //*********************************************************************************************
 
@@ -59,10 +81,18 @@ Demux::~Demux()
 HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 {
 	// Check if Enabled
-	if (!m_bAuto)
+
+//*********************************************************************************************
+//NP Control & Slave Additions
+
+	if (!m_bAuto && !m_bNPControl && !m_bNPSlave)
 	{
 		return S_FALSE;
 	}
+
+//Removed	if (!m_bAuto)
+
+//*********************************************************************************************
 
 	if(FAILED(pGraph->QueryInterface(IID_IGraphBuilder, (void **) &m_pGraphBuilder)))
 	{
@@ -96,7 +126,33 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 
 // declare local variables
 	IEnumFilters* EnumFilters;
-	IBaseFilter* m_pDemux = NULL;
+//Removed as not needed	IBaseFilter* m_pDemux = NULL;
+
+//*********************************************************************************************
+//NP Control Additions
+
+	// Parse only the existing Network Provider Filter
+	// in the filter graph, we do this by looking for filters
+	// that implement the ITuner interface while
+	// the count is still active.
+	if(SUCCEEDED(pGraph->EnumFilters(&EnumFilters)))
+	{
+		IBaseFilter* m_pNetworkProvider;
+		ULONG Fetched(0);
+		while(EnumFilters->Next(1, &m_pNetworkProvider, &Fetched) == S_OK)
+		{
+			if(m_pNetworkProvider != NULL)
+			{
+				UpdateNetworkProvider(m_pNetworkProvider);
+	
+				m_pNetworkProvider->Release();
+				m_pNetworkProvider = NULL;
+			}
+		}
+		EnumFilters->Release();
+	}
+
+//*********************************************************************************************
 
 	// Parse only the existing Mpeg2 Demultiplexer Filter
 	// in the filter graph, we do this by looking for filters
@@ -112,6 +168,7 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 			{
 				// TODO: Change this so that only the first demux filter that is connected gets updated
 				UpdateDemuxPins(m_pDemux);
+
 				m_pDemux->Release();
 				m_pDemux = NULL;
 			}
@@ -152,10 +209,33 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 	if(pDemux == NULL)
 		return hr;
 
+//*********************************************************************************************
+//NP Control Additions
+
+	// Check if Enabled
+	if (!m_bAuto)
+	{
+		return S_FALSE;
+	}
+
+//*********************************************************************************************
+
 	// Get an instance of the Demux control interface
 	IMpeg2Demultiplexer* muxInterface = NULL;
 	if(SUCCEEDED(pDemux->QueryInterface (&muxInterface)))
 	{
+
+//*********************************************************************************************
+//TIF Additions
+
+		// Update TIF Pin
+//		if (SUCCEEDED(CheckTIFPin(pDemux))){
+			// If TIF was found
+
+		
+//		} Just wanted to see if this would work and it did.
+	
+//*********************************************************************************************
 
 		// Update Video Pin
 		if (FAILED(CheckVideoPin(pDemux))){
@@ -395,6 +475,180 @@ HRESULT Demux::CheckDemuxPin(IBaseFilter* pDemux, AM_MEDIA_TYPE pintype, IPin** 
    }
 	return E_FAIL;
 }
+
+//*********************************************************************************************
+//NP Control & Slave Additions
+
+HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pNetworkProvider == NULL)
+		return hr;
+
+	// Check if Enabled
+	if (!m_bNPControl && !m_bNPSlave)
+	{
+		return S_FALSE;
+	}
+
+	ITuner* pITuner;
+    hr = pNetworkProvider->QueryInterface(__uuidof (ITuner), reinterpret_cast <void**> (&pITuner));
+    if(SUCCEEDED (hr))
+    {
+		//Setup to get the tune request
+		CComPtr <ITuneRequest> pNewTuneRequest;			
+		CComQIPtr <IDVBTuneRequest> pDVBTTuneRequest (pNewTuneRequest);
+		hr = pITuner->get_TuneRequest(&pNewTuneRequest);
+		pDVBTTuneRequest = pNewTuneRequest;
+
+		//Test if we are in NP Slave mode
+		if (m_bNPSlave && !m_bNPControl)
+		{
+//			long Onid = 0;
+//			pDVBTTuneRequest->get_ONID(&Onid);
+//			long Tsid = 0;
+//			pDVBTTuneRequest->get_TSID(&Tsid);
+			long Sid = 0;
+			pDVBTTuneRequest->get_SID(&Sid); //Get the SID from the NP
+
+			m_pPidParser->m_ProgramSID = Sid; //Set the prefered SID
+			m_pPidParser->set_ProgramSID(); //Update the Pids
+		}
+
+		if (m_bNPControl)
+		{
+			//Must be in control mode to get this far then setup the NP tune request
+			pDVBTTuneRequest->put_ONID((long)m_pPidParser->m_ONetworkID);
+			pDVBTTuneRequest->put_SID((long)m_pPidParser->pids.sid); 
+			pDVBTTuneRequest->put_TSID((long)m_pPidParser->m_TStreamID);
+
+//			hr = pDVBTTuneRequest->QueryInterface(&pNewTuneRequest);//IID_ITuneRequest,(void **)
+			//If the tune request is valid then tune.
+			if (pITuner->Validate(pNewTuneRequest) == S_OK)
+			{
+				hr = pITuner->put_TuneRequest(pNewTuneRequest);
+			}
+		}
+		pDVBTTuneRequest.Release();
+		pNewTuneRequest.Release();
+		pITuner->Release();
+	}
+	return hr;
+}
+
+	
+//TIF Additions
+HRESULT Demux::CheckTIFPin(IBaseFilter* pDemux)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pDemux == NULL){return hr;}
+
+	AM_MEDIA_TYPE pintype;
+	GetTIFMedia(&pintype);
+
+	IPin* pOPin = NULL;
+	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pOPin)))
+	{
+
+		IPin* pIPin = NULL;
+		if (SUCCEEDED(pOPin->ConnectedTo(&pIPin)))
+		{
+
+			PIN_INFO pinInfo;
+			if (SUCCEEDED(pIPin->QueryPinInfo(&pinInfo)))
+			{
+		
+				IBaseFilter* m_pTIF;
+				m_pTIF = pinInfo.pFilter;
+
+				// Get the GuideData interface from the TIF filter
+				IGuideData* pGuideData;
+				hr = m_pTIF->QueryInterface(&pGuideData);
+				if (SUCCEEDED(hr))
+				{
+					// Get the TuneRequestinfo interface from the TIF filter
+					CComPtr <ITuneRequestInfo> pTuneRequestInfo;
+					hr = m_pTIF->QueryInterface(&pTuneRequestInfo);
+					if (SUCCEEDED(hr))
+					{
+
+						// Get a list of services from the GuideData interface
+						IEnumTuneRequests*  piEnumTuneRequests; 
+						hr = pGuideData->GetServices(&piEnumTuneRequests); 
+						if (SUCCEEDED(hr))
+						{
+							bool foundSID = false;
+							while (!foundSID)
+							{
+
+							unsigned long ulRetrieved = 1;
+							ITuneRequest *pTuneRequest = NULL; 
+
+							while (SUCCEEDED(piEnumTuneRequests->Next(1, &pTuneRequest, &ulRetrieved)) && ulRetrieved > 0)
+							{
+
+								// Fill in the Components lists for the tune request
+								hr = pTuneRequestInfo->CreateComponentList(pTuneRequest);
+								if(SUCCEEDED(hr))
+								{
+
+									CComPtr <IComponents> pConponents;
+									hr = pTuneRequest->get_Components(&pConponents);
+									if(SUCCEEDED(hr))
+									{
+
+									    CComPtr<IEnumComponents> pEnum;
+										hr = pConponents->EnumComponents(&pEnum);
+
+										if (SUCCEEDED(hr))
+										{
+											CComPtr <IComponent> pComponent;
+											ULONG cFetched = 1;
+
+											while (SUCCEEDED(pEnum->Next(1, &pComponent, &cFetched)) && cFetched > 0)
+											{
+
+												CComPtr <IMPEG2Component> mpegComponent;
+												hr = pComponent.QueryInterface(&mpegComponent);
+
+												long progSID = -1;
+												mpegComponent->get_ProgramNumber(&progSID);
+												if (progSID == m_pPidParser->pids.sid)
+													foundSID = true;
+//				TCHAR sz[100];
+//				sprintf(sz, "%u", progSID);
+//				MessageBox(NULL, sz, TEXT("progSID"), MB_OK);
+
+												mpegComponent.Release();
+											}
+											pComponent.Release();
+										}
+										pEnum.Release();
+										pConponents.Release();
+									}
+									pTuneRequest->Release();
+								}
+							}
+							piEnumTuneRequests->Release();
+							}
+						}
+						pTuneRequestInfo.Release();
+					}
+					pGuideData->Release();
+				}
+				m_pTIF->Release();
+			}
+			pIPin->Release();
+		}
+		pOPin->Release();
+		return S_OK;
+	}
+	return hr;
+}
+
+//*********************************************************************************************
 
 HRESULT Demux::CheckVideoPin(IBaseFilter* pDemux)
 {
@@ -1091,6 +1345,26 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 	return S_OK;
 }
 
+//*********************************************************************************************
+//TIF Additions
+
+HRESULT Demux::GetTIFMedia(AM_MEDIA_TYPE *pintype)
+
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pintype == NULL){return hr;}
+
+	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
+	pintype->majortype = KSDATAFORMAT_TYPE_MPEG2_SECTIONS;
+	pintype->subtype = MEDIASUBTYPE_DVB_SI; //MEDIASUBTYPE_MPEG2DATA; //Sections & tables
+	pintype->formattype = KSDATAFORMAT_SPECIFIER_NONE;
+
+	return S_OK;
+}
+
+//*********************************************************************************************
+
 HRESULT Demux::GetTelexMedia(AM_MEDIA_TYPE *pintype)
 
 {
@@ -1269,6 +1543,33 @@ void Demux::set_Auto(BOOL bAuto)
 	m_bAuto = bAuto;
 }
 
+//*********************************************************************************************
+//NP Control Additions
+
+BOOL Demux::get_NPControl()
+{
+	return m_bNPControl;
+}
+
+void Demux::set_NPControl(BOOL bNPControl)
+{
+	m_bNPControl = bNPControl;
+}
+
+//NP Slave Additions
+
+BOOL Demux::get_NPSlave()
+{
+	return m_bNPSlave;
+}
+
+void Demux::set_NPSlave(BOOL bNPSlave)
+{
+	m_bNPSlave = bNPSlave;
+}
+
+//*********************************************************************************************
+
 BOOL Demux::get_AC3Mode()
 {
 	return m_bAC3Mode;
@@ -1329,4 +1630,13 @@ int Demux::get_AC3_2AudioPid()
 		return m_pPidParser->pids.ac3;
 }
 //**********************************************************************************************
+
+
+
+
+
+
+
+
+
 

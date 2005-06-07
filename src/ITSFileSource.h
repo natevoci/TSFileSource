@@ -101,6 +101,19 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown)
 	STDMETHOD(GetAutoMode) (THIS_ WORD * pAutoMode) PURE;
 	STDMETHOD(SetAutoMode) (THIS_ WORD AutoMode) PURE;
 
+//*********************************************************************************************
+//NP Control Additions
+
+	STDMETHOD(GetNPControl) (THIS_ WORD *pNPControl) PURE;
+	STDMETHOD(SetNPControl) (THIS_ WORD pNPControl) PURE;
+
+//NP Slave Additions
+
+	STDMETHOD(GetNPSlave) (THIS_ WORD *pNPSlave) PURE;
+	STDMETHOD(SetNPSlave) (THIS_ WORD pNPSlave) PURE;
+
+//*********************************************************************************************
+
 	STDMETHOD(GetDelayMode) (THIS_ WORD * pDelayMode) PURE;
 	STDMETHOD(SetDelayMode) (THIS_ WORD DelayMode) PURE;
 

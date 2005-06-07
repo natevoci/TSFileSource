@@ -27,6 +27,7 @@
 #define DEMUX_H
 
 #include "PidParser.h"
+#include "Control.h"
 
 class Demux
 {
@@ -38,6 +39,19 @@ public:
 
 	BOOL get_Auto();
 	void set_Auto(BOOL bAuto);
+
+//*********************************************************************************************
+//NP Control Additions
+
+	BOOL get_NPControl();
+	void set_NPControl(BOOL bNPControl);
+
+//NP Slave Additions
+
+	BOOL get_NPSlave();
+	void set_NPSlave(BOOL bNPSlave);
+
+//*********************************************************************************************
 
 	BOOL get_AC3Mode();
 	void set_AC3Mode(BOOL bAC3Mode);
@@ -90,10 +104,34 @@ protected:
 	HRESULT	DoStart();
 	HRESULT	DoPause();
 
+//**********************************************************************************************
+//NP Control Additions
+
+	HRESULT UpdateNetworkProvider(IBaseFilter* pNetworkProvider);
+
+//TIF Additions
+
+	HRESULT CheckTIFPin(IBaseFilter* pDemux);
+	HRESULT GetTIFMedia(AM_MEDIA_TYPE *pintype);
+
+//**********************************************************************************************
+
 protected:
 	PidParser *m_pPidParser;
 
 	BOOL   m_bAuto;
+
+//*********************************************************************************************
+//NP Control Additions
+
+	BOOL 	m_bNPControl;
+
+//NP Slave Additions
+
+	BOOL 	m_bNPSlave;
+
+//*********************************************************************************************
+
 	BOOL   m_bAC3Mode;
 	BOOL   m_bCreateTSPinOnDemux;
 	BOOL   m_bMPEG2AudioMediaType;

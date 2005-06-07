@@ -209,6 +209,19 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	m_pProgram->GetAutoMode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_AUTOMODE,PidNr);
 
+//**********************************************************************************************
+//NP Control Additions
+
+	m_pProgram->GetNPControl(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_NPCTRL,PidNr);
+
+//NP Slave Additions
+
+	m_pProgram->GetNPSlave(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_NPSLAVE,PidNr);
+
+//**********************************************************************************************
+
 	m_pProgram->GetRateControlMode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_RATECONTROL,PidNr);
 
@@ -421,6 +434,30 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 					break;
 				}
+
+//**********************************************************************************************
+//NP Control Additions
+					case IDC_NPCTRL:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_NPCTRL);
+					m_pProgram->SetNPControl(checked);
+					OnRefreshProgram () ;
+					SetDirty();
+					break;
+				}
+
+//NP Slave Additions
+
+					case IDC_NPSLAVE:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_NPSLAVE);
+					m_pProgram->SetNPSlave(checked);
+					OnRefreshProgram () ;
+					SetDirty();
+					break;
+				}
+
+//**********************************************************************************************
 
 				case IDC_DELAYMODE:
 				{
