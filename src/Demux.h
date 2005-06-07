@@ -48,6 +48,16 @@ public:
 	BOOL get_MPEG2AudioMediaType();
 	void set_MPEG2AudioMediaType(BOOL bMPEG2AudioMediaType);
 
+//**********************************************************************************************
+//Audio2 Additions
+
+	BOOL get_MPEG2Audio2Mode();
+	void set_MPEG2Audio2Mode(BOOL bMPEG2Audio2Mode);
+	int  get_MP2AudioPid();
+	int Demux::get_AC3_2AudioPid();
+
+//**********************************************************************************************
+
 protected:
 	HRESULT UpdateDemuxPins(IBaseFilter* pDemux);
 	HRESULT CheckDemuxPin(IBaseFilter* pDemux, AM_MEDIA_TYPE pintype, IPin** pIPin);
@@ -87,6 +97,13 @@ protected:
 	BOOL   m_bAC3Mode;
 	BOOL   m_bCreateTSPinOnDemux;
 	BOOL   m_bMPEG2AudioMediaType;
+
+//**********************************************************************************************
+//Audio2 Additions
+
+	BOOL m_bMPEG2Audio2Mode;
+
+//**********************************************************************************************
 
 	LONG   m_TimeOut[1];
 	BOOL   m_WasPlaying;

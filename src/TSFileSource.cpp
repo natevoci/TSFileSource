@@ -62,7 +62,6 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pFileReader = new FileReader();
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser);
-
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, m_pFileReader, m_pPidParser, phr);
 
 	if (m_pPin == NULL) {
@@ -71,10 +70,33 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
+//**********************************************************************************************
+//Registry Additions
+
+	m_pRegStore = new CRegStore();
+	m_pSettingsStore = new CSettingsStore();
+
+	// Load Registry Settings data
+	GetRegStore("default");
+
+//Property Page Additions
+
+	m_PropOpen = false;
+//*********************************************************************************************
+
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
 {
+
+//**********************************************************************************************
+//Registry Additions
+
+	delete 	m_pRegStore;
+	delete  m_pSettingsStore;
+
+//**********************************************************************************************
+
 	delete m_pDemux;
 	delete m_pFileReader;
 	delete m_pPidParser;
@@ -144,7 +166,22 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		}
 	}
 
+//**********************************************************************************************
+//Property Page Additions
+/*
+	HRESULT hr2 = CSource::Run(tStart);
+	if (m_pPidParser->pidArray.Count() >= 2 && !m_PropOpen)
+	{
+		m_PropOpen = true;
+		ShowFilterProperties();
+		m_PropOpen = false;
+	}
+	return hr2;
+*/
+//Removed	return CSource::Run(tStart);
 	return CSource::Run(tStart);
+//**********************************************************************************************
+
 }
 
 HRESULT CTSFileSourceFilter::Pause()
@@ -235,6 +272,33 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 		return VFW_E_INVALIDMEDIATYPE;
 
 	RefreshPids();
+
+//**********************************************************************************************
+//Program Registry Additions
+
+	if (m_pPidParser->m_TStreamID && m_pPidParser->pidArray.Count() >= 2)
+	{
+		std::string saveName = m_pSettingsStore->getName();
+
+		TCHAR cNID_TSID_ID[20];
+		sprintf(cNID_TSID_ID, "%i:%i", m_pPidParser->m_NetworkID, m_pPidParser->m_TStreamID);
+
+		// Load Registry Settings data
+		GetRegStore(cNID_TSID_ID);
+
+		if (m_pPidParser->set_ProgramSID() == S_OK)
+		{
+			WORD pgmNumber = m_pPidParser->get_ProgramNumber();
+			m_pPin->DeliverBeginFlush();
+			m_pPidParser->set_ProgramNumber(pgmNumber);
+			m_pPin->SetDuration(m_pPidParser->pids.dur);
+			m_pPin->DeliverEndFlush();
+		}
+		m_pSettingsStore->setName(saveName);
+	}
+
+//*********************************************************************************************
+
 	RefreshDuration();
 
 	CAutoLock lock(&m_Lock);
@@ -340,6 +404,24 @@ STDMETHODIMP CTSFileSourceFilter::GetAC3Pid(WORD *pAC3Pid)
 
 }
 
+//**********************************************************************************************
+//Audio2 Additions
+
+STDMETHODIMP CTSFileSourceFilter::GetAC3_2Pid(WORD *pAC3_2Pid)
+{
+	if(!pAC3_2Pid)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	*pAC3_2Pid = m_pPidParser->pids.ac3_2;
+
+	return NOERROR;
+
+}
+
+//**********************************************************************************************
+
 STDMETHODIMP CTSFileSourceFilter::GetTelexPid(WORD *pTelexPid)
 {
 	if(!pTelexPid)
@@ -352,6 +434,54 @@ STDMETHODIMP CTSFileSourceFilter::GetTelexPid(WORD *pTelexPid)
 	return NOERROR;
 
 }
+
+//***********************************************************************************************
+//NID Additions
+
+STDMETHODIMP CTSFileSourceFilter::GetNIDPid(WORD *pNIDPid)
+{
+	if(!pNIDPid)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	*pNIDPid = m_pPidParser->m_NetworkID;
+
+	return NOERROR;
+
+}
+
+//ONID Additions
+	
+STDMETHODIMP CTSFileSourceFilter::GetONIDPid(WORD *pONIDPid)
+{
+	if(!pONIDPid)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	*pONIDPid = m_pPidParser->m_ONetworkID;
+
+	return NOERROR;
+
+}
+
+//TSID Additions
+
+STDMETHODIMP CTSFileSourceFilter::GetTSIDPid(WORD *pTSIDPid)
+{
+	if(!pTSIDPid)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	*pTSIDPid = m_pPidParser->m_TStreamID;
+
+	return NOERROR;
+
+}
+	
+//***********************************************************************************************
 
 STDMETHODIMP CTSFileSourceFilter::GetPMTPid(WORD *pPMTPid)
 {
@@ -460,27 +590,61 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 {
 	CAutoLock lock(&m_Lock);
 
-	PgmNumb -= 1;
-	if (PgmNumb >= m_pPidParser->pidArray.Count())
+//**********************************************************************************************
+//Another bug fix
+
+	//If only one program don't change it
+	if (m_pPidParser->pidArray.Count() < 2)
+		return NOERROR;
+
+	int PgmNumber = PgmNumb;
+	PgmNumber --;
+	if (PgmNumber >= m_pPidParser->pidArray.Count())
 	{
-		PgmNumb = m_pPidParser->pidArray.Count() - 1;
+		PgmNumber = m_pPidParser->pidArray.Count() - 1;
 	}
-	else if (PgmNumb < 0)
+	else if (PgmNumber <= -1)
 	{
-		PgmNumb = 0;
+		PgmNumber = 0;
 	}
 
 	m_pPin->DeliverBeginFlush();
-	m_pPidParser->set_ProgramNumber(PgmNumb);
+	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pDemux->AOnConnect(GetFilterGraph());
 	m_pPin->DeliverEndFlush();
 	return NOERROR;
+	
+//Removed	PgmNumb -= 1;
+//Removed	if (PgmNumb >= m_pPidParser->pidArray.Count())
+//Removed	{
+//Removed		PgmNumb = m_pPidParser->pidArray.Count() - 1;
+//Removed	}
+//Removed	else if (PgmNumb < 0)
+//Removed	{
+//Removed		PgmNumb = 0;
+//Removed	}
+
+//Removed	m_pPin->DeliverBeginFlush();
+//Removed	m_pPidParser->set_ProgramNumber(PgmNumb);
+//Removed	m_pPin->SetDuration(m_pPidParser->pids.dur);
+//Removed	m_pDemux->AOnConnect(GetFilterGraph());
+//Removed	m_pPin->DeliverEndFlush();
+//Removed	return NOERROR;
 }
 
 STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 {
 	CAutoLock lock(&m_Lock);
+
+//**********************************************************************************************
+//Another bug fix
+
+	//If only one program don't change it
+	if (m_pPidParser->pidArray.Count() < 2)
+		return NOERROR;
+
+//**********************************************************************************************
 
 	WORD PgmNumb = m_pPidParser->get_ProgramNumber();
 	PgmNumb++;
@@ -496,6 +660,33 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	return NOERROR;
 }
 
+//**********************************************************************************************
+//Prev button Additions
+
+STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
+{
+	CAutoLock lock(&m_Lock);
+
+	//If only one program don't change it
+	if (m_pPidParser->pidArray.Count() < 2)
+		return NOERROR;
+
+	int PgmNumb = m_pPidParser->get_ProgramNumber();
+	PgmNumb--;
+	if (PgmNumb < 0)
+	{
+		PgmNumb = m_pPidParser->pidArray.Count() - 1;
+	}
+
+	m_pPin->DeliverBeginFlush();
+	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
+	m_pPin->SetDuration(m_pPidParser->pids.dur);
+	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pPin->DeliverEndFlush();
+	return NOERROR;
+}
+
+//**********************************************************************************************
 STDMETHODIMP CTSFileSourceFilter::GetTsArray(ULONG *pPidArray)
 {
 	if(!pPidArray)
@@ -542,6 +733,29 @@ STDMETHODIMP CTSFileSourceFilter::SetMP2Mode(WORD MP2Mode)
 	m_pDemux->AOnConnect(GetFilterGraph());
 	return NOERROR;
 }
+
+//**********************************************************************************************
+//Audio2 Additions
+
+STDMETHODIMP CTSFileSourceFilter::GetAudio2Mode(WORD *pAudio2Mode)
+{
+	if(!pAudio2Mode)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pAudio2Mode = m_pDemux->get_MPEG2Audio2Mode();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetAudio2Mode(WORD Audio2Mode)
+{
+	CAutoLock lock(&m_Lock);
+	m_pDemux->set_MPEG2Audio2Mode(Audio2Mode);
+	m_pDemux->AOnConnect(GetFilterGraph());
+	return NOERROR;
+}
+
+//**********************************************************************************************
 
 STDMETHODIMP CTSFileSourceFilter::GetAutoMode(WORD *AutoMode)
 {
@@ -648,14 +862,162 @@ STDMETHODIMP CTSFileSourceFilter::SetBitRate(long Rate)
 
 }
 
+//**********************************************************************************************
+//Registry Additions
+
+STDMETHODIMP CTSFileSourceFilter::SetRegStore(LPTSTR nameReg)
+{
+
+	char name[128] = "";
+	sprintf(name, "%s", nameReg);
+
+	if ((strcmp(name, "user")!=0) && (strcmp(name, "default")!=0))
+	{
+		std::string saveName = m_pSettingsStore->getName();
+		m_pSettingsStore->setName(nameReg);
+		m_pSettingsStore->setProgramSIDReg((int)m_pPidParser->pids.sid);
+		m_pSettingsStore->setAudio2ModeReg((BOOL)m_pDemux->get_MPEG2Audio2Mode());
+		m_pSettingsStore->setAC3ModeReg((BOOL)m_pDemux->get_AC3Mode());
+		m_pRegStore->setSettingsInfo(m_pSettingsStore);
+		m_pSettingsStore->setName(saveName);
+	}
+	else
+	{
+		WORD delay;
+		m_pFileReader->get_DelayMode(&delay);
+		m_pSettingsStore->setDelayModeReg((BOOL)delay);
+		m_pSettingsStore->setRateControlModeReg((BOOL)m_pPin->get_RateControl());
+		m_pSettingsStore->setAutoModeReg((BOOL)m_pDemux->get_Auto());
+		m_pSettingsStore->setMP2ModeReg((BOOL)m_pDemux->get_MPEG2AudioMediaType());
+		m_pSettingsStore->setAudio2ModeReg((BOOL)m_pDemux->get_MPEG2Audio2Mode());
+		m_pSettingsStore->setAC3ModeReg((BOOL)m_pDemux->get_AC3Mode());
+		m_pSettingsStore->setCreateTSPinOnDemuxReg((BOOL)m_pDemux->get_CreateTSPinOnDemux());
+
+		m_pRegStore->setSettingsInfo(m_pSettingsStore);
+	}
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetRegStore(LPTSTR nameReg)
+{
+	char name[128] = "";
+	sprintf(name, "%s", nameReg);
+
+	std::string saveName = m_pSettingsStore->getName();
+
+	// Load Registry Settings data
+	m_pSettingsStore->setName(nameReg);
+
+	if(m_pRegStore->getSettingsInfo(m_pSettingsStore))
+	{
+		if ((strcmp(name, "user")!=0) && (strcmp(name, "default")!=0))
+		{
+			m_pPidParser->set_SIDPid(m_pSettingsStore->getProgramSIDReg());
+			m_pDemux->set_AC3Mode(m_pSettingsStore->getAC3ModeReg());
+			m_pDemux->set_MPEG2Audio2Mode(m_pSettingsStore->getAudio2ModeReg());
+			m_pSettingsStore->setName(saveName);
+		}
+		else
+		{	
+			m_pFileReader->set_DelayMode(m_pSettingsStore->getDelayModeReg());
+			m_pDemux->set_Auto(m_pSettingsStore->getAutoModeReg());
+			m_pDemux->set_MPEG2AudioMediaType(m_pSettingsStore->getMP2ModeReg());
+			m_pDemux->set_MPEG2Audio2Mode(m_pSettingsStore->getAudio2ModeReg());
+			m_pDemux->set_AC3Mode(m_pSettingsStore->getAC3ModeReg());
+			m_pDemux->set_CreateTSPinOnDemux(m_pSettingsStore->getCreateTSPinOnDemuxReg());
+			m_pPin->set_RateControl(m_pSettingsStore->getRateControlModeReg());
+		}
+	}
+
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetRegSettings()
+{
+	SetRegStore("user");
+    return NOERROR;
+}
+
+
+STDMETHODIMP CTSFileSourceFilter::GetRegSettings()
+{
+	GetRegStore("user");
+    return NOERROR;
+}
+
+//Program Registry Additions
+
+STDMETHODIMP CTSFileSourceFilter::SetRegProgram()
+{
+	if (m_pPidParser->pids.sid && m_pPidParser->m_TStreamID)
+	{
+		TCHAR cNID_TSID_ID[10];
+		sprintf(cNID_TSID_ID, "%i:%i", m_pPidParser->m_NetworkID, m_pPidParser->m_TStreamID);
+		SetRegStore(cNID_TSID_ID);
+	}
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::ShowFilterProperties()
+{
+
+	HRESULT hr = 0;
+    HWND    phWnd = (HWND)CreateEvent(NULL, FALSE, FALSE, NULL);
+
+	ULONG refCount;
+	IEnumFilters * piEnumFilters2 = NULL;
+	hr = GetFilterGraph()->EnumFilters(&piEnumFilters2);
+	if SUCCEEDED(hr)
+	{
+		IBaseFilter * piFilter2;
+		while ( piEnumFilters2->Next(1, &piFilter2, 0) == NOERROR )
+		{
+			ISpecifyPropertyPages* piProp2 = NULL;
+			hr = piFilter2->QueryInterface(IID_ISpecifyPropertyPages, (void **)&piProp2);
+			if ((hr == S_OK) && (piProp2 != NULL))
+			{
+				FILTER_INFO filterInfo2;
+				hr = piFilter2->QueryFilterInfo(&filterInfo2);
+				LPOLESTR fileName;
+				m_pFileReader->GetFileName(&fileName);
+
+				if (wcscmp(fileName, filterInfo2.achName) == 0)
+				{
+					IUnknown *piFilterUnk;
+					piFilter2->QueryInterface(IID_IUnknown, (void **)&piFilterUnk);
+
+					CAUUID caGUID;
+					piProp2->GetPages(&caGUID);
+					piProp2->Release();
+					OleCreatePropertyFrame(phWnd, 0, 0, filterInfo2.achName, 1, &piFilterUnk, caGUID.cElems, caGUID.pElems, 0, 0, NULL);
+					piFilterUnk->Release();
+					CoTaskMemFree(caGUID.pElems);
+				}
+			}
+			refCount = piFilter2->Release();
+		}
+		refCount = piEnumFilters2->Release();
+	}
+	if (hr == S_OK)
+		return S_FALSE;
+
+	return hr;
+}
+//**********************************************************************************************
+
 //////////////////////////////////////////////////////////////////////////
 // End of interface implementations
 //////////////////////////////////////////////////////////////////////////
+//MessageBox(NULL, name, TEXT("name"), MB_OK);
+//MessageBox(NULL, user, TEXT("user"), MB_OK);
+//MessageBox(NULL, ddefault, TEXT("ddefault"), MB_OK);
+//TCHAR sz[100];
+//sprintf(sz, "%u", m_pPidParser->get_ProgramNumber()+1);
+//MessageBox(NULL, sz, TEXT("m_pPidParser"), MB_OK);
 
 
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 
-//*********************************************************************************************
 

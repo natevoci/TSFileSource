@@ -38,7 +38,31 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown)
 	STDMETHOD(GetAudioPid) (THIS_ WORD * apid) PURE;
 	STDMETHOD(GetAudio2Pid) (THIS_ WORD * a2pid) PURE;
 	STDMETHOD(GetAC3Pid) (THIS_ WORD * ac3pid) PURE;
+
+//**********************************************************************************************
+//Audio2 Additions
+
+	STDMETHOD(GetAC3_2Pid) (THIS_ WORD * ac3_2pid) PURE;
+
+//**********************************************************************************************
+
 	STDMETHOD(GetTelexPid) (THIS_ WORD * telexpid) PURE;
+
+//***********************************************************************************************
+//NID Additions
+
+	STDMETHOD(GetNIDPid) (THIS_ WORD * nidpid) PURE;
+	
+//ONID Additions
+
+	STDMETHOD(GetONIDPid) (THIS_ WORD * onidpid) PURE;
+
+	//TSID Additions
+
+	STDMETHOD(GetTSIDPid) (THIS_ WORD * tsidpid) PURE;
+	
+//***********************************************************************************************
+	
 	STDMETHOD(GetPMTPid) (THIS_ WORD * pmtpid) PURE;
 	STDMETHOD(GetSIDPid) (THIS_ WORD * sidpid) PURE;
 	STDMETHOD(GetPCRPid) (THIS_ WORD * pcrpid) PURE;
@@ -50,6 +74,14 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown)
 	STDMETHOD(GetPgmCount) (THIS_ WORD * pPgmCount) PURE;
 	STDMETHOD(SetPgmNumb) (THIS_ WORD pPgmNumb) PURE;
 	STDMETHOD(NextPgmNumb) (void) PURE;
+
+//**********************************************************************************************
+//Prev button Additions
+
+	STDMETHOD(PrevPgmNumb) (void) PURE;
+
+//**********************************************************************************************
+
 	STDMETHOD(GetTsArray) (THIS_ ULONG * pPidArray) PURE;
 
 	STDMETHOD(GetAC3Mode) (THIS_ WORD * pAC3Mode) PURE;
@@ -57,6 +89,14 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown)
 
 	STDMETHOD(GetMP2Mode) (THIS_ WORD * pMP2Mode) PURE;
 	STDMETHOD(SetMP2Mode) (THIS_ WORD MP2Mode) PURE;
+
+//**********************************************************************************************
+//Audio2 Additions
+
+	STDMETHOD (GetAudio2Mode) (THIS_ WORD * pAudio2Mode) PURE;
+	STDMETHOD (SetAudio2Mode) (THIS_ WORD Audio2Mode) PURE;
+
+//**********************************************************************************************
 
 	STDMETHOD(GetAutoMode) (THIS_ WORD * pAutoMode) PURE;
 	STDMETHOD(SetAutoMode) (THIS_ WORD AutoMode) PURE;
@@ -72,8 +112,23 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown)
 
 	STDMETHOD(GetReadOnly) (THIS_ WORD * pFileMode) PURE;
 
-	STDMETHOD (GetBitRate) (THIS_ long *pRate) PURE;
-	STDMETHOD (SetBitRate) (THIS_ long Rate) PURE;
+	STDMETHOD(GetBitRate) (THIS_ long *pRate) PURE;
+	STDMETHOD(SetBitRate) (THIS_ long Rate) PURE;
+
+//**********************************************************************************************
+//Registry Additions
+
+	STDMETHOD(SetRegSettings) () PURE;
+	STDMETHOD(GetRegSettings) () PURE;
+
+//Program Registry Additions
+	STDMETHOD(SetRegProgram) () PURE;
+
+//Property Page Additions
+
+	STDMETHOD(ShowFilterProperties)()PURE;
+
+//**********************************************************************************************
 
 };
 

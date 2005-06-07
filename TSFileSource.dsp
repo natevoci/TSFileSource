@@ -115,6 +115,14 @@ SOURCE=.\src\PropPage.rc
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\RegStore.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\SettingsStore.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\setup.cpp
 # End Source File
 # Begin Source File
@@ -167,7 +175,15 @@ SOURCE=.\src\PidParser.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\RegStore.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\resource.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\SettingsStore.h
 # End Source File
 # Begin Source File
 

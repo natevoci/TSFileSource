@@ -32,7 +32,6 @@ FileReader::FileReader() :
 	m_bReadOnly(FALSE),
 	m_bDelay(FALSE)
 {
-
 }
 
 FileReader::~FileReader()

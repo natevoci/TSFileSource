@@ -110,25 +110,54 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	REFERENCE_TIME dur;
 
 	m_pProgram->GetVideoPid(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_VIDEO), sz);
 	m_pProgram->GetAudioPid(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AUDIO), sz);
 	m_pProgram->GetAudio2Pid(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AUDIO2), sz);
 	m_pProgram->GetAC3Pid(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AC3), sz);
+
+//***********************************************************************************************
+//Audio2 Additions
+
+	m_pProgram->GetAC3_2Pid(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_AC3_2), sz);
+
+//**********************************************************************************************
+//NID Additions
+
+	m_pProgram->GetNIDPid(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_NID), sz);
+
+//ONID Additions
+
+	m_pProgram->GetONIDPid(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_ONID), sz);
+
+//TSID Additions
+	
+	m_pProgram->GetTSIDPid(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_TSID), sz);
+
+//***********************************************************************************************
+	
 	m_pProgram->GetPMTPid(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_PMT), sz);
 	m_pProgram->GetSIDPid(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_SID), sz);
 	m_pProgram->GetPCRPid(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_PCR), sz);
 	m_pProgram->GetDuration(&dur);
 	LONG ms = (LONG)(dur/(LONGLONG)10000);
@@ -148,15 +177,15 @@ BOOL CTSFileSourceProp::PopulateDialog()
     Edit_SetText(GetDlgItem(m_hwnd, IDC_DATARATE), sz);
 
 	m_pProgram->GetTelexPid(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_TXT), sz);
 
 	m_pProgram->GetPgmNumb(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_PGM), sz);
 
 	m_pProgram->GetPgmCount(&PidNr);
-	wsprintf(sz, TEXT("%x"), PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_CNT), sz);
 
 	m_pProgram->GetCreateTSPinOnDemux(&PidNr);
@@ -168,6 +197,14 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	m_pProgram->GetMP2Mode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_MPEG1MODE,!PidNr);
 	CheckDlgButton(m_hwnd,IDC_MPEG2MODE,PidNr);
+
+//**********************************************************************************************
+//Audio2 Additions
+
+	m_pProgram->GetAudio2Mode(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_AUDIO2MODE,PidNr);
+
+//**********************************************************************************************
 
 	m_pProgram->GetAutoMode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_AUTOMODE,PidNr);
@@ -185,8 +222,6 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	else
 		PidNr = 0;
 	CheckDlgButton(m_hwnd,IDC_DELAYMODE,PidNr);
-
-//*********************************************************************************************
 
 	return TRUE;
 }
@@ -215,62 +250,209 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			switch (LOWORD (wParam))
 			{
 				case IDCANCEL :
+				{
 					OnRefreshProgram () ;
 					break ;
+				}
+
+//**********************************************************************************************
+//Registry Additions
+
+				case IDC_SAVE :
+				{
+					// Save Registry settings
+					m_pProgram->SetRegSettings();
+					m_pProgram->SetRegProgram();
+					OnRefreshProgram () ;
+					break ;
+				}
+
+//**********************************************************************************************
 
 				case IDC_ENTER:
+				{
 					m_pProgram->SetPgmNumb((WORD) GetDlgItemInt(hwnd, IDC_PGM, &bRet, TRUE));
 					OnRefreshProgram () ;
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
 					break;
+				}
 
 				case IDC_NEXT:
+				{
 					m_pProgram->NextPgmNumb();
 					OnRefreshProgram () ;
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
 					break;
+				}
+
+//**********************************************************************************************
+//Prev button Additions
+
+				case IDC_PREV:
+				{
+					m_pProgram->PrevPgmNumb();
+					OnRefreshProgram () ;
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
+					break;
+				}
+
+//**********************************************************************************************
 
 				case IDC_CREATETSPIN:
+				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_CREATETSPIN);
 					m_pProgram->SetCreateTSPinOnDemux(checked);
 					OnRefreshProgram();
-					break;
 
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
+					break;
+				}
 				case IDC_AC3MODE:
+				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_AC3MODE);
 					m_pProgram->SetAC3Mode(checked);
 					OnRefreshProgram () ;
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
 					break;
+				}
 
 				case IDC_MPEG1MODE:
+				{
 					m_pProgram->SetMP2Mode(FALSE);
 					CheckDlgButton(hwnd,IDC_MPEG1MODE,TRUE);
 					CheckDlgButton(hwnd,IDC_MPEG2MODE,FALSE);
 					OnRefreshProgram () ;
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
 					break;
+				}
 
 				case IDC_MPEG2MODE:
+				{
 					m_pProgram->SetMP2Mode(TRUE);
 					CheckDlgButton(hwnd,IDC_MPEG1MODE,FALSE);
 					CheckDlgButton(hwnd,IDC_MPEG2MODE,TRUE);
 					OnRefreshProgram () ;
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
 					break;
+				}
+
+//**********************************************************************************************
+//Audio2 Additions
+
+				case IDC_AUDIO2MODE:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_AUDIO2MODE);
+					m_pProgram->SetAudio2Mode(checked);
+					OnRefreshProgram () ;
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
+					break;
+				}
+
+//**********************************************************************************************
+
 
 				case IDC_AUTOMODE:
+				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_AUTOMODE);
 					m_pProgram->SetAutoMode(checked);
 					OnRefreshProgram () ;
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
 					break;
+				}
 
 				case IDC_DELAYMODE:
+				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_DELAYMODE);
 					m_pProgram->SetDelayMode(checked);
 					OnRefreshProgram () ;
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
 					break;
+				}
 
 				case IDC_RATECONTROL:
+				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_RATECONTROL);
 					m_pProgram->SetRateControlMode(checked);
-					OnRefreshProgram () ;
+					OnRefreshProgram ();
+
+//**********************************************************************************************
+//Property Apply Additions
+
+					SetDirty();
+
+//**********************************************************************************************
+
 					break;
+				}
 			};
 			return TRUE;
 		}
@@ -282,4 +464,21 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 	return TRUE;
 }
 
+//**********************************************************************************************
+//Property Apply Additions
+
+HRESULT CTSFileSourceProp::OnApplyChanges(void)
+{
+
+	TCHAR sz[100];
+	sprintf(sz, "%S", L"Do you wish to save these Filter Settings");
+	if (MessageBox(NULL, sz, TEXT("TSFileSource Filter Settings"), MB_YESNO) == IDYES)
+	{
+		m_pProgram->SetRegSettings();
+		m_pProgram->SetRegProgram();
+		OnRefreshProgram ();
+	}
+	return NOERROR;
+}
+//**********************************************************************************************
 

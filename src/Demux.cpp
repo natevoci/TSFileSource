@@ -36,11 +36,20 @@
 Demux::Demux(PidParser *pPidParser) :
 	m_bAuto(TRUE),
 	m_bMPEG2AudioMediaType(TRUE),
+
+//*********************************************************************************************
+//Audio2 Additions
+
+	m_bMPEG2Audio2Mode(FALSE),
+
+//*********************************************************************************************
+
 	m_WasPlaying(FALSE),
 	m_bAC3Mode(TRUE),
 	m_bCreateTSPinOnDemux(FALSE)
 {
 	m_pPidParser = pPidParser;
+
 }
 
 Demux::~Demux()
@@ -170,11 +179,15 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 					// If we do have an mp1/2 audio pin
 					USHORT pPid;
 					//GetAudioPid(&pPid);
-					pPid = m_pPidParser->pids.aud;
+					pPid = get_MP2AudioPid();
 					if (!pPid){
 						// If we don't have a mp1/2 audio pid
 						//GetAC3Pid(&pPid);
-						pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
+//Audio2 AC3 Additions
+						pPid = get_AC3_2AudioPid();
+//Removed						pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
 						if (pPid && FAILED(CheckAC3Pin(pDemux))){
 							// change pin type if we do have a AC3 pid & can don't already have an AC3 pin
 							LPWSTR PinName = L"Audio";
@@ -202,11 +215,15 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 				// If we already have a AC3 Pin
 				USHORT pPid;
 				//GetAC3Pid(&pPid);
-				pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
+//Audio2 AC3 Additions
+				pPid = get_AC3_2AudioPid();
+//Removed				pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
 				if (!pPid){
 					// If we don't have a AC3 Pid
 					//GetAudioPid(&pPid);
-					pPid = m_pPidParser->pids.aud;
+					pPid = get_MP2AudioPid();
 					if (pPid && FAILED(CheckAudioPin(pDemux))){
 						// change pin type if we do have a mp1/2 pid & can don't already have an mp1/2 pin
 						LPWSTR PinName = L"Audio";
@@ -244,11 +261,15 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 				// If we already have a AC3 Pin
 				USHORT pPid;
 				//GetAC3Pid(&pPid);
-				pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
+//Audio2 AC3 Additions
+				pPid = get_AC3_2AudioPid();
+//Removed				pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
 				if (!pPid){
 					// If we don't have a AC3 Pid
 					//GetAudioPid(&pPid);
-					pPid = m_pPidParser->pids.aud;
+					pPid = get_MP2AudioPid();
 					if (pPid && FAILED(CheckAudioPin(pDemux))){
 						// change pin type if we do have a mp1/2 pid & can don't already have an mp1/2 pin
 						LPWSTR PinName = L"Audio";
@@ -276,11 +297,15 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 				// If we do have an mp1/2 audio pin
 				USHORT pPid;
 				//GetAudioPid(&pPid);
-				pPid = m_pPidParser->pids.aud;
+				pPid = get_MP2AudioPid();
 				if (!pPid){
 					// If we don't have a mp1/2 Pid
 					//GetAC3Pid(&pPid);
-					pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
+//Audio2 AC3 Additions
+					pPid = get_AC3_2AudioPid();
+//Removed					pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
 					if (pPid && FAILED(CheckAC3Pin(pDemux))){
 						// change pin type if we do have a AC3 pid & can don't already have an AC3 pin
 						LPWSTR PinName = L"Audio";
@@ -408,7 +433,7 @@ HRESULT Demux::CheckAudioPin(IBaseFilter* pDemux)
 
 		USHORT pPid;
 		//GetAudioPid(&pPid);
-		pPid = m_pPidParser->pids.aud;
+		pPid = get_MP2AudioPid();
 		if (SUCCEEDED(LoadMediaPin(pIPin, pPid))){
 			pIPin->Release();
 			return S_OK;
@@ -421,7 +446,7 @@ HRESULT Demux::CheckAudioPin(IBaseFilter* pDemux)
 
 				USHORT pPid;
 				//GetAudioPid(&pPid);
-				pPid = m_pPidParser->pids.aud;
+				pPid = get_MP2AudioPid();
 				if (SUCCEEDED(LoadMediaPin(pIPin, pPid))){
 					pIPin->Release();
 					return S_OK;
@@ -445,7 +470,11 @@ HRESULT Demux::CheckAC3Pin(IBaseFilter* pDemux)
 
 		USHORT pPid;
 		//GetAC3Pid(&pPid);
-		pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
+//Audio2 AC3 Additions
+		pPid = get_AC3_2AudioPid();
+//Removed	pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
 		if (SUCCEEDED(LoadMediaPin(pIPin, pPid))){
 			pIPin->Release();
 			return S_OK;
@@ -547,7 +576,7 @@ HRESULT Demux::NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 {
 	USHORT pPid;
 	//GetAudioPid(&pPid);
-	pPid = m_pPidParser->pids.aud;
+	pPid = get_MP2AudioPid();
 
 	HRESULT hr = E_INVALIDARG;
 
@@ -575,7 +604,11 @@ HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 {
 	USHORT pPid;
 	//GetAC3Pid( &pPid);
-	pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
+//Audio2 AC3 Additions
+	pPid = get_AC3_2AudioPid();
+//Removed	pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
 
 	HRESULT hr = E_INVALIDARG;
 
@@ -773,7 +806,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 						muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 						USHORT pPid;
 						//GetAudioPid(&pPid);
-						pPid = m_pPidParser->pids.aud;
+						pPid = get_MP2AudioPid();
 						LoadMediaPin(pIPin, pPid);
 						pIPin->Release();
 						hr = S_OK;
@@ -810,7 +843,11 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 						muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 						USHORT pPid;
 						//GetAC3Pid(&pPid);
-						pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
+//Audio2 AC3 Additions
+						pPid = get_AC3_2AudioPid();
+//Removed					pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
 						LoadMediaPin(pIPin, pPid);
 						pIPin->Release();
 						hr = S_OK;
@@ -846,7 +883,12 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 							USHORT pPid;
 							//GetAC3Pid(&pPid);
-							pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
+//Audio2 AC3 Additions
+							pPid = get_AC3_2AudioPid();
+//Removed							pPid = m_pPidParser->pids.ac3;
+//**********************************************************************************************
+
 							LoadMediaPin(pIPin, pPid);
 							pIPin->Release();
 							hr = S_OK;
@@ -1256,4 +1298,35 @@ void Demux::set_MPEG2AudioMediaType(BOOL bMPEG2AudioMediaType)
 {
 	m_bMPEG2AudioMediaType = bMPEG2AudioMediaType;
 }
+
+//**********************************************************************************************
+//Audio2 Additions
+
+BOOL Demux::get_MPEG2Audio2Mode()
+{
+	return m_bMPEG2Audio2Mode;
+}
+
+void Demux::set_MPEG2Audio2Mode(BOOL bMPEG2Audio2Mode)
+{
+	m_bMPEG2Audio2Mode = bMPEG2Audio2Mode;
+	return;
+}
+
+int Demux::get_MP2AudioPid()
+{
+	if (m_bMPEG2Audio2Mode && m_pPidParser->pids.aud2)
+		return m_pPidParser->pids.aud2;
+	else
+		return m_pPidParser->pids.aud;
+}
+
+int Demux::get_AC3_2AudioPid()
+{
+	if (m_bMPEG2Audio2Mode && m_pPidParser->pids.ac3_2)
+		return m_pPidParser->pids.ac3_2;
+	else
+		return m_pPidParser->pids.ac3;
+}
+//**********************************************************************************************
 

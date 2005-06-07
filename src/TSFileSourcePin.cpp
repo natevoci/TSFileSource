@@ -41,9 +41,18 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	CSourceSeeking(NAME("MPEG2 Source Output"), pUnk, phr, &m_SeekLock ),
 	m_pTSFileSourceFilter(pFilter),
 	m_pFileReader(pFileReader),
+
+//*********************************************************************************************
+//Registry Additions
+
+	m_bRateControl(FALSE),
+
+//*********************************************************************************************
+
 	m_pPidParser(pPidParser)
 {
-	m_dwSeekingCaps =	AM_SEEKING_CanSeekForwards  |
+	m_dwSeekingCaps =	
+						AM_SEEKING_CanSeekForwards  |
 						AM_SEEKING_CanGetStopPos    |
 						AM_SEEKING_CanGetDuration   |
 						AM_SEEKING_CanSeekAbsolute;
@@ -59,8 +68,6 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_lPrevPCRByteOffset = 0;
 
 	m_lTSPacketDeliverySize = 188*1000;
-
-	m_bRateControl = TRUE;
 
 	m_DataRate = 0;
 	m_DataRateTotal = 0;
@@ -389,7 +396,8 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 	CAutoLock lock(&m_SeekLock);
 
     DeliverNewSegment(m_rtStart, m_rtStop, 1.0 );
-    return CSourceStream::OnThreadStartPlay( );
+
+	return CSourceStream::OnThreadStartPlay( );
 }
 
 HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)

@@ -31,6 +31,7 @@
 class FileReader
 {
 public:
+
 	FileReader();
 	virtual ~FileReader();
 
@@ -58,6 +59,8 @@ protected:
 	LPOLESTR m_pFileName;           // The filename where we stream
 	BOOL     m_bReadOnly;
 	BOOL     m_bDelay;
+
+
 };
 
 #endif

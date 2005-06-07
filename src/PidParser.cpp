@@ -35,6 +35,7 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
+
 PidParser::PidParser(FileReader *pFileReader)
 {
 	//m_buflen = 1504000;	//94000*16
@@ -50,7 +51,7 @@ PidParser::~PidParser()
 HRESULT PidParser::ParseFromFile()
 {
 	ULONG a;
-	DWORD filepoint;
+//	DWORD filepoint;
 	HRESULT hr = S_OK;
 
 	if (m_pFileReader->IsFileInvalid())
@@ -72,11 +73,35 @@ HRESULT PidParser::ParseFromFile()
 	m_pFileReader->SetFilePointer(0, FILE_BEGIN);
 	m_pFileReader->Read(pData, ulDataLength, &ulDataRead);
 	
+//***********************************************************************************************
+//NID Additions
+
+	m_ATSCFlag = false;
+	m_NetworkID = 0; //NID store
+	m_ONetworkID = 0; //ONID store
+
+//TSID Additions
+
+	m_TStreamID = 0; //TSID store
+
+//Program Registry Additions
+
+	m_ProgramSID = 0; //SID store for prog search
+
+//***********************************************************************************************
+
 	ulDataLength = ulDataRead;
 	if (ulDataLength > 0)
 	{
 		//Clear all Pid arrays
 		pidArray.Clear();
+
+//***********************************************************************************************
+//PAT Bug Fix parse second occurance
+
+		BOOL patfound = false;
+
+//***********************************************************************************************
 
 		hr = S_OK;
 		while (hr == S_OK)
@@ -88,7 +113,24 @@ HRESULT PidParser::ParseFromFile()
 				//parse next packet for the PAT
 				if (ParsePAT(pData, ulDataLength, a) == S_OK)
 				{
-					break;
+
+//***********************************************************************************************
+//PAT Bug Fix parse second occurance
+					// If second pass
+					if (patfound)
+					{
+						break;
+					}
+					else
+					{
+						//Set to exit after next pat & Erase first occuracnce
+						pidArray.Clear();
+						patfound = true;
+					}
+
+//Removed					break;
+
+//***********************************************************************************************
 				};
 				a += 188;
 			}
@@ -99,6 +141,13 @@ HRESULT PidParser::ParseFromFile()
 		{
 			//filepos = 0;
 			a = 0;
+//***********************************************************************************************
+//PAT Bug Fix parse second occurance
+
+			pids.sid = 0;
+
+//***********************************************************************************************
+
 			pids.pmt = 0;
 			hr = S_OK;
 			//Scan buffer for any PMTs
@@ -112,15 +161,36 @@ HRESULT PidParser::ParseFromFile()
 					if (ParsePMT(pData, ulDataLength, a) == S_OK)
 					{
 						//Check if PMT was already found
-						BOOL pmtfound = FALSE;
+						BOOL pmtfound = false;
 						for (int i = 0; i < pidArray.Count(); i++)
 						{
-							//Search PMT Array for the PMT
-							if (pidArray[i].pmt == pids.pmt)
-								pmtfound = TRUE;
+							//Search PMT Array for the PMT & SID also
+							
+
+//***********************************************************************************************
+//PAT Bug Fix parse second occurance
+
+							if (pidArray[i].sid == pids.sid)
+							{
+								pmtfound = true;
+								break;
+							}
+							
+//Removed							if (pidArray[i].pmt == pids.pmt)
+//Removed								pmtfound = TRUE;
+
+//***********************************************************************************************
+								
 						}
 						if (!pmtfound)
 							AddPidArray();
+
+//***********************************************************************************************
+//PAT Bug Fix parse second occurance
+
+						pids.sid = 0x00;
+
+//***********************************************************************************************
 
 						pids.pmt = 0x00;
 					}
@@ -139,6 +209,16 @@ HRESULT PidParser::ParseFromFile()
 			hr = S_OK;
 
 			int curr_pmt = pidArray[i].pmt;
+
+//***********************************************************************************************
+//PAT Bug Fix parse second occurance
+
+			int curr_sid = pidArray[i].sid;
+
+//Removed			while (pids.pmt != curr_pmt && hr == S_OK)
+
+//***********************************************************************************************
+
 			while (pids.pmt != curr_pmt && hr == S_OK)
 			{
 				//search at the head of the file
@@ -150,17 +230,25 @@ HRESULT PidParser::ParseFromFile()
 				pids.Clear();
 				if (ParsePMT(pData, ulDataLength, a) == S_OK)
 				{
-					//Check PMT matches program
-					if (pids.pmt == curr_pmt)
+					//Check PMT & SID matches program
+
+//***********************************************************************************************
+//PAT Bug Fix parse second occurance
+
+					if (pids.pmt == curr_pmt && pids.sid == curr_sid)
+
+//Removed					if (pids.pmt == curr_pmt)
+//***********************************************************************************************
+
 					{
 						//Search for valid A/V pids
 						if (IsValidPMT(pData, ulDataLength) == S_OK)
 						{
 							//Set pcr & Store pids from PMT
 							RefreshDuration(FALSE);
-							//pids.start = GetPCRFromFile(1);
-							//pids.end = GetPCRFromFile(-1);
-							//pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
+//							pids.start = GetPCRFromFile(1);
+//							pids.end = GetPCRFromFile(-1);
+//							pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
 
 							SetPidArray(i);
 
@@ -172,7 +260,15 @@ HRESULT PidParser::ParseFromFile()
 				}
 				a += 188;
 			}
-			if (pids.pmt != curr_pmt || hr != S_OK)
+
+//***********************************************************************************************
+//PAT Bug Fix parse second occurance
+
+			if (pids.pmt != curr_pmt ||pids.sid != curr_sid || hr != S_OK) //Make sure we have a correct packet
+
+//Removed					if (pids.pmt != curr_pmt || hr != S_OK)
+
+//***********************************************************************************************
 				pidArray.RemoveAt(i);
 		}
 
@@ -202,13 +298,59 @@ HRESULT PidParser::ParseFromFile()
 			}
 		}
 
+
+//**********************************************************************************************
+//Buggy Duration fix
+		
+		//Scan for missing durations & Fix
+		for (int n = 0; n < pidArray.Count(); n++){
+			//Search Duration Array for the first duration
+			if (pidArray[n].dur > 1){
+			//Search Duration Array for empty durations
+				for (int x = 0; x < pidArray.Count(); x++){
+					//If empty then fill with first found duration 
+					if (pidArray[x].dur < 1)
+						pidArray[x].dur = pidArray[n].dur;
+				}
+			}
+		}
+
+//**********************************************************************************************
+
 		//Set the Program Number to beginning & load back pids
 		m_pgmnumb = 0;
+
 		//GetPidArray(m_pgmnumb);
 		pids.CopyFrom(&pidArray[m_pgmnumb]);
 
-		filepoint = 0;
-		CheckEPGFromFile();
+//		filepoint = 0;
+//**********************************************************************************************
+//NID Additions
+
+		//Check for a NID in file
+		if (!m_ATSCFlag)
+			if(CheckNIDInFile() != S_OK)
+			{
+			}
+
+//ONID Additions
+
+		//Check for a ONID in file
+		if (!m_ATSCFlag)
+			if (CheckONIDInFile() == S_OK)
+			{
+			}
+		
+		// Check if we have a NID for the PAT
+		if (!m_ATSCFlag)
+			CheckEPGFromFile();
+		else
+			m_NetworkID = m_ONetworkID; // if not NID then set it to ONID
+
+
+//Removed			CheckEPGFromFile();
+
+//**********************************************************************************************
 
 		if (pids.vid != 0 || pids.aud != 0 || pids.ac3 != 0 || pids.txt != 0)
 		{
@@ -297,6 +439,26 @@ HRESULT PidParser::ParsePAT(PBYTE pData, ULONG lDataLength, long pos)
 
 			channeloffset = (WORD)(0x0F & pData[pos + 15]) << 8 | (0xFF & pData[pos + 16]);
 
+//***********************************************************************************************
+//TSID Additions
+
+			m_TStreamID = (WORD)((0xFF & pData[pos + 8]) << 8) | (0xFF & pData[pos + 9]); //Get TSID Pid
+
+
+//***********************************************************************************************
+
+//***********************************************************************************************
+//ATSC Additions PAT Bug Fix
+
+			WORD Numb = (WORD)(((0xFF & pData[pos + 7]) - channeloffset + 8 - 5) / 4); //Get number of programs
+			//If no Program PMT Info as with an ATSC
+			if (Numb < 1)
+			{
+				//Set flag to disable searching for NID
+				m_ATSCFlag = true;
+			}
+
+//**********************************************************************************************
 			for (long b = channeloffset + pos; b < pos + 182 ; b = b + 4)
 			{
 				if ( ((0xe0 & pData[b + 3]) == 0xe0) && (pData[b + 3]) != 0xff )
@@ -328,7 +490,18 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 	WORD StreamType;
 	WORD privatepid = 0;
 
-	if ( (0x30&pData[pos+3])==0x10 && pData[pos+4]==0 && pData[pos+5]==2 && (0xf0&pData[pos+6])==0xb0 )
+//***********************************************************************************************
+//NID Additions
+
+	CheckForNID(pData, pos); //While we are parsing the PMT check for NID Descriptor in mean time
+
+//ONID Additions
+
+	CheckForONID(pData, pos); //While we are parsing the PMT check for ONID Descriptor in mean time
+
+//**********************************************************************************************
+
+	if ((0x30&pData[pos+3])==0x10 && pData[pos+4] == 0 && pData[pos+5] == 2 && (0xf0&pData[pos+6])==0xb0)
 	{
 		pids.pmt      = (WORD)(0x1F & pData[pos+1 ])<<8 | (0xFF & pData[pos+2 ]);
 		pids.pcr      = (WORD)(0x1F & pData[pos+13])<<8 | (0xFF & pData[pos+14]);
@@ -358,7 +531,20 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 				if (StreamType == 0x06)
 				{
 					if (CheckEsDescriptorForAC3(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
-						pids.ac3 = pid;
+
+//***********************************************************************************************
+//Audio 2 Additions
+					{
+						if (pids.ac3 == 0)
+							pids.ac3 = pid;
+						else
+							pids.ac3_2 = pid;// If already have AC3 then get next.
+					}
+
+//Removed						pids.ac3 = pid;
+
+//***********************************************************************************************
+
 					else if (CheckEsDescriptorForTeletext(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
 						pids.txt = pid;
 					else
@@ -375,6 +561,23 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 					}
 				}
 
+//**********************************************************************************************
+//ATSC AC3/LPCM/DTS Description
+
+				if (StreamType == 0x81 || StreamType == 0x83 || StreamType == 0x85)
+				{
+					if (pids.ac3 == 0)
+						pids.ac3 = pid;
+					else
+						pids.ac3_2 = pid;// If already have AC3 then get next.
+				}
+
+				if (StreamType == 0x0b)
+					if (pids.txt == 0)
+						pids.txt = pid;
+
+//**********************************************************************************************
+
 				b+=EsDescLen;
 			}
 		}
@@ -390,24 +593,41 @@ HRESULT PidParser::CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, 
 {
 	if ((WORD)((0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2])) == pPids->pcr)
 	{
-		WORD pcrbit = 0x30;
-		if (pPids->pcr != pPids->vid)
-			pcrbit = 0x20;
 
-		if (((pData[pos+3] & 0x30) == pcrbit)
-			&& (pData[pos+4] != 0x00)
-			&& ((pData[pos+5] & 0x10) != 0x00))
+//***********************************************************************************************
+//ATSC Additions PAT Bug Fix
+
+//Removed		WORD pcrbit = 0x30;
+		WORD pcrmask = 0x10;
+		if ((pData[pos+3] & 0x30) == 30)
+//Removed		if (pPids->pcr != pPids->vid)
 		{
-			*pcrtime =	((REFERENCE_TIME)(0xFF & pData[pos+6])<<25) |
-						((REFERENCE_TIME)(0xFF & pData[pos+7])<<17) |
-						((REFERENCE_TIME)(0xFF & pData[pos+8])<<9)  |
-						((REFERENCE_TIME)(0xFF & pData[pos+9])<<1)  |
-						((REFERENCE_TIME)(0x80 & pData[pos+10])>>7);
+//Removed			pcrbit = 0x20;
+			pcrmask = 0xff;
+		}
 
-			return S_OK;
-		};
-	}
-	return S_FALSE;
+		if (((pData[pos+3] & 0x30) >= 0x20)
+			&& ((pData[pos+4] & 0x11) != 0x00)
+			&& ((pData[pos+5] & pcrmask) == 0x10))
+
+//Removed		if (((pData[pos+3] & 0x30) == pcrbit)
+//Removed			&& (pData[pos+4] != 0x00)
+//Removed			&& ((pData[pos+5] & 0x10) != 0x00))
+
+//***********************************************************************************************
+//ATSC Additions PAT Bug Fix
+
+			{
+				*pcrtime =	((REFERENCE_TIME)(0xFF & pData[pos+6])<<25) |
+							((REFERENCE_TIME)(0xFF & pData[pos+7])<<17) |
+							((REFERENCE_TIME)(0xFF & pData[pos+8])<<9)  |
+							((REFERENCE_TIME)(0xFF & pData[pos+9])<<1)  |
+							((REFERENCE_TIME)(0x80 & pData[pos+10])>>7);
+
+				return S_OK;
+			};
+		}
+		return S_FALSE;
 }
 
 BOOL PidParser::CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos, int lastpos)
@@ -417,7 +637,6 @@ BOOL PidParser::CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos
 	{
 		DescTag = (0xFF & pData[pos]);
 		if (DescTag == 0x6a) return TRUE;
-
 		pos += (int)(0xFF & pData[pos+1]) + 2;
 	}
 	return FALSE;
@@ -488,6 +707,7 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 				if (((0xFF0&pesID) == 0x1c0) && (pids.aud == pid) && pids.aud) {
 					return S_OK;
 				};
+
 
 				if (((0xFF0&pesID) == 0x1c0) && (pids.ac3 == pid) && pids.ac3) {
 					return S_OK;
@@ -637,7 +857,7 @@ HRESULT PidParser::CheckEPGFromFile()
 	bool epgfound;
 
 	HRESULT hr;
-
+	
 	pos = 0;
 	iterations = 0;
 	epgfound = false;
@@ -740,6 +960,169 @@ bool PidParser::CheckForEPG(PBYTE pData, ULONG ulDataLength, int pos)
 	return false;
 }
 
+//***********************************************************************************************
+//NID Additions
+
+bool PidParser::CheckForNID(PBYTE pData, int pos)
+{
+	//Return ok if we already found an NID or if we don't have a TSID since we don't have a PAT
+	if (m_NetworkID != 0 || m_TStreamID ==0)
+		return true;
+
+	//Test if we have an NID discriptor
+	if ((0x30 & pData[pos + 3]) == 0x10
+		&&  pData[pos + 4] == 0
+		&& pData[pos + 5] == 0x40 
+		&& (0xf0 & pData[pos + 6]) == 0xf0
+		&& (((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x10 
+		&& (((0x1F & pData[pos + 11]) << 8)|(0xFF & pData[pos + 12])) == 0	//yes if we have the NID flag
+		&& (((0xFF & pData[pos + 8]) << 8) | (0xFF & pData[pos + 9])) > 0 //yes if we have the NID
+			)
+	{
+		m_NetworkID = (0xFF & pData[pos + 8]) << 8 | (0xFF & pData[pos + 9]);
+		return true;
+	};
+	return false;
+}
+
+HRESULT PidParser::CheckNIDInFile()
+{
+
+	HRESULT hr = S_FALSE;
+
+	if (m_NetworkID == 0 && m_TStreamID !=0)
+	{
+		ULONG pos;
+		pos = 0;
+		int iterations = 0;
+		bool nitfound = false;
+
+		ULONG ulDataLength = 2000000;
+		ULONG ulDataRead = 0;
+		PBYTE pData = new BYTE[ulDataLength];
+		m_pFileReader->SetFilePointer(188000, FILE_BEGIN);
+		m_pFileReader->Read(pData, ulDataLength, &ulDataRead);
+
+		hr = FindSyncByte(pData, ulDataLength, &pos, 1);
+
+		while ((pos < ulDataLength) && (hr == S_OK) && (nitfound == false))
+		{
+			nitfound = CheckForNID(pData, pos);
+
+			if ((iterations > 64) && (nitfound == false))
+			{
+				hr = S_FALSE;
+			}
+			else
+			{
+				if (nitfound == false)
+				{
+					pos = pos + 188;
+					if (pos >= 2000000)
+					{
+						ULONG ulBytesRead = 0;
+						hr = m_pFileReader->Read(pData, 2000000, &ulBytesRead);
+
+						iterations++;
+						pos = 0;
+						if (hr == S_OK)
+						{
+							hr = FindSyncByte(pData, 2000000, &pos, 1);
+						}
+					}
+				}
+			}
+		}
+		delete[] pData;
+	}
+	if (m_NetworkID == 0)
+		return S_FALSE;
+	else
+		return S_OK;
+}
+
+//ONID Additions
+
+bool PidParser::CheckForONID(PBYTE pData, int pos)
+{
+	//Return ok if we already found an ONID or if we don't have a TSID since we don't have a PAT
+	if (m_ONetworkID != 0 || m_TStreamID ==0)
+		return true;
+
+	//Test if we have an ONID discriptor
+	if ((0x30 & pData[pos + 3]) == 0x10
+		&&  pData[pos + 4] == 0
+		&& pData[pos + 5] == 0x42 
+		&& (0xf0 & pData[pos + 6]) == 0xf0
+		&& (((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x11 
+		&& (((0x1F & pData[pos + 11]) << 8)|(0xFF & pData[pos + 12])) == 0	//yes if we have the NID flag
+		&& (((0xFF & pData[pos + 13]) << 8) | (0xFF & pData[pos + 14])) > 0 //yes if we have the NID
+			)
+	{
+		m_ONetworkID = (0xFF & pData[pos + 13]) << 8 | (0xFF & pData[pos + 14]); 
+		return true;
+	};
+	return false;
+}
+
+HRESULT PidParser::CheckONIDInFile()
+{
+
+	HRESULT hr = S_FALSE;
+
+	if (m_ONetworkID == 0 && m_TStreamID !=0)
+	{
+		ULONG pos;
+		pos = 0;
+		int iterations = 0;
+		bool nitfound = false;
+
+		ULONG ulDataLength = 2000000;
+		ULONG ulDataRead = 0;
+		PBYTE pData = new BYTE[ulDataLength];
+		m_pFileReader->SetFilePointer(188000, FILE_BEGIN);
+		m_pFileReader->Read(pData, ulDataLength, &ulDataRead);
+
+		hr = FindSyncByte(pData, ulDataLength, &pos, 1);
+
+		while ((pos < ulDataLength) && (hr == S_OK) && (nitfound == false))
+		{
+			nitfound = CheckForONID(pData, pos);
+
+			if ((iterations > 64) && (nitfound == false))
+			{
+				hr = S_FALSE;
+			}
+			else
+			{
+				if (nitfound == false)
+				{
+					pos = pos + 188;
+					if (pos >= 2000000)
+					{
+						ULONG ulBytesRead = 0;
+						hr = m_pFileReader->Read(pData, 2000000, &ulBytesRead);
+
+						iterations++;
+						pos = 0;
+						if (hr == S_OK)
+						{
+							hr = FindSyncByte(pData, 2000000, &pos, 1);
+						}
+					}
+				}
+			}
+		}
+		delete[] pData;
+	}
+	if (m_NetworkID == 0)
+		return S_FALSE;
+	else
+		return S_OK;
+}
+	
+//***********************************************************************************************
+
 HRESULT PidParser::ParseEISection (ULONG ulDataLength)
 {
 	int pos = 0;
@@ -797,7 +1180,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids)
 	pPids->start = 0;
 	pPids->end = 0;
 	__int64 tolerence = 100000UL;
-	__int64 startFilePos = 0;
+	__int64 startFilePos = 200000;
 	long lDataLength = 2000000;
 	PBYTE pData = new BYTE[lDataLength];
 	m_pFileReader->GetFileSize(&filelength);	
@@ -811,6 +1194,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids)
 	while (m_fileStartOffset < filelength){
 		
 		hr = GetPCRduration(pData, lDataLength, pPids, filelength, &startFilePos, &endFilePos);
+
 		if (hr == S_OK){
 			//Save the start PCR only
 			if (startPCRSave == 0 && pPids->start > 0)
@@ -818,6 +1202,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids)
 			//Add the PCR time difference
 			totalduration = totalduration + (__int64)(pPids->end - pPids->start); // add duration to total.
 			//Test if at end of file & return
+
 			if (endFilePos >= (filelength - tolerence)){
 
 				REFERENCE_TIME PeriodOfPCR = (REFERENCE_TIME)(((__int64)(pPids->end - pPids->start)/9)*1000); 
@@ -833,6 +1218,15 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids)
 		else
 			m_fileStartOffset = m_fileStartOffset + 100000;
 		
+//***********************************************************************************************
+//Missing pcr fix
+
+		//If unable to find any pids dont go again
+		if (pPids->start == 0 || pPids->end == 0)
+			break;
+
+//***********************************************************************************************
+
 		pPids->start = 0;
 		pPids->end = 0;
 		m_fileLenOffset = filelength - m_fileStartOffset;
@@ -862,6 +1256,7 @@ HRESULT PidParser::GetPCRduration(PBYTE pData, long lDataLength, PidInfo *pPids,
 	ULONG ulBytesRead = 0;
 	m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
 	hr = FindNextPCR(pData, lDataLength, pPids, &pPids->start, &pos, 1); //Get the PCR
+	
 	if (hr == S_OK){
 
 		m_fileLenOffset = m_fileLenOffset - (__int64)(pos - 1);
@@ -936,6 +1331,15 @@ void PidParser::SetPidArray(int n)
 	AddTsPid(pidInfo, 0x00);			AddTsPid(pidInfo, 0x10);
 	AddTsPid(pidInfo, 0x11);			AddTsPid(pidInfo, 0x12);
 	AddTsPid(pidInfo, 0x13);			AddTsPid(pidInfo, 0x14);
+
+//**********************************************************************************************
+//Audio2 Additions
+
+	if (pids.aud2 != 0) AddTsPid(pidInfo, pids.aud2);
+	if (pids.ac3_2 != 0) AddTsPid(pidInfo, pids.ac3_2);
+
+//**********************************************************************************************
+
 }
 
 
@@ -987,5 +1391,81 @@ void PidParser::set_ProgramNumber(WORD programNumber)
 	pids.Clear();
 	pids.CopyFrom(&pidArray[m_pgmnumb]);
 }
+//***********************************************************************************************
 
+//Program Registry Additions
+void PidParser::set_SIDPid(int bProgramSID)
+{
+	m_ProgramSID = bProgramSID;
+	return;
+}
+
+HRESULT PidParser::set_ProgramSID()
+{
+	HRESULT hr = S_FALSE;
+	m_pgmnumb = 0;
+	
+	// fail if there is only one program in file
+	if (pidArray.Count() <= 1)
+		return S_FALSE;
+	//loop through SID's in list
+	for (int c = 0; c < pidArray.Count(); c++)
+	{
+		if (m_ProgramSID == pidArray[c].sid && m_ProgramSID != 0)
+		{
+			//now copy the pids from the SID program found
+			m_pgmnumb = c;
+			pids.CopyFrom(&pidArray[m_pgmnumb]);
+			return S_OK;
+		}
+	}
+	return S_FALSE;
+}
+
+//***********************************************************************************************
+/*
+if ( (0x30 & pData[pos + 3]) == 0x10
+	&&  pData[pos + 4] == 0
+	&& pData[pos + 5] == 0x42
+	&& (0xf0 & pData[pos + 6]) == 0xf0
+	&& (((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x11
+	&& (((0x1F & pData[pos + 11]) << 8)|(0xFF & pData[pos + 12])) == 0
+	&& ((0x1F & pData[pos + 13]) << 8 | (0xFF & pData[pos + 14])) > 0
+)
+{
+TCHAR sz[100];
+sprintf(sz, "%x %x %x %x %x %x     %x     %u", pData[pos + 1], pData[pos + 2],
+		pData[pos + 3], pData[pos + 4], pData[pos + 5], pData[pos + 6],
+		((0x1F & pData[pos + 11]) << 8 | (0xFF & pData[pos + 12])),
+		(0x1F & pData[pos + 13]) << 8 | (0xFF & pData[pos + 14]));
+MessageBox(NULL, sz, TEXT("CheckForNID"), MB_OK);
+}
+
+TCHAR sz[255];
+sprintf(sz, 
+			"pPids->pcr			%u\n"
+			"hr					%u\n"
+			"startFilePos		%lu\n"
+			"endFilePos			%lu\n"
+			"m_fileStartOffset	%lu\n"
+			"m_fileEndOffset	%lu\n"
+			"m_fileLenOffset	%lu\n"
+			"pPids->start		%lu\n"
+			"pPids->end			%lu\n"
+			"totalduration		%lu\n",
+
+		pPids->pcr,
+		hr,
+		(double)startFilePos,
+		(double)endFilePos,
+		(double)m_fileStartOffset,
+		(double)m_fileEndOffset,
+		(double)m_fileLenOffset,
+		(double)pPids->start,
+		(double)pPids->end,
+		(double)totalduration
+		);
+MessageBox(NULL, sz, TEXT("CheckForduration"), MB_OK);
+
+*/
 

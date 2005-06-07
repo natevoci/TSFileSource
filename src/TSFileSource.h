@@ -37,6 +37,14 @@
 class CTSFileSourceFilter;
 #include "TSFileSourcePin.h"
 
+//**********************************************************************************************
+//Registry Additions
+
+#include "RegStore.h"
+#include "SettingsStore.h"
+
+//**********************************************************************************************
+
 #include "PidInfo.h"
 #include "PidParser.h"
 #include "FileReader.h"
@@ -83,6 +91,13 @@ public:
 	HRESULT RefreshPids();
 	HRESULT RefreshDuration();
 
+//**********************************************************************************************
+//Property Page Additions
+
+	STDMETHODIMP ShowFilterProperties();
+
+//**********************************************************************************************
+
 	//PidParser *get_Pids();
 	//FileReader *get_FileReader();
 
@@ -101,7 +116,31 @@ protected:
 	STDMETHODIMP GetAudioPid(WORD *pAPid);
 	STDMETHODIMP GetAudio2Pid(WORD *pA2Pid);
 	STDMETHODIMP GetAC3Pid(WORD *pAC3Pid);
+
+//**********************************************************************************************
+//Audio2 Additions
+
+	STDMETHODIMP GetAC3_2Pid(WORD *pAC3_2Pid);
+
+//**********************************************************************************************
+
 	STDMETHODIMP GetTelexPid(WORD *pTelexPid);
+
+//***********************************************************************************************
+//NID Additions
+
+	STDMETHODIMP GetNIDPid(WORD *pNIDPid);
+	
+//ONID Additions
+
+	STDMETHODIMP GetONIDPid(WORD *pONIDPid);
+	
+//TSID Additions
+
+	STDMETHODIMP GetTSIDPid(WORD *pTSIDPid);
+	
+//***********************************************************************************************
+	
 	STDMETHODIMP GetPMTPid(WORD *pPMTPid);
 	STDMETHODIMP GetSIDPid(WORD *pSIDPid);
 	STDMETHODIMP GetPCRPid(WORD * pcrpid);
@@ -113,6 +152,13 @@ protected:
 	STDMETHODIMP GetPgmCount(WORD * pPgmCount);
 	STDMETHODIMP SetPgmNumb(WORD pPgmNumb);
 	STDMETHODIMP NextPgmNumb(void);
+
+//**********************************************************************************************
+//Prev button Additions
+
+	STDMETHODIMP PrevPgmNumb(void);
+
+//**********************************************************************************************
 	STDMETHODIMP GetTsArray(ULONG * pPidArray);
 
 	STDMETHODIMP GetAC3Mode(WORD* pAC3Mode);
@@ -120,6 +166,14 @@ protected:
 
 	STDMETHODIMP GetMP2Mode(WORD* pMP2Mode);
 	STDMETHODIMP SetMP2Mode(WORD MP2Mode);
+
+//**********************************************************************************************
+//Audio2 Additions
+
+	STDMETHODIMP GetAudio2Mode(WORD* pAudio2Mode);
+	STDMETHODIMP SetAudio2Mode(WORD Audio2Mode);
+
+//**********************************************************************************************
 
 	STDMETHODIMP GetAutoMode(WORD* pDelayMode);
 	STDMETHODIMP SetAutoMode(WORD AutoMode);
@@ -138,8 +192,34 @@ protected:
 	STDMETHODIMP GetBitRate(long* pRate);
 	STDMETHODIMP SetBitRate(long Rate);
 
+//**********************************************************************************************
+//Registry Additions
+
+	STDMETHODIMP SetRegStore(LPTSTR nameReg);
+	STDMETHODIMP GetRegStore(LPTSTR nameReg);
+	STDMETHODIMP SetRegSettings();
+	STDMETHODIMP GetRegSettings();
+
+//Program Registry Additions
+
+	STDMETHODIMP SetRegProgram();
+
+//**********************************************************************************************
+
 protected:
 	CTSFileSourcePin       *m_pPin;          // A simple rendered input pin
+
+//**********************************************************************************************
+//Registry Additions
+
+	CRegStore *m_pRegStore;
+	CSettingsStore *m_pSettingsStore;
+
+//Property Page Additions
+
+	BOOL	m_PropOpen;
+
+//**********************************************************************************************
 
 	PidParser *m_pPidParser;
 	FileReader *m_pFileReader;

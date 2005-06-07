@@ -37,7 +37,9 @@
 class PidParser
 {
 public:
-	PidParser(FileReader *pFileReader);
+
+PidParser(FileReader *pFileReader);
+
 	virtual ~PidParser();
 
 	HRESULT ParseFromFile();
@@ -60,6 +62,27 @@ public:
 	static HRESULT FindLastPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
 	static HRESULT FindNextPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
 
+//***********************************************************************************************
+//NID Additions
+
+	BOOL m_ATSCFlag;
+	int m_NetworkID;
+	int m_ONetworkID;
+
+//TSID Additions
+
+	int m_TStreamID;
+
+//Program Registry Additions
+
+	int m_ProgramSID;
+
+	void set_SIDPid(BOOL bProgramSID);
+	HRESULT set_ProgramSID();
+
+//***********************************************************************************************
+
+
 protected:
 	static HRESULT CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
 
@@ -77,6 +100,17 @@ protected:
 
 	HRESULT CheckEPGFromFile();
 	bool CheckForEPG(PBYTE pData, ULONG ulDataLength, int pos);
+
+//***********************************************************************************************
+//NID Additions
+
+	bool CheckForNID(PBYTE pData, int pos);
+	bool CheckForONID(PBYTE pData, int pos);
+	HRESULT CheckNIDInFile();
+	HRESULT CheckONIDInFile();
+
+//***********************************************************************************************
+
 	HRESULT ParseEISection (ULONG ulDataLength);
 	HRESULT ParseShortEvent(int start, ULONG ulDataLength);
 	HRESULT ParseExtendedEvent(int start, ULONG ulDataLength);
