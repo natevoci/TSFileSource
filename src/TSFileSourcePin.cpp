@@ -138,8 +138,13 @@ HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
 		m_pTSFileSourceFilter->OnConnect();
 		m_rtDuration = m_pTSFileSourceFilter->get_Pids()->pids.dur;
 		m_rtStop = m_rtDuration;
+//**********************************************************************************************
+//Bitrate Additions
+
 		//Set inital Data rate from pid store
 		m_DataRate = m_pTSFileSourceFilter->get_Pids()->pids.rate;
+
+//**********************************************************************************************
 
 	}
 	return hr;
@@ -797,19 +802,19 @@ void  CTSFileSourcePin::GetBitRateAverage(__int64 bitratesample)
 
 	if (bitratesample < (__int64)1) return;
 
-	//Setup for first sample and inc through array
-	m_BitRateCycle++;
-
-	//Set Number of counts to average
-	if (m_BitRateCount < 257)
-		m_BitRateCount = m_BitRateCycle;
-
 	//Rotate array
 	if (m_BitRateCycle > 255)
 		m_BitRateCycle = 0;
 
 	//Store the sample
 	m_BitRateStore[m_BitRateCycle] = bitratesample;
+
+	//Setup for first sample and inc through array
+	m_BitRateCycle++;
+
+	//Set Number of counts to average
+	if (m_BitRateCount <= 255)
+		m_BitRateCount = m_BitRateCycle;
 
 	__int64 datarate = 0;
 
@@ -818,7 +823,7 @@ void  CTSFileSourcePin::GetBitRateAverage(__int64 bitratesample)
 	{
 		datarate = datarate + m_BitRateStore[i];
 	}
-	m_DataRate = (long)(datarate / (__int64)m_BitRateCount);
+	m_DataRate = (long)(datarate / (__int64)(m_BitRateCount));
 	return;
 }
 //*********************************************************************************************

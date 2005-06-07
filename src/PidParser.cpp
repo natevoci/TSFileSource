@@ -414,6 +414,7 @@ BOOL PidParser::CheckEsDescriptorForTeletext(PBYTE pData, LONG lDataLength, int 
 HRESULT PidParser::IsValidPMT(PBYTE pData, LONG lDataLength)
 {
 	HRESULT hr = S_FALSE;
+
 	//exit if no a/v pids to find
 	if (pids.aud + pids.vid + pids.ac3 + pids.txt == 0) {return hr;};
 
@@ -462,6 +463,15 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, LONG lDataLength)
 				if (((0xFF0&pesID) == 0x1c0) && (pids.aud == pid) && pids.aud) {
 					return S_OK;
 				};
+
+//**********************************************************************************************
+//Audio2 Additions
+
+				if (((0xFF0&pesID) == 0x1c0) && (pids.aud2 == pid) && pids.aud2) {
+					return S_OK;
+				};
+
+//**********************************************************************************************
 
 				if (((0xFF0&pesID) == 0x1c0) && (pids.ac3 == pid) && pids.ac3) {
 					return S_OK;
@@ -775,6 +785,13 @@ void PidParser::SetPidArray(int n)
 	AddTsPid(pidInfo, 0x00);			AddTsPid(pidInfo, 0x10);
 	AddTsPid(pidInfo, 0x11);			AddTsPid(pidInfo, 0x12);
 	AddTsPid(pidInfo, 0x13);			AddTsPid(pidInfo, 0x14);
+
+//**********************************************************************************************
+//Audio2 Additions
+
+	if (pids.aud2 != 0) AddTsPid(pidInfo, pids.aud2);
+
+//**********************************************************************************************
 }
 
 
