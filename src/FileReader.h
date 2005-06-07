@@ -78,6 +78,10 @@ protected:
 
 	__int64 m_fileSize;
 
+//File Writer Additions
+
+	HANDLE   m_hInfoFile;               // Handle to Infofile for filesize
+
 //***********************************************************************************************
 
 

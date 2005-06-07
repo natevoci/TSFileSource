@@ -36,6 +36,10 @@ FileReader::FileReader() :
 
 	m_fileSize(0),
 
+//File Writer Additions
+
+	m_hInfoFile(INVALID_HANDLE_VALUE),
+
 //***********************************************************************************************
 
 	m_bDelay(FALSE)
@@ -145,6 +149,24 @@ HRESULT FileReader::OpenFile()
 		m_bReadOnly = TRUE;
 	}
 
+//***********************************************************************************************
+//File Writer Additions
+
+	TCHAR infoName[512];
+	strcpy(infoName, pFileName);
+	strcat(infoName, ".info");
+
+	m_hInfoFile = CreateFile((LPCTSTR) infoName, // The filename
+			GENERIC_READ,    // File access
+			FILE_SHARE_READ |
+			FILE_SHARE_WRITE,   // Share access
+			NULL,      // Security
+			OPEN_EXISTING,    // Open flags
+			FILE_ATTRIBUTE_NORMAL, // |	FILE_FLAG_RANDOM_ACCESS, // More flags
+			NULL);
+
+//***********************************************************************************************
+
 	return S_OK;
 
 } // Open
@@ -168,6 +190,16 @@ HRESULT FileReader::CloseFile()
 	CloseHandle(m_hFile);
 	m_hFile = INVALID_HANDLE_VALUE; // Invalidate the file
 
+//***********************************************************************************************
+//File Writer Additions
+
+	if (m_hInfoFile != INVALID_HANDLE_VALUE)
+		CloseHandle(m_hInfoFile);
+
+	m_hInfoFile = INVALID_HANDLE_VALUE; // Invalidate the file
+
+//***********************************************************************************************
+
 	return NOERROR;
 
 } // CloseFile
@@ -182,56 +214,21 @@ BOOL FileReader::IsFileInvalid()
 
 HRESULT FileReader::GetFileSize(__int64 *lpllsize)
 {
-
-	if (m_bReadOnly)
+	__int64 length = -1;
+	DWORD read = 0;
+	if (m_hInfoFile != INVALID_HANDLE_VALUE)
 	{
-		TCHAR *pFileName = NULL;
+		LARGE_INTEGER li;
+		li.QuadPart = 0;
+		::SetFilePointer(m_hInfoFile, li.LowPart, &li.HighPart, FILE_BEGIN);
+		ReadFile(m_hInfoFile, (PVOID)&length, (DWORD)sizeof(__int64), &read, NULL);
+	}
 
-		#if defined(WIN32) && !defined(UNICODE)
-			char convert[MAX_PATH];
-
-		if(!WideCharToMultiByte(CP_ACP,0,m_pFileName,-1,convert,MAX_PATH,0,0))
-			return ERROR_INVALID_NAME;
-
-		pFileName = convert;
-
-		#else
-			pFileName = m_pFileName;
-		#endif
-
-		TCHAR infoName[512];
-		strcpy(infoName, pFileName);
-		strcat(infoName, ".info");
-
-		HANDLE m_hInfoFile = CreateFile((LPCTSTR) infoName, // The filename
-					GENERIC_READ,    // File access
-					FILE_SHARE_READ |
-					FILE_SHARE_WRITE,   // Share access
-					NULL,      // Security
-					OPEN_EXISTING,    // Open flags
-					FILE_ATTRIBUTE_NORMAL, // |	FILE_FLAG_RANDOM_ACCESS, // More flags
-					NULL); 
-
-		__int64 length = -1;
-		DWORD read = 0;
-		if (m_hInfoFile != INVALID_HANDLE_VALUE)
-		{
-			ReadFile(m_hInfoFile, (PVOID)&length, (DWORD)sizeof(__int64), &read, NULL);
-			CloseHandle(m_hInfoFile);
-		}
-
-		if(length > -1)
-		{
-
-//***********************************************************************************************
-//File Growing Fix
-
-			m_fileSize = length;
-
-//***********************************************************************************************
-			*lpllsize = length;
-			return S_OK;
-		}
+	if(length > -1)
+	{
+		m_fileSize = length;
+		*lpllsize = length;
+		return S_OK;
 	}
 
 	DWORD dwSizeLow;
@@ -247,12 +244,9 @@ HRESULT FileReader::GetFileSize(__int64 *lpllsize)
 	li.LowPart = dwSizeLow;
 	li.HighPart = dwSizeHigh;
 
-//***********************************************************************************************
 //File Growing Fix
 
 	m_fileSize = li.QuadPart;
-
-//***********************************************************************************************
 
 	*lpllsize = li.QuadPart;
 	return S_OK;
@@ -353,6 +347,7 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 
 //***********************************************************************************************
 //FileWriter Additions
+
 
 	__int64 length = 0;
 	GetFileSize(&length);

@@ -75,7 +75,7 @@ public:
 
 	long bitrate;
 
-	unsigned long TsArray[15];
+	unsigned long TsArray[16];
 };
 
 class PidInfoArray
