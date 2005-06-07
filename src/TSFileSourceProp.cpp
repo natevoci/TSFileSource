@@ -49,6 +49,10 @@ CTSFileSourceProp::CTSFileSourceProp(IUnknown *pUnk) :
 {
 }
 
+CTSFileSourceProp::~CTSFileSourceProp(void)
+{
+}
+
 HRESULT CTSFileSourceProp::OnConnect(IUnknown *pUnk)
 {
 	if (pUnk == NULL)
@@ -136,11 +140,31 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_NID), sz);
 
+//NID Additions
+
+	unsigned char netname[128];
+	m_pProgram->GetNetworkName((unsigned char*)&netname);
+	sprintf(sz, "%s",netname);
+	SetWindowText(GetDlgItem(m_hwnd, IDC_NETID), sz);
+
+	unsigned char chnumb[128];
+	m_pProgram->GetChannelNumber((unsigned char*)&chnumb);
+
 //ONID Additions
 
 	m_pProgram->GetONIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_ONID), sz);
+
+
+	unsigned char onetname[128];
+	unsigned char chname[128];
+	m_pProgram->GetONetworkName((unsigned char*)&onetname);
+	m_pProgram->GetChannelName((unsigned char*)&chname);
+	sprintf(sz, "%s",onetname);
+	SetWindowText(GetDlgItem(m_hwnd, IDC_ONETID), sz);
+	sprintf(sz, "Ch %s :- %s",chnumb, chname);
+	SetWindowText(GetDlgItem(m_hwnd, IDC_CHID), sz);
 
 //TSID Additions
 	
@@ -457,6 +481,52 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					break;
 				}
 
+					case IDC_EPGINFO:
+				{
+//					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_NPSLAVE);
+//					m_pProgram->SetNPSlave(checked);
+					if (m_pProgram->GetEPGFromFile() == S_OK)
+					{
+						unsigned char netname[128];
+						unsigned char onetname[128];
+						unsigned char chname[128];
+						unsigned char chnumb[128];
+						unsigned char shortdescripor[128];
+						unsigned char Extendeddescripor[600];
+						unsigned char shortnextdescripor[128];
+						unsigned char Extendednextdescripor[600];
+						m_pProgram->GetNetworkName((unsigned char*)&netname);
+						m_pProgram->GetONetworkName((unsigned char*)&onetname);
+						m_pProgram->GetChannelName((unsigned char*)&chname);
+						m_pProgram->GetChannelNumber((unsigned char*)&chnumb);
+						m_pProgram->GetShortDescr((unsigned char*)&shortdescripor);
+						m_pProgram->GetExtendedDescr((unsigned char*)&Extendeddescripor);
+						m_pProgram->GetShortNextDescr((unsigned char*)&shortnextdescripor);
+						m_pProgram->GetExtendedNextDescr((unsigned char*)&Extendednextdescripor);
+						TCHAR szBuffer[(6*128)+ (2*600)];
+						sprintf(szBuffer, "Network Name:- %s\n"
+								"ONetwork Name:- %s\n"
+								"Channel Number:- %s\n"
+								"Channel Name:- %s\n\n"
+								"Program Name: - %s\n"
+								"Program Description:- %s\n\n"
+								"Next Program Name: - %s\n"
+								"Next Program Description:- %s\n"
+								,netname,
+								onetname,
+								chnumb,
+								chname,
+								shortdescripor,
+								Extendeddescripor,
+								shortnextdescripor,
+								Extendednextdescripor
+								);
+						MessageBox(NULL, szBuffer, TEXT("Program Infomation"), MB_OK);
+					}
+					OnRefreshProgram () ;
+					break;
+				}
+
 //**********************************************************************************************
 
 				case IDC_DELAYMODE:
@@ -493,6 +563,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 				case IDC_REFRESH:
 					{
+						m_pProgram->Refresh();
 						OnRefreshProgram();
 						break;
 					}

@@ -28,9 +28,25 @@
 #include "PidParser.h"
 #include <crtdbg.h>
 
-CTSBuffer::CTSBuffer(FileReader *pFileReader, PidInfo *pPids)
+//***********************************************************************************************
+//Refresh additions
+
+CTSBuffer::CTSBuffer(FileReader *pFileReader, PidInfo *pPids, PidInfoArray *pPidArray)
+
+//Removed CTSBuffer::CTSBuffer(FileReader *pFileReader, PidInfo *pPids)
+
+//***********************************************************************************************
+
 {
 	m_pFileReader = pFileReader;
+
+//***********************************************************************************************
+//Refresh additions
+
+	m_pPidArray = pPidArray;
+
+//***********************************************************************************************
+
 	m_pPids = pPids;
 	m_lItemOffset = 0;
 	m_lTSBufferItemSize = 188*1000;
@@ -90,15 +106,30 @@ HRESULT CTSBuffer::Require(long nBytes)
 				while (ulBytesRead < m_lTSBufferItemSize) 
 				{
 					::OutputDebugString(TEXT("TSBuffer::Require() Waiting for file to grow.\n"));
-					Sleep(100);
+
+//***********************************************************************************************
+//Live File Delay additions
+
+					WORD bDelay = 0;
+					m_pFileReader->get_DelayMode(&bDelay);
+
+					if (bDelay > 0)
+						Sleep(2000);
+					else
+
+//***********************************************************************************************
 					
+					Sleep(100);
+
 					ULONG ulNextBytesRead = 0;				
 					m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
 					HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulNextBytesRead);
 					if (FAILED(hr))
 						return hr;
+
 					if ((ulNextBytesRead == 0) || (ulNextBytesRead == ulBytesRead))
 						return E_FAIL;
+
 					ulBytesRead = ulNextBytesRead;
 				}
 			}

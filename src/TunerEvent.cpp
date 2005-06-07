@@ -26,8 +26,8 @@
 #include "TunerEvent.h"
 #include "ITSFileSource.h"
 
-TunerEvent::TunerEvent(Demux *pDemux, IUnknown *pUnk);
-TunerEvent:: ~TunerEvent();
+//TunerEvent::TunerEvent(Demux *pDemux, IUnknown *pUnk);
+//TunerEvent:: ~TunerEvent();
 
 
 // Query the Filter Graph Manager for the broadcast event service.

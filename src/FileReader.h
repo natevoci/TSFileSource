@@ -47,6 +47,13 @@ public:
 	DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	__int64 GetFilePointer();
 
+//***********************************************************************************************
+//File Growing Fix
+
+	__int64 get_FileSize(void);
+
+//***********************************************************************************************
+
 	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes);
 	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod);
 
@@ -66,6 +73,12 @@ protected:
 	LPOLESTR m_pFileName;           // The filename where we stream
 	BOOL     m_bReadOnly;
 	BOOL     m_bDelay;
+//***********************************************************************************************
+//File Growing Fix
+
+	__int64 m_fileSize;
+
+//***********************************************************************************************
 
 
 };

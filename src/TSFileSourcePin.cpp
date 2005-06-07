@@ -73,7 +73,15 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_DataRateTotal = 0;
 	m_BitRateCycle = 0;
 
-	m_pTSBuffer = new CTSBuffer(m_pFileReader, &m_pPidParser->pids);
+//***********************************************************************************************
+//Refresh additions
+
+	m_pTSBuffer = new CTSBuffer(m_pFileReader, &m_pPidParser->pids, &m_pPidParser->pidArray);
+
+//Removed	m_pTSBuffer = new CTSBuffer(m_pFileReader, &m_pPidParser->pids);
+
+//***********************************************************************************************
+
 
 	debugcount = 0;
 }
@@ -101,6 +109,8 @@ HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 	pmt->InitMediaType();
 	pmt->SetType      (& MEDIATYPE_Stream);
 	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);
+//	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_PROGRAM);
+//	pmt->SetFormatType   (& FORMAT_MPEG2_VIDEO);
 
     return S_OK;
 }
@@ -385,10 +395,19 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	m_pFileReader->get_ReadOnly(&readonly);
 	if (readonly)
 	{
-		m_pPidParser->RefreshDuration();
+
+//***********************************************************************************************
+//Refreash pids additions
+
+		m_pPidParser->RefreshDuration(TRUE, m_pFileReader);
+
+//Removed		m_pPidParser->RefreshDuration();
+
+//***********************************************************************************************
+
 		SetDuration(m_pPidParser->pids.dur);
 	}
-
+/*
 #if DEBUG
 	{
 		CAutoLock lock(&m_SeekLock);
@@ -403,7 +422,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		Debug(sz);
 	}
 #endif
-
+*/
 	//Set sample time
 	//pSample->SetTime(&rtStart, &rtStart);
 
@@ -419,31 +438,26 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 //*********************************************************************************************
 //wait for Growing File Additions
 
-	
-	__int64	fileSize = 0;
-	if (SUCCEEDED(m_pTSFileSourceFilter->GetFileSize(&fileSize)))
-	{
-//TCHAR sz[100];
-//sprintf(sz, "%lu", (double)fileSize);
-//MessageBox(NULL, sz, TEXT("OnThreadStartPlay1"), MB_OK);
-		//Check if file is being recorded
-		if(fileSize < 2000000)
-		{
-//TCHAR sz[100];
-//sprintf(sz, "%lu", (double)fileSize);
-//MessageBox(NULL, sz, TEXT("OnThreadStartPlay2"), MB_OK);
-			if (m_pPidParser->RefreshPids() == S_OK)
+			//Check if file is being recorded
+			if(m_pFileReader->get_FileSize() < 2001000)
 			{
-				m_pTSFileSourceFilter->LoadPgmReg();
-				DeliverBeginFlush();
-//					m_pTSFileSourceFilter->OnConnect();
-				DeliverEndFlush();
-				m_pTSFileSourceFilter->RefreshDuration();
+//				if (m_pPidParser->RefreshPids() == S_OK)
+				if (m_pTSFileSourceFilter->RefreshPids() == S_OK)
+				{
+					m_pTSFileSourceFilter->LoadPgmReg();
+					DeliverBeginFlush();
+					DeliverEndFlush();
+					SetDuration(m_pPidParser->pids.dur);
+				}
 			}
 
-		}
+//Property Page Additions
 
-		}
+	if (m_pPidParser->pidArray.Count() >= 2)
+	{
+//		m_pTSFileSourceFilter->ShowFilterProperties();
+	}
+
 //*********************************************************************************************
 
 
@@ -714,6 +728,6 @@ void CTSFileSourcePin::Debug(LPCTSTR lpOutputString)
 }
 
 //TCHAR sz[100];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz, TEXT("CheckForNID"), MB_OK);
+//sprintf(sz, "%lu", (__int64)fileSize);
+//MessageBox(NULL, sz, TEXT("GetFileSize"), MB_OK);
 

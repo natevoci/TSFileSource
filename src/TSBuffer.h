@@ -33,7 +33,15 @@
 class CTSBuffer
 {
 public:
-	CTSBuffer(FileReader *pFileReader, PidInfo *pPids);
+
+//***********************************************************************************************
+//Refresh additions
+
+	CTSBuffer(FileReader *pFileReader, PidInfo *pPids, PidInfoArray *pPidArray);
+//Removed	CTSBuffer(FileReader *pFileReader, PidInfo *pPids);
+
+//***********************************************************************************************
+
 	virtual ~CTSBuffer();
 
 	void Clear();
@@ -46,6 +54,12 @@ public:
 protected:
 	FileReader *m_pFileReader;
 	PidInfo *m_pPids;
+
+//***********************************************************************************************
+//Refresh additions
+	PidInfoArray *m_pPidArray;
+//***********************************************************************************************
+
 	std::vector<BYTE *> m_Array;
 	long m_lItemOffset;
 

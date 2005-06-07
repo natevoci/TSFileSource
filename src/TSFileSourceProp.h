@@ -38,6 +38,7 @@ class CTSFileSourceProp : public CBasePropertyPage
 public:
 	static CUnknown * WINAPI CreateInstance(LPUNKNOWN pUnk, HRESULT *pHr);
 	CTSFileSourceProp(IUnknown *pUnk);
+	virtual ~CTSFileSourceProp(void);
 
 	HRESULT OnConnect(IUnknown *pUnk);
 	HRESULT OnDisconnect(void);

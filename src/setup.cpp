@@ -38,6 +38,7 @@
 #define TSFILESOURCENAME		L"TS File Filter(AU)"
 #define TSFILESOURCEPROPERTIES	L"TS File Filter(AU) Properties"
 
+
 // Filter setup data
 const AMOVIESETUP_MEDIATYPE sudOpPinTypes =
 {

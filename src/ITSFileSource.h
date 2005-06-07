@@ -52,15 +52,25 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown)
 //NID Additions
 
 	STDMETHOD(GetNIDPid) (THIS_ WORD * nidpid) PURE;
+	STDMETHOD(GetChannelNumber) (THIS_ BYTE * pointer) PURE;
+	STDMETHOD(GetNetworkName) (THIS_ BYTE * pointer) PURE;
 	
 //ONID Additions
 
 	STDMETHOD(GetONIDPid) (THIS_ WORD * onidpid) PURE;
+	STDMETHOD(GetONetworkName) (THIS_ BYTE * pointer) PURE;
+	STDMETHOD(GetChannelName) (THIS_ BYTE * pointer) PURE;
 
-	//TSID Additions
+//TSID Additions
 
 	STDMETHOD(GetTSIDPid) (THIS_ WORD * tsidpid) PURE;
 	
+//Descriptor Fix
+	
+	STDMETHOD(GetEPGFromFile) (void) PURE;
+	STDMETHOD(GetShortNextDescr) (THIS_ BYTE * shortnextdesc) PURE;
+	STDMETHOD(GetExtendedNextDescr) (THIS_ BYTE * extnextdesc) PURE;
+
 //***********************************************************************************************
 	
 	STDMETHOD(GetPMTPid) (THIS_ WORD * pmtpid) PURE;
@@ -142,8 +152,11 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown)
 
 	STDMETHOD(ShowFilterProperties)()PURE;
 
+//Refresh Additions
+
+	STDMETHOD(Refresh)()PURE;
+
 //**********************************************************************************************
 
 };
-
 

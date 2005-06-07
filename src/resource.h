@@ -42,6 +42,10 @@
 #define IDC_NPCTRL                      1029
 #define IDC_NPSLAVE                     1030
 #define IDC_REFRESH                     1031
+#define IDC_EPGINFO                     1032
+#define IDC_ONETID                      1033
+#define IDC_CHID                        1034
+#define IDC_NETID                       1035
 
 // Next default values for new objects
 // 

@@ -48,6 +48,22 @@ public:
 
 	int ac3_2;
 
+//NID Additions
+
+	int chnumb;
+	
+//ONID Additions
+
+	unsigned char chname[128];
+	unsigned char onetname[128];
+
+//Descriptor Fix
+
+	unsigned char sdesc[128];
+	unsigned char edesc[600];
+	unsigned char sndesc[128];
+	unsigned char endesc[600];
+
 //***********************************************************************************************
 	int txt;
 	int sid;

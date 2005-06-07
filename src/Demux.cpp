@@ -567,9 +567,9 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 			if (Onid != m_pPidParser->m_ONetworkID && Tsid != m_pPidParser->m_TStreamID)
 			{
 //TCHAR sz[100];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz, TEXT("RefreshPids"), MB_OK);
-//				m_pPidParser->RefreshPids();
+//sprintf(sz, "xxxx%u", 0);
+//MessageBox(NULL, sz, TEXT("change channel"), MB_OK);
+				m_pPidParser->RefreshPids();
 			
 			}
 
@@ -1047,7 +1047,7 @@ HRESULT Demux::LoadTsPin(IPin* pIPin)
 		//hr = GetTsArray(&pPidArray[0]);
 		//ULONG count = pPidArray[0];
 		//muxMapPid->MapPID(count,&pPidArray[1] , MEDIA_TRANSPORT_PACKET);
-		muxMapPid->MapPID(m_pPidParser->pids.TsArray[0], m_pPidParser->pids.TsArray, MEDIA_TRANSPORT_PACKET);
+		muxMapPid->MapPID(m_pPidParser->pids.TsArray[0] + 1, &m_pPidParser->pids.TsArray[1], MEDIA_TRANSPORT_PACKET);
 		muxMapPid->Release();
 		hr = S_OK;
 
@@ -1170,18 +1170,56 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 							}
 
 							if (SUCCEEDED(pIPin->Disconnect())){
-								*pConnect = TRUE;
-								m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
+
+//**********************************************************************************************
+//Another Bug Fix
+								*pConnect = FALSE;
+								if (m_bMPEG2AudioMediaType)
+									GetMP2Media(&pintype);
+								else
+									GetMP1Media(&pintype);
+
+								muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+								if (FAILED(pInpPin->QueryAccept(&pintype)))
+									*pConnect = TRUE;
+								else if (FAILED(m_pGraphBuilder->Reconnect(pInpPin)))
+									*pConnect = TRUE;
+								else if (FAILED(pIPin->ConnectedTo(&pInpPin)))
+									*pConnect = TRUE;
+								else
+								{
+									pInpPin->BeginFlush();
+									pInpPin->EndFlush();
+									pInpPin->Release();
+								}
+								
+								if (*pConnect == TRUE)
+									m_pFilterChain->RemoveChain(pinInfo.pFilter, pinInfo.pFilter);
 							}
+							return S_FALSE;
+						}
+						else
+						{
+							if (m_bMPEG2AudioMediaType)
+								GetMP2Media(&pintype);
+							else
+								GetMP1Media(&pintype);
+
+							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 						}
 
-						if (m_bMPEG2AudioMediaType)
-							GetMP2Media(&pintype);
-						else
-							GetMP1Media(&pintype);
+//Removed								*pConnect = TRUE;
+//Removed								m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
+//Removed				}
+//Removed							if (m_bMPEG2AudioMediaType)
+//Removed								GetMP2Media(&pintype);
+//Removed							else
+//Removed								GetMP1Media(&pintype);
+//Removed							GetMP2Media(&pintype);
+//Removed							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 
-//						GetMP2Media(&pintype);
-						muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+//**********************************************************************************************
+
 						USHORT pPid;
 						//GetAudioPid(&pPid);
 						pPid = get_MP2AudioPid();
@@ -1212,20 +1250,54 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 							}
 
 							if (SUCCEEDED(pIPin->Disconnect())){
-								*pConnect = TRUE;
-								m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
-							}
-						}
 
-						GetAC3Media(&pintype);
-						muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+//**********************************************************************************************
+//Another Bug Fix
+								*pConnect = FALSE;
+								GetAC3Media(&pintype);
+								muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+								if (FAILED(pInpPin->QueryAccept(&pintype)))
+									*pConnect = TRUE;
+								else if (FAILED(m_pGraphBuilder->Reconnect(pInpPin)))
+									*pConnect = TRUE;
+								else if (FAILED(pIPin->ConnectedTo(&pInpPin)))
+									*pConnect = TRUE;
+								else
+								{
+									pInpPin->BeginFlush();
+									pInpPin->EndFlush();
+									pInpPin->Release();
+								}
+								
+								if (*pConnect == TRUE)
+									m_pFilterChain->RemoveChain(pinInfo.pFilter, pinInfo.pFilter);
+							}
+							return S_FALSE;
+						}
+						else
+						{
+							GetAC3Media(&pintype);
+							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+						}
+//Removed								*pConnect = TRUE;
+//Removed								m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
+//Removed							}
+//Removed						GetAC3Media(&pintype);
+//Removed						muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+
+//**********************************************************************************************
+
 						USHORT pPid;
 						//GetAC3Pid(&pPid);
 //**********************************************************************************************
 //Audio2 AC3 Additions
+
 						pPid = get_AC3_2AudioPid();
+
 //Removed					pPid = m_pPidParser->pids.ac3;
+
 //**********************************************************************************************
+
 						LoadMediaPin(pIPin, pPid);
 						pIPin->Release();
 						hr = S_OK;
@@ -1252,13 +1324,44 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 								}
 
 								if (SUCCEEDED(pIPin->Disconnect())){
-									*pConnect = TRUE;
-									m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
+
+//**********************************************************************************************
+//Another Bug Fix
+									*pConnect = FALSE;
+									GetAC3Media(&pintype);
+									muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+									if (FAILED(pInpPin->QueryAccept(&pintype)))
+										*pConnect = TRUE;
+									else if (FAILED(m_pGraphBuilder->Reconnect(pInpPin)))
+										*pConnect = TRUE;
+									else if (FAILED(pIPin->ConnectedTo(&pInpPin)))
+										*pConnect = TRUE;
+									else
+									{
+										pInpPin->BeginFlush();
+										pInpPin->EndFlush();
+										pInpPin->Release();
+									}
+								
+									if (*pConnect == TRUE)
+										m_pFilterChain->RemoveChain(pinInfo.pFilter, pinInfo.pFilter);
 								}
+								return S_FALSE;
+							}
+							else
+							{
+								GetAC3Media(&pintype);
+								muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 							}
 
-							GetAC3Media(&pintype);
-							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+//Removed									*pConnect = TRUE;
+//Removed									m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
+//Removed								}
+//Removed							GetAC3Media(&pintype);
+//Removed							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+
+//**********************************************************************************************
+
 							USHORT pPid;
 							//GetAC3Pid(&pPid);
 //**********************************************************************************************

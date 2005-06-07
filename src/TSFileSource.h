@@ -92,6 +92,14 @@ public:
 	HRESULT FileSeek(REFERENCE_TIME seektime);
 
 	HRESULT OnConnect();
+
+//**********************************************************************************************
+//RefreshPids Additions
+
+	STDMETHODIMP Refresh();
+
+//**********************************************************************************************
+
 	HRESULT RefreshPids();
 	HRESULT RefreshDuration();
 
@@ -146,15 +154,25 @@ protected:
 //NID Additions
 
 	STDMETHODIMP GetNIDPid(WORD *pNIDPid);
+	STDMETHODIMP GetNetworkName(BYTE *pointer);
+	STDMETHODIMP GetChannelNumber (BYTE *pointer);
 	
 //ONID Additions
 
 	STDMETHODIMP GetONIDPid(WORD *pONIDPid);
+	STDMETHODIMP GetONetworkName(BYTE *pointer);
+	STDMETHODIMP GetChannelName(BYTE *pointer);
 	
 //TSID Additions
 
 	STDMETHODIMP GetTSIDPid(WORD *pTSIDPid);
-	
+
+//Descriptor Fix
+
+	STDMETHODIMP GetEPGFromFile(void);
+	STDMETHODIMP GetShortNextDescr(BYTE * POINTER);
+	STDMETHODIMP GetExtendedNextDescr(BYTE * POINTER);
+
 //***********************************************************************************************
 	
 	STDMETHODIMP GetPMTPid(WORD *pPMTPid);

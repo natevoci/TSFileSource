@@ -25,6 +25,7 @@
 
 #include "PidInfo.h"
 #include <crtdbg.h>
+#include <streams.h>
 
 PidInfo::PidInfo()
 {
@@ -47,6 +48,22 @@ void PidInfo::Clear()
 
 	ac3_2   = 0;
 
+//NID Additions
+
+	chnumb	= 0;
+
+//ONID Additions
+
+	ZeroMemory(onetname, 128);
+	ZeroMemory(chname, 128);
+
+//Descriptor Fix
+
+	ZeroMemory(sdesc, 128);
+	ZeroMemory(edesc, 600);
+	ZeroMemory(sndesc, 128);
+	ZeroMemory(endesc, 600);
+
 //***********************************************************************************************
 
 	txt   = 0;
@@ -56,7 +73,7 @@ void PidInfo::Clear()
 	start = 0;
 	end   = 0;
 	dur   = 0;
-	for (int i = 0 ; i < 15 ; i++ )
+	for (int i = 0 ; i < 16 ; i++ )
 	{
 		TsArray[i] = 0;
 	}
@@ -74,6 +91,22 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 
 	ac3_2   = pidInfo->ac3_2;
 
+//NID Additions
+
+	chnumb	= pidInfo->chnumb;
+
+//ONID Additions
+
+	memcpy(onetname, pidInfo->onetname, 128);
+	memcpy(chname, pidInfo->chname, 128);
+
+//Descriptor Fix
+
+	memcpy(sdesc, pidInfo->sdesc, 128);
+	memcpy(edesc, pidInfo->edesc, 600);
+	memcpy(sndesc, pidInfo->sndesc, 128);
+	memcpy(endesc, pidInfo->endesc, 600);
+
 //***********************************************************************************************
 
 	txt   = pidInfo->txt;
@@ -83,7 +116,7 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 	start = pidInfo->start;
 	end   = pidInfo->end;
 	dur   = pidInfo->dur;
-	for (int i = 0 ; i < 15 ; i++ )
+	for (int i = 0 ; i < 16 ; i++ )
 	{
 		TsArray[i] = pidInfo->TsArray[i];
 	}

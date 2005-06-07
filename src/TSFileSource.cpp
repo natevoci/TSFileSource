@@ -183,30 +183,6 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		if (FAILED(hr))
 			return hr;
 
-//*********************************************************************************************
-//wait for Growing File Additions
-/*
-		__int64	fileSize = 0;
-		m_pFileReader->GetFileSize(&fileSize);
-
-		//Check if file is being recorded
-		if(fileSize < 2000000)
-		{
-			if (m_pPidParser->RefreshPids() == S_OK)
-			{
-				LoadPgmReg();
-				m_pPin->DeliverBeginFlush();
-				m_pDemux->AOnConnect(GetFilterGraph());
-				m_pPin->DeliverEndFlush();
-				RefreshDuration();
-			}
-
-		}
-*/
-
-//*********************************************************************************************
-
-
 	REFERENCE_TIME start, stop;
 		m_pPin->GetPositions(&start, &stop);
 
@@ -217,18 +193,6 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 	}
 
 //**********************************************************************************************
-//Property Page Additions
-/*
-	HRESULT hr2 = CSource::Run(tStart);
-	if (m_pPidParser->pidArray.Count() >= 2 && !m_PropOpen)
-	{
-		m_PropOpen = true;
-		ShowFilterProperties();
-		m_PropOpen = false;
-	}
-	return hr2;
-*/
-//Removed	return CSource::Run(tStart);
 
 //NP Control Additions
 
@@ -382,13 +346,41 @@ HRESULT CTSFileSourceFilter::LoadPgmReg(void)
 	return hr;
 }
 
-//*********************************************************************************************
+//RefreshPids Additions 
 
+HRESULT CTSFileSourceFilter::Refresh()
+{
+	int sid = m_pPidParser->pids.sid;
+	int sidsave = m_pPidParser->m_ProgramSID;
+
+	CAutoLock lock(&m_Lock);
+	m_pPidParser->RefreshPids();
+
+	if (m_pPidParser->m_TStreamID && m_pPidParser->pidArray.Count() >= 2)
+	{
+		m_pPidParser->set_SIDPid(sid); //Setup for search
+		m_pPidParser->set_ProgramSID(); //set to same sid as before
+		m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
+	}
+	m_pPin->ChangeStart();
+	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pPin->ChangeStop();
+	return S_OK;
+}
+
+//*********************************************************************************************
 
 HRESULT CTSFileSourceFilter::RefreshPids()
 {
 	CAutoLock lock(&m_Lock);
-	return m_pPidParser->ParseFromFile();
+
+//*********************************************************************************************
+//	RefreshPids();
+
+	return m_pPidParser->ParseFromFile(m_pFileReader->GetFilePointer());
+//Removed	return m_pPidParser->ParseFromFile();
+
+//*********************************************************************************************
 }
 
 HRESULT CTSFileSourceFilter::RefreshDuration()
@@ -613,6 +605,93 @@ STDMETHODIMP CTSFileSourceFilter::GetDuration(REFERENCE_TIME *dur)
 
 }
 
+//*********************************************************************************************
+//NID Additions
+
+STDMETHODIMP CTSFileSourceFilter::GetChannelNumber (BYTE *pointer)
+{
+	if (!pointer)
+		  return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	m_pPidParser->get_ChannelNumber(pointer);
+
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetNetworkName (BYTE *pointer)
+{
+	if (!pointer)
+		  return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	m_pPidParser->get_NetworkName(pointer);
+
+	return NOERROR;
+}
+
+//ONID Additions
+
+STDMETHODIMP CTSFileSourceFilter::GetONetworkName (BYTE *pointer)
+{
+	if (!pointer)
+		  return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	m_pPidParser->get_ONetworkName(pointer);
+
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetChannelName (BYTE *pointer)
+{
+	if (!pointer)
+		  return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	m_pPidParser->get_ChannelName(pointer);
+
+	return NOERROR;
+}
+
+//Descriptor Fix
+
+STDMETHODIMP CTSFileSourceFilter::GetEPGFromFile(void)
+{
+	CAutoLock lock(&m_Lock);
+	return m_pPidParser->get_EPGFromFile();
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetShortNextDescr (BYTE *pointer)
+{
+	if (!pointer)
+		  return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	m_pPidParser->get_ShortNextDescr(pointer);
+
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetExtendedNextDescr (BYTE *pointer)
+{
+	if (!pointer)
+		  return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	m_pPidParser->get_ExtendedNextDescr(pointer);
+
+	return NOERROR;
+}
+
+//*********************************************************************************************
+
 STDMETHODIMP CTSFileSourceFilter::GetShortDescr (BYTE *pointer)
 {
 	if (!pointer)
@@ -685,11 +764,11 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	{
 		PgmNumber = 0;
 	}
-	m_pPin->DeliverBeginFlush();
+	m_pPin->ChangeStart();
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pDemux->AOnConnect(GetFilterGraph());
-	m_pPin->DeliverEndFlush();
+	m_pPin->ChangeStop();
 
 	return NOERROR;
 	
@@ -730,13 +809,28 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	{
 		PgmNumb = 0;
 	}
-//	m_pTunerEvent->SetEventFlag(true);
-	m_pPin->DeliverBeginFlush();
+//**********************************************************************************************
+//Another bug fix
+
+	m_pPin->ChangeStart();
+
+//Removed	m_pPin->DeliverBeginFlush();
+
+//**********************************************************************************************
+
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pDemux->AOnConnect(GetFilterGraph());
-	m_pPin->DeliverEndFlush();
-//	m_pTunerEvent->SetEventFlag(false);
+
+//**********************************************************************************************
+//Another bug fix
+
+	m_pPin->ChangeStop();
+
+//Removed	m_pPin->DeliverEndFlush();
+
+//**********************************************************************************************
+
 	return NOERROR;
 }
 
@@ -758,11 +852,28 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 		PgmNumb = m_pPidParser->pidArray.Count() - 1;
 	}
 
-	m_pPin->DeliverBeginFlush();
+//**********************************************************************************************
+//Another bug fix
+
+	m_pPin->ChangeStart();
+
+//Removed	m_pPin->DeliverBeginFlush();
+
+//**********************************************************************************************
+
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pDemux->AOnConnect(GetFilterGraph());
-	m_pPin->DeliverEndFlush();
+
+//**********************************************************************************************
+//Another bug fix
+
+	m_pPin->ChangeStop();
+
+//Removed	m_pPin->DeliverEndFlush();
+
+//**********************************************************************************************
+
 	return NOERROR;
 }
 
@@ -1124,26 +1235,23 @@ STDMETHODIMP CTSFileSourceFilter::SetRegProgram()
 STDMETHODIMP CTSFileSourceFilter::ShowFilterProperties()
 {
 
-	HRESULT hr = 0;
-    HWND    phWnd = (HWND)CreateEvent(NULL, FALSE, FALSE, NULL);
+//    HWND    phWnd = (HWND)CreateEvent(NULL, FALSE, FALSE, NULL);
 
 	ULONG refCount;
 	IEnumFilters * piEnumFilters2 = NULL;
-	hr = GetFilterGraph()->EnumFilters(&piEnumFilters2);
-	if SUCCEEDED(hr)
+	if SUCCEEDED(GetFilterGraph()->EnumFilters(&piEnumFilters2))
 	{
 		IBaseFilter * piFilter2;
-		while ( piEnumFilters2->Next(1, &piFilter2, 0) == NOERROR )
+		while (piEnumFilters2->Next(1, &piFilter2, 0) == NOERROR )
 		{
 			ISpecifyPropertyPages* piProp2 = NULL;
-			hr = piFilter2->QueryInterface(IID_ISpecifyPropertyPages, (void **)&piProp2);
-			if ((hr == S_OK) && (piProp2 != NULL))
+			if ((piFilter2->QueryInterface(IID_ISpecifyPropertyPages, (void **)&piProp2) == S_OK) && (piProp2 != NULL))
 			{
 				FILTER_INFO filterInfo2;
-				hr = piFilter2->QueryFilterInfo(&filterInfo2);
+				piFilter2->QueryFilterInfo(&filterInfo2);
 				LPOLESTR fileName;
 				m_pFileReader->GetFileName(&fileName);
-
+			
 				if (wcscmp(fileName, filterInfo2.achName) == 0)
 				{
 					IUnknown *piFilterUnk;
@@ -1152,19 +1260,20 @@ STDMETHODIMP CTSFileSourceFilter::ShowFilterProperties()
 					CAUUID caGUID;
 					piProp2->GetPages(&caGUID);
 					piProp2->Release();
-					OleCreatePropertyFrame(phWnd, 0, 0, filterInfo2.achName, 1, &piFilterUnk, caGUID.cElems, caGUID.pElems, 0, 0, NULL);
+//					OleCreatePropertyFrame(phWnd, 0, 0, filterInfo2.achName, 1, &piFilterUnk, caGUID.cElems, caGUID.pElems, 0, 0, NULL);
+					OleCreatePropertyFrame(0, 0, 0, filterInfo2.achName, 1, &piFilterUnk, caGUID.cElems, caGUID.pElems, 0, 0, NULL);
 					piFilterUnk->Release();
 					CoTaskMemFree(caGUID.pElems);
+//					filterInfo2.pGraph->Release();
 				}
+				piProp2->Release();
 			}
 			refCount = piFilter2->Release();
 		}
 		refCount = piEnumFilters2->Release();
 	}
-	if (hr == S_OK)
-		return S_FALSE;
-
-	return hr;
+//	CloseHandle(phWnd);
+	return NOERROR;
 }
 //**********************************************************************************************
 
