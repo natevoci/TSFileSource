@@ -80,9 +80,11 @@ public:
 	HRESULT FileSeek(REFERENCE_TIME seektime);
 
 	HRESULT OnConnect();
+	HRESULT RefreshPids();
+	HRESULT RefreshDuration();
 
-	PidParser *get_Pids();
-	FileReader *get_FileReader();
+	//PidParser *get_Pids();
+	//FileReader *get_FileReader();
 
 
 protected:
@@ -133,13 +135,8 @@ protected:
 
 	STDMETHODIMP GetReadOnly(WORD* pFileMode);
 
-//*********************************************************************************************
-//Bitrate addition
-
 	STDMETHODIMP GetBitRate(long* pRate);
 	STDMETHODIMP SetBitRate(long Rate);
-
-//*********************************************************************************************
 
 protected:
 	CTSFileSourcePin       *m_pPin;          // A simple rendered input pin
@@ -149,8 +146,6 @@ protected:
 	Demux *m_pDemux;
 
 	CCritSec m_Lock;                // Main renderer critical section
-
-	__int64 m_filelength;
 
 };
 

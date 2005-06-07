@@ -30,52 +30,45 @@ IDD_PROPPAGE DIALOG DISCARDABLE  0, 0, 277, 137
 STYLE DS_MODALFRAME | WS_CHILD
 FONT 8, "MS Sans Serif"
 BEGIN
-    EDITTEXT        IDC_VIDEO,135,15,40,12,ES_AUTOHSCROLL | ES_READONLY
-    EDITTEXT        IDC_AUDIO2,135,45,40,12,ES_AUTOHSCROLL | ES_READONLY
-    EDITTEXT        IDC_AUDIO,135,30,40,12,ES_AUTOHSCROLL | ES_READONLY
-    EDITTEXT        IDC_SID,135,75,40,12,ES_AUTOHSCROLL | ES_READONLY
-    EDITTEXT        IDC_AC3,135,60,40,12,ES_AUTOHSCROLL | ES_READONLY
-    EDITTEXT        IDC_PMT,51,70,40,12,ES_AUTOHSCROLL | ES_READONLY
-    EDITTEXT        IDC_TXT,135,90,40,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Text",IDC_STATIC,105,90,27,8
-    EDITTEXT        IDC_PGM,51,100,39,12,ES_AUTOHSCROLL
-    EDITTEXT        IDC_CNT,51,115,40,12,ES_AUTOHSCROLL | ES_READONLY
-    PUSHBUTTON      "&Enter",IDC_ENTER,10,100,40,12,WS_GROUP
-    PUSHBUTTON      "&Next",IDC_NEXT,10,115,39,12,WS_GROUP
-    RADIOBUTTON     "MPEG 1",IDC_MPEG1MODE,195,18,65,8,WS_GROUP
-    LTEXT           "Video",IDC_STATIC,105,15,25,8
-    LTEXT           "Audio",IDC_STATIC,105,30,25,8
-    LTEXT           "AC3",IDC_STATIC,105,60,27,8
-    LTEXT           "PMT",IDC_STATIC,31,70,15,8
-    LTEXT           "SID",IDC_STATIC,105,75,25,8
-    EDITTEXT        IDC_DURATION,11,25,80,13,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "",IDC_STATIC,5,5,90,130
     LTEXT           "Duration",IDC_STATIC,11,15,50,10
-//**********************************************************************************************
-//BitRate Additions
-
-    EDITTEXT        IDC_DATARATE,11,50,80,13,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_DURATION,11,25,80,13,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "File Bit Rate",IDC_STATIC,11,40,65,8
-//Removed    EDITTEXT        IDC_STARTTIME,11,50,80,13,ES_AUTOHSCROLL
-//Removed    LTEXT           "Starttime",IDC_STATIC,11,40,65,8
-//**********************************************************************************************
-//Duration Additions
+    EDITTEXT        IDC_DATARATE,11,50,80,13,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "PMT",IDC_STATIC,31,70,15,8
+    EDITTEXT        IDC_PMT,51,70,40,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "PCR",IDC_STATIC,31,85,15,8
     EDITTEXT        IDC_PCR,51,85,40,12,ES_AUTOHSCROLL | ES_READONLY
+    PUSHBUTTON      "&Enter",IDC_ENTER,10,100,40,12,WS_GROUP
+    EDITTEXT        IDC_PGM,51,100,39,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "&Next",IDC_NEXT,10,115,39,12,WS_GROUP
+    EDITTEXT        IDC_CNT,51,115,40,12,ES_AUTOHSCROLL | ES_READONLY
     GROUPBOX        "",IDC_STATIC,100,5,80,100
-    GROUPBOX        "",IDC_STATIC,5,5,90,130
+    LTEXT           "Video",IDC_STATIC,105,15,25,8
+    EDITTEXT        IDC_VIDEO,135,15,40,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Audio",IDC_STATIC,105,30,25,8
+    EDITTEXT        IDC_AUDIO,135,30,40,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Audio 2",IDC_STATIC,105,45,25,8
-    CONTROL         "Auto Mode",IDC_AUTOMODE,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,185,50,85,10
-    CONTROL         "Live Delay",IDC_DELAYMODE,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,110,125,70,10
-    CONTROL         "Rate Control",IDC_RATECONTROL,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,185,80,85,10
+    EDITTEXT        IDC_AUDIO2,135,45,40,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "AC3",IDC_STATIC,105,60,27,8
+    EDITTEXT        IDC_AC3,135,60,40,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "SID",IDC_STATIC,105,75,25,8
+    EDITTEXT        IDC_SID,135,75,40,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Text",IDC_STATIC,105,90,27,8
+    EDITTEXT        IDC_TXT,135,90,40,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "File Status",IDC_STATIC,100,110,35,8
     EDITTEXT        IDC_FILEMODE,140,110,40,12,ES_AUTOHSCROLL | ES_READONLY
+    CONTROL         "Live Delay",IDC_DELAYMODE,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,110,125,70,10
     GROUPBOX        "MPEG Audio Pin Type",IDC_STATIC,185,5,85,40
+    RADIOBUTTON     "MPEG 1",IDC_MPEG1MODE,195,18,65,8,WS_GROUP
     RADIOBUTTON     "MPEG 2",IDC_MPEG2MODE,195,30,65,8,WS_GROUP
+    CONTROL         "Auto Mode",IDC_AUTOMODE,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,185,50,85,10
     CONTROL         "AC3 Preference",IDC_AC3MODE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,185,65,85,10
+    CONTROL         "Rate Control",IDC_RATECONTROL,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,185,80,85,10
     CONTROL         "Create TS Pin",IDC_CREATETSPIN,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,185,95,85,10
 END
@@ -133,8 +126,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,0,1,6
- PRODUCTVERSION 2,0,1,6
+ FILEVERSION 2,0,1,7
+ PRODUCTVERSION 2,0,1,7
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -152,14 +145,14 @@ BEGIN
             VALUE "Comments", "Push Source filter for MPEG-2 Transport Stream Files.(BDA Compatable)\0"
             VALUE "CompanyName", "\0"
             VALUE "FileDescription", "TS File Source(AU)\0"
-            VALUE "FileVersion", "2, 0, 1, 6z\0"
+            VALUE "FileVersion", "2, 0, 1, 7\0"
             VALUE "InternalName", "TS File Source(AU)\0"
             VALUE "LegalCopyright", "This filter is published under Gnu Public Licence © 2003. Written by DH & bear@forums.dvbowners.com & nate@forums.dvbowners.com.\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "TSFileSource.ax\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "TS File Source(AU)\0"
-            VALUE "ProductVersion", "2, 0, 1, 6z\0"
+            VALUE "ProductVersion", "2, 0, 1, 7\0"
             VALUE "SpecialBuild", "\0"
         END
     END

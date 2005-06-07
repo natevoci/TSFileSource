@@ -41,6 +41,8 @@ public:
 	virtual ~PidParser();
 
 	HRESULT ParseFromFile();
+	HRESULT RefreshPids();
+	HRESULT RefreshDuration(BOOL bStoreInArray = TRUE);
 
 	void get_ShortDescr(BYTE *pointer);
 	void get_ExtendedDescr(BYTE *pointer);
@@ -52,42 +54,39 @@ public:
 	PidInfo pids;
 	PidInfoArray pidArray;	//Currently selected pids
 
-	static HRESULT FindSyncByte(PBYTE pbData, long lDataLength, LPLONG a, int step);
+	static HRESULT FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int step);
 
-	static HRESULT FindFirstPCR(PBYTE pData, long lDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, long* pos);
-	static HRESULT FindLastPCR(PBYTE pData, long lDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, long* pos);
-	static HRESULT FindNextPCR(PBYTE pData, long lDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, long* pos, int step);
-
-protected:
-	static HRESULT CheckForPCR(PBYTE pData, LONG lDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
+	static HRESULT FindFirstPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
+	static HRESULT FindLastPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
+	static HRESULT FindNextPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
 
 protected:
-	HRESULT ParsePAT(PBYTE pData, LONG lDataLength, long pos);
-	HRESULT ParsePMT(PBYTE pData, LONG lDataLength, long pos);
-	BOOL CheckEsDescriptorForAC3(PBYTE pData, LONG lDataLength, int pos, int lastpos);
-	BOOL CheckEsDescriptorForTeletext(PBYTE pData, LONG lDataLength, int pos, int lastpos);
+	static HRESULT CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
 
-	HRESULT IsValidPMT(PBYTE pData, LONG lDataLength);
+protected:
+	HRESULT ParsePAT(PBYTE pData, ULONG ulDataLength, long pos);
+	HRESULT ParsePMT(PBYTE pData, ULONG ulDataLength, long pos);
+	BOOL CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+	BOOL CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+
+	HRESULT IsValidPMT(PBYTE pData, ULONG ulDataLength);
 
 	REFERENCE_TIME GetPCRFromFile(int step);
 
-	HRESULT ACheckVAPids(PBYTE pData, LONG lDataLength);
+	HRESULT ACheckVAPids(PBYTE pData, ULONG ulDataLength);
 
 	HRESULT CheckEPGFromFile();
-	bool CheckForEPG(PBYTE pData, LONG lDataLength, int pos);
-	HRESULT ParseEISection (int lDataLength);
-	HRESULT ParseShortEvent(int start, int IDataLength);
-	HRESULT ParseExtendedEvent(int start, int IDataLength);
+	bool CheckForEPG(PBYTE pData, ULONG ulDataLength, int pos);
+	HRESULT ParseEISection (ULONG ulDataLength);
+	HRESULT ParseShortEvent(int start, ULONG ulDataLength);
+	HRESULT ParseExtendedEvent(int start, ULONG ulDataLength);
+
+	REFERENCE_TIME GetFileDuration(PidInfo *pPids);
+	HRESULT GetPCRduration(PBYTE pData, long lDataLength, PidInfo *pPids, __int64 filelength, __int64* pStartFilePos, __int64* pEndFilePos);
 
 	void AddPidArray();
 	void SetPidArray(int n);
 	void AddTsPid(PidInfo *pidInfo, WORD pid);
-
-//**********************************************************************************************
-//Duration Additions
-	REFERENCE_TIME GetFileDuration(PidInfo *pPids);
-	HRESULT GetPCRduration(PBYTE pData, long lDataLength, PidInfo *pPids, __int64 filelength, __int64* pStartFilePos, __int64* pEndFilePos);
-//**********************************************************************************************
 
 protected:
 	FileReader *m_pFileReader;
@@ -99,18 +98,12 @@ protected:
 	BYTE	m_shortdescr[128];
 	BYTE	m_extenddescr[600];
 
-//	__int64	filepos;
+	__int64	filepos;
 	WORD	m_pgmnumb;
 
-//**********************************************************************************************
-//Duration Additions
-	__int64	filepos;
 	__int64 m_fileLenOffset;
 	__int64	m_fileEndOffset;
 	__int64	m_fileStartOffset;
-//**********************************************************************************************
-
-
 
 };
 

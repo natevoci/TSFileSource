@@ -35,6 +35,20 @@ public:
 	virtual ~Demux();
 
 	STDMETHODIMP AOnConnect(IFilterGraph *pGraph);
+
+	BOOL get_Auto();
+	void set_Auto(BOOL bAuto);
+
+	BOOL get_AC3Mode();
+	void set_AC3Mode(BOOL bAC3Mode);
+
+	BOOL get_CreateTSPinOnDemux();
+	void set_CreateTSPinOnDemux(BOOL bCreateTSPinOnDemux);
+
+	BOOL get_MPEG2AudioMediaType();
+	void set_MPEG2AudioMediaType(BOOL bMPEG2AudioMediaType);
+
+protected:
 	HRESULT UpdateDemuxPins(IBaseFilter* pDemux);
 	HRESULT CheckDemuxPin(IBaseFilter* pDemux, AM_MEDIA_TYPE pintype, IPin** pIPin);
 	HRESULT CheckVideoPin(IBaseFilter* pDemux);
@@ -65,18 +79,6 @@ public:
 	HRESULT	DoStop();
 	HRESULT	DoStart();
 	HRESULT	DoPause();
-
-	BOOL get_Auto();
-	void set_Auto(BOOL bAuto);
-
-	BOOL get_AC3Mode();
-	void set_AC3Mode(BOOL bAC3Mode);
-
-	BOOL get_CreateTSPinOnDemux();
-	void set_CreateTSPinOnDemux(BOOL bCreateTSPinOnDemux);
-
-	BOOL get_MPEG2AudioMediaType();
-	void set_MPEG2AudioMediaType(BOOL bMPEG2AudioMediaType);
 
 protected:
 	PidParser *m_pPidParser;

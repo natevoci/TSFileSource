@@ -44,10 +44,10 @@ public:
 
 	HRESULT GetFileSize(__int64 *lpllsize);
 	DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
+	__int64 GetFilePointer();
 
-	HRESULT Read(PBYTE pbData, LONG lDataLength);
-
-	HRESULT Read(PBYTE pbData, LONG lDataLength, __int64 llDistanceToMove, DWORD dwMoveMethod);
+	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes);
+	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod);
 
 	HRESULT get_ReadOnly(WORD *AutoMode);
 	HRESULT get_DelayMode(WORD *DelayMode);

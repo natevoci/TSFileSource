@@ -196,9 +196,16 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 	return ::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, dwMoveMethod);
 }
 
-HRESULT FileReader::Read(PBYTE pbData, LONG lDataLength)
+__int64 FileReader::GetFilePointer()
 {
-	DWORD dwRead = 0;
+	LARGE_INTEGER li;
+	li.QuadPart = 0;
+	li.LowPart = ::SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
+	return li.QuadPart;
+}
+
+HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
+{
 	HRESULT hr;
 
 	// If the file has already been closed, don't continue
@@ -206,20 +213,20 @@ HRESULT FileReader::Read(PBYTE pbData, LONG lDataLength)
 		return S_FALSE;
 
 	//Get File Position
-	LARGE_INTEGER li;
-	li.QuadPart = 0;
-	li.LowPart = ::SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
-	__int64 m_filecurrent = li.QuadPart;
+	__int64 m_filecurrent = GetFilePointer();
 
 	//Read file data into buffer
-	hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, &dwRead, NULL);
-	if (FAILED(hr) || dwRead < (ULONG)lDataLength)
-	{
+	hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, dwReadBytes, NULL);
+	if (FAILED(hr))
+		return hr;
+	if (*dwReadBytes < (ULONG)lDataLength)
+		return S_FALSE;
+
 //*********************************************************************************************
 //Live File Additions
-		if (m_bReadOnly)
+/*		if (m_bReadOnly)
 		{
-			if (dwRead < (ULONG)lDataLength)
+			if (*dwReadBytes < (ULONG)lDataLength)
 			{
 				if (m_bDelay)
 					Sleep(10000);
@@ -229,22 +236,20 @@ HRESULT FileReader::Read(PBYTE pbData, LONG lDataLength)
 				LARGE_INTEGER li;
 				li.QuadPart = (__int64)(m_filecurrent);
 				::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, FILE_BEGIN);
-				hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, &dwRead, NULL);
+				hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, dwReadBytes, NULL);
 			}
-			if (FAILED(hr) || dwRead == 0)
+			if (FAILED(hr) || *dwReadBytes == 0)
 			{
 				return S_FALSE;
 			}
 			return S_OK;
 		}
-
+*/
 //*********************************************************************************************
-		return S_FALSE;
-	}
 	return S_OK;
 }
 
-HRESULT FileReader::Read(PBYTE pbData, LONG lDataLength, __int64 llDistanceToMove, DWORD dwMoveMethod)
+HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod)
 {
 	//If end method then we want llDistanceToMove to be the end of the buffer that we read.
 	if (dwMoveMethod == FILE_END)
@@ -252,7 +257,7 @@ HRESULT FileReader::Read(PBYTE pbData, LONG lDataLength, __int64 llDistanceToMov
 
 	SetFilePointer(llDistanceToMove, dwMoveMethod);
 
-	return Read(pbData, lDataLength);
+	return Read(pbData, lDataLength, dwReadBytes);
 }
 
 HRESULT FileReader::get_ReadOnly(WORD *ReadOnly)

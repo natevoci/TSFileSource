@@ -63,7 +63,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser);
 
-	m_pPin = new CTSFileSourcePin(GetOwner(), this, phr);
+	m_pPin = new CTSFileSourcePin(GetOwner(), this, m_pFileReader, m_pPidParser, phr);
 
 	if (m_pPin == NULL) {
 		if (phr)
@@ -175,14 +175,18 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 	if (m_pPidParser->pids.dur > 10)
 	{
+		__int64 filelength = 0;
+		m_pFileReader->GetFileSize(&filelength);
+
 		//DOUBLE fileindex;
-		//fileindex = (DOUBLE)((DOUBLE)((DOUBLE)(m_filelength / (DOUBLE)m_pPidParser->pids.dur) * (DOUBLE)seektime));
+		//fileindex = (DOUBLE)((DOUBLE)((DOUBLE)(filelength / (DOUBLE)m_pPidParser->pids.dur) * (DOUBLE)seektime));
 		//m_pFileReader->SetFilePointer(fileindex, FILE_BEGIN);
 
 		// shifting right by 14 rounds the seek and duration time down to the
 		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
+
 		__int64 nFileIndex;
-		nFileIndex = m_filelength * (seektime>>14) / (m_pPidParser->pids.dur>>14);
+		nFileIndex = filelength * (seektime>>14) / (m_pPidParser->pids.dur>>14);
 		m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
 
 	}
@@ -195,7 +199,7 @@ HRESULT CTSFileSourceFilter::OnConnect()
 	return m_pDemux->AOnConnect(GetFilterGraph());
 }
 
-PidParser *CTSFileSourceFilter::get_Pids()
+/*PidParser *CTSFileSourceFilter::get_Pids()
 {
 	return m_pPidParser;
 }
@@ -203,7 +207,7 @@ PidParser *CTSFileSourceFilter::get_Pids()
 FileReader *CTSFileSourceFilter::get_FileReader()
 {
 	return m_pFileReader;
-}
+}*/
 
 
 STDMETHODIMP CTSFileSourceFilter::GetPages(CAUUID *pPages)
@@ -230,47 +234,24 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	if (FAILED(hr))
 		return VFW_E_INVALIDMEDIATYPE;
 
-
-	hr = m_pFileReader->GetFileSize(&m_filelength);
-	if (FAILED(hr))
-		return hr;
-
-	{
-		CAutoLock lock(&m_Lock);
-		hr = m_pPidParser->ParseFromFile();
-		if (SUCCEEDED(hr))
-			m_pPin->SetDuration(m_pPidParser->pids.dur);
-	}
-
-//Removed:-	hr = GetPids();
-
-/*//Removed:-	if (FAILED(hr))
-	{
-		return VFW_E_INVALID_MEDIA_TYPE;
-	}
-
-	DWORD dwSizeLow;
-	DWORD dwSizeHigh;
-
-	dwSizeLow = GetFileSize(m_hFile, &dwSizeHigh);
-	if ((dwSizeLow == 0xFFFFFFFF) && (GetLastError() != NO_ERROR )){
-
-		return S_FALSE;
-
-	}
-
-//Removed	m_filelength = (double)(dwSizeHigh * 2^32) + (double)dwSizeLow;
-*/
-
-
-
-//*********************************************************************************************
+	RefreshPids();
+	RefreshDuration();
 
 	CAutoLock lock(&m_Lock);
 	m_pFileReader->CloseFile();
 
 	return hr;
+}
 
+HRESULT CTSFileSourceFilter::RefreshPids()
+{
+	CAutoLock lock(&m_Lock);
+	return m_pPidParser->ParseFromFile();
+}
+
+HRESULT CTSFileSourceFilter::RefreshDuration()
+{
+	return m_pPin->SetDuration(m_pPidParser->pids.dur);
 }
 
 STDMETHODIMP CTSFileSourceFilter::GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TYPE *pmt)
@@ -479,21 +460,21 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 {
 	CAutoLock lock(&m_Lock);
 
+	PgmNumb -= 1;
 	if (PgmNumb >= m_pPidParser->pidArray.Count())
 	{
-		PgmNumb = m_pPidParser->pidArray.Count();
+		PgmNumb = m_pPidParser->pidArray.Count() - 1;
 	}
-	else if (PgmNumb < 1)
+	else if (PgmNumb < 0)
 	{
-		PgmNumb = 1;
+		PgmNumb = 0;
 	}
-	if (PgmNumb)
-	{
-		//m_pgmnumb = PgmNumb - 1;
-		m_pPidParser->set_ProgramNumber(PgmNumb - 1);
-		m_pPin->SetDuration(m_pPidParser->pids.dur);
-	}
+
+	m_pPin->DeliverBeginFlush();
+	m_pPidParser->set_ProgramNumber(PgmNumb);
+	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pPin->DeliverEndFlush();
 	return NOERROR;
 }
 
@@ -507,9 +488,11 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	{
 		PgmNumb = 0;
 	}
+	m_pPin->DeliverBeginFlush();
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pPin->DeliverEndFlush();
 	return NOERROR;
 }
 
@@ -642,9 +625,6 @@ STDMETHODIMP CTSFileSourceFilter::GetReadOnly(WORD *ReadOnly)
 	return NOERROR;
 }
 
-//*********************************************************************************************
-//Bitrate addition
-
 STDMETHODIMP CTSFileSourceFilter::GetBitRate(long *pRate)
 {
     if(!pRate)
@@ -668,7 +648,6 @@ STDMETHODIMP CTSFileSourceFilter::SetBitRate(long Rate)
 
 }
 
-//*********************************************************************************************
 //////////////////////////////////////////////////////////////////////////
 // End of interface implementations
 //////////////////////////////////////////////////////////////////////////

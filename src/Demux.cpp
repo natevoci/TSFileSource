@@ -126,8 +126,11 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 	}
 
 	m_pMediaControl->Release();
+	m_pMediaControl = NULL;
 	m_pFilterChain->Release();
+	m_pFilterChain = NULL;
 	m_pGraphBuilder->Release();
+	m_pGraphBuilder = NULL;
 
 	return NOERROR;
 }

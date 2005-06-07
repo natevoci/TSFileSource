@@ -142,17 +142,10 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	wsprintf(sz, TEXT("%02i:%02i:%02i.%03i"), hours, mins, secs, ms);
 	SetWindowText(GetDlgItem(m_hwnd, IDC_DURATION), sz);
 
-//*********************************************************************************************
-//Bitrate addition
 	long rate;
 	m_pProgram->GetBitRate(&rate);
     wsprintf(sz, TEXT("%lu"), rate);
     Edit_SetText(GetDlgItem(m_hwnd, IDC_DATARATE), sz);
-
-//*********************************************************************************************
-
-//*********************************************************************************************
-//AC3 & Teletext addition
 
 	m_pProgram->GetTelexPid(&PidNr);
 	wsprintf(sz, TEXT("%x"), PidNr);

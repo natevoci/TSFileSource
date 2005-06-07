@@ -31,6 +31,8 @@
 #ifndef TSFILESOURCEPIN_H
 #define TSFILESOURCEPIN_H
 
+#include "TSFileSource.h"
+#include "PidParser.h"
 #include "TSBuffer.h"
 
 /**********************************************
@@ -43,7 +45,7 @@ class CTSFileSourcePin : public CSourceStream,
 						 public CSourceSeeking
 {
 public:
-	CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter, HRESULT *phr);
+	CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter, FileReader *pFileReader, PidParser *pPidParser, HRESULT *phr);
 	~CTSFileSourcePin();
 
 	STDMETHODIMP NonDelegatingQueryInterface( REFIID riid, void ** ppv );
@@ -67,20 +69,9 @@ public:
 	BOOL get_RateControl();
 	void set_RateControl(BOOL bRateControl);
 
-//*********************************************************************************************
-//Bitrate addition
-
 	long get_BitRate();
 	void set_BitRate(long rate);
 
-	void GetBitRateAverage(__int64 bitratesample);
-	__int64 FindFirstPCR(long* a, PBYTE pbData, long lbufflen);
-	__int64 FindLastPCR(long* a, PBYTE pbData, long lbufflen);
-	__int64 PinGetNextPCR(PBYTE pbData, long lbufflen, long* a, int step);
-	HRESULT PinSyncBuffer(PBYTE pbData, long lbuflen, long* a, int step);
-	HRESULT PinCheckForPCR(PBYTE pbData, long pos, REFERENCE_TIME* pcrtime);
-
-//*********************************************************************************************
 protected:
 	HRESULT GetReferenceClock(IReferenceClock **pClock);
 	//HRESULT FillBufferSyncTS(IMediaSample *pSample);
@@ -90,16 +81,24 @@ protected:
 	HRESULT FindNextPCR(__int64 *pcrtime, long *byteOffset, long maxOffset);
 	HRESULT FindPrevPCR(__int64 *pcrtime, long *byteOffset);
 
+	void AddBitRateForAverage(__int64 bitratesample);
+
 	void Debug(LPCTSTR lpOutputString);
 
 protected:
 	CTSFileSourceFilter * const m_pTSFileSourceFilter;
-	CTSBuffer *m_pTSBuffer;
+	FileReader * const m_pFileReader;
+	PidParser * const m_pPidParser;
 
+	CTSBuffer *m_pTSBuffer;
+	
+	CCritSec  m_FillLock;
 	CCritSec  m_SeekLock;
+	BOOL      m_bSeeking;
 
 	REFERENCE_TIME m_rtStartTime;
 	REFERENCE_TIME m_rtPrevTime;
+	REFERENCE_TIME m_rtLastSeekStart;
 
 	__int64 m_llBasePCR;
 	__int64 m_llNextPCR;
@@ -114,20 +113,12 @@ protected:
 
 	BOOL   m_bRateControl;
 
-	int debugcount;
-
-//*********************************************************************************************
-//Bitrate addition
-
-	REFERENCE_TIME m_WaitForPCR;
 	long m_DataRate;
-	int m_BitRateCycle;
-	int m_BitRateCount;
+	__int64 m_DataRateTotal;
+	long m_BitRateCycle;
 	__int64 m_BitRateStore[256];
 
-
-
-//*********************************************************************************************
+	int debugcount;
 };
 
 #endif

@@ -70,11 +70,42 @@ HRESULT CTSBuffer::Require(long nBytes)
 {
 	long bytesAvailable = Count();
 
-	while (nBytes >= bytesAvailable)
+	while (nBytes > bytesAvailable)
 	{
 		BYTE *newItem = new BYTE[m_lTSBufferItemSize];
-		if (FAILED(m_pFileReader->Read(newItem, m_lTSBufferItemSize)))
-			return E_FAIL;
+		ULONG ulBytesRead = 0;
+
+		__int64 currPosition = m_pFileReader->GetFilePointer();
+		HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulBytesRead);
+		if (FAILED(hr))
+			return hr;
+
+		if (ulBytesRead < m_lTSBufferItemSize) 
+		{
+			WORD wReadOnly = 0;
+			m_pFileReader->get_ReadOnly(&wReadOnly);
+			if (wReadOnly)
+			{
+				while (ulBytesRead < m_lTSBufferItemSize) 
+				{
+					::OutputDebugString(TEXT("TSBuffer::Require() Waiting for file to grow.\n"));
+					Sleep(100);
+					
+					ULONG ulNextBytesRead = 0;				
+					m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
+					HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulNextBytesRead);
+					if (FAILED(hr))
+						return hr;
+					if ((ulNextBytesRead == 0) || (ulNextBytesRead == ulBytesRead))
+						return E_FAIL;
+					ulBytesRead = ulNextBytesRead;
+				}
+			}
+			else
+			{
+				return E_FAIL;
+			}
+		}
 
 		m_Array.push_back(newItem);
 		bytesAvailable += m_lTSBufferItemSize;

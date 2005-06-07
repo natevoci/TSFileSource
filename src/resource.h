@@ -29,15 +29,10 @@
 #define IDC_MPEG1MODE                   1022
 #define IDC_RATECONTROL2                1024
 #define IDC_CREATETSPIN                 1025
-
-//**********************************************************************************************
-//BitRate Additions
-
-#define IDC_DATARATE					1026
-//**********************************************************************************************
+#define IDC_DATARATE                    1026
 
 // Next default values for new objects
-//
+// 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        102
