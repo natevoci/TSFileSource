@@ -128,6 +128,7 @@ HRESULT PidParser::ParseFromFile()
 		a = 0;
 		pids.Clear();
 		hr = S_OK;
+		bool foundpmt; //Flag for PMT found
 
 		int curr_pmt = pidArray[i].pmt;
 		while (pids.pmt != curr_pmt && hr == S_OK)
@@ -137,6 +138,7 @@ HRESULT PidParser::ParseFromFile()
 			if (hr == S_OK)
 			{
 				//parse next packet for the PMT
+				foundpmt = S_FALSE; //Set Flag to PMT not found
 				pids.Clear();
 				if (ParsePMT(pData, lDataLength, a) == S_OK)
 				{
@@ -147,14 +149,23 @@ HRESULT PidParser::ParseFromFile()
 						if (IsValidPMT(pData, lDataLength) == S_OK)
 						{
 							//Set pcr & Store pids from PMT
-							pids.start = GetPCRFromFile(1);
-							pids.end = GetPCRFromFile(-1);
-							pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
+
+//**********************************************************************************************
+//Duration Additions
+
+							pids.dur = GetFileDuration(&pids);
+
+//Removed:-			pids.start = GetPCRFromFile(1);
+//Removed:-			pids.end = GetPCRFromFile(-1);
+//Removed:-			pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
+
+//**********************************************************************************************
+
 
 							SetPidArray(i);
-
-							filepos = 0;
+//							filepos = 0;
 							i++;
+							foundpmt = S_OK; //Set Flag to found PMT
 							continue;
 						}
 					}
@@ -162,8 +173,10 @@ HRESULT PidParser::ParseFromFile()
 				a += 188;
 			}
 		}
-
-		pidArray.RemoveAt(i);
+		//remove program from program List if we have not found
+		//a matching PMT with A/V pids in the stream.
+		if (foundpmt == S_FALSE)
+			pidArray.RemoveAt(i); // remove program from program List
 	}
 
 	//Search for A/V pids if no NIT or valid PMT found.
@@ -179,9 +192,16 @@ HRESULT PidParser::ParseFromFile()
 			else if (pids.aud && !pids.pcr)
 				pids.pcr = pids.aud;
 
-			pids.start = GetPCRFromFile(1);
-			pids.end = GetPCRFromFile(-1);
-			pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
+//**********************************************************************************************
+//Duration Additions
+
+			pids.dur = GetFileDuration(&pids);
+
+//Removed:-			pids.start = GetPCRFromFile(1);
+//Removed:-			pids.end = GetPCRFromFile(-1);
+//Removed:-			pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
+
+//**********************************************************************************************
 
 			// restore pcr pid if no matches with A/V pids
 			if (!pids.dur)
@@ -239,7 +259,7 @@ HRESULT PidParser::FindSyncByte(PBYTE pbData, long lDataLength, PLONG a, int ste
 	return E_FAIL;
 }
 
-HRESULT PidParser::ParsePAT(PBYTE pData, LONG lDataLength, int pos)
+HRESULT PidParser::ParsePAT(PBYTE pData, LONG lDataLength, long pos)
 {
 	HRESULT hr = S_FALSE;
 	WORD channeloffset;
@@ -251,7 +271,7 @@ HRESULT PidParser::ParsePAT(PBYTE pData, LONG lDataLength, int pos)
 
 			channeloffset = (WORD)(0x0F & pData[pos + 15]) << 8 | (0xFF & pData[pos + 16]);
 
-			for (int b = channeloffset + pos; b < pos + 182 ; b = b + 4)
+			for (long b = channeloffset + pos; b < pos + 182 ; b = b + 4)
 			{
 				if ( ((0xe0 & pData[b + 3]) == 0xe0) && (pData[b + 3]) != 0xff )
 				{
@@ -274,7 +294,7 @@ HRESULT PidParser::ParsePAT(PBYTE pData, LONG lDataLength, int pos)
 	return hr;
 }
 
-HRESULT PidParser::ParsePMT(PBYTE pData, LONG lDataLength, int pos)
+HRESULT PidParser::ParsePMT(PBYTE pData, LONG lDataLength, long pos)
 {
 	WORD pid;
 	WORD channeloffset;
@@ -289,7 +309,7 @@ HRESULT PidParser::ParsePMT(PBYTE pData, LONG lDataLength, int pos)
 		pids.sid      = (WORD)(0xFF & pData[pos+8 ])<<8 | (0xFF & pData[pos+9 ]);
 		channeloffset = (WORD)(0x0F & pData[pos+15])<<8 | (0xFF & pData[pos+16]);
 
-		for (int b=17+channeloffset+pos; b<pos+182; b=b+5)
+		for (long b=17+channeloffset+pos; b<pos+182; b=b+5)
 		{
 			if ( (0xe0&pData[b+1]) == 0xe0 )
 			{
@@ -808,3 +828,158 @@ void PidParser::set_ProgramNumber(WORD programNumber)
 }
 
 
+//**********************************************************************************************
+//Duration Additions
+
+
+REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids)
+{
+
+	HRESULT hr = S_OK;
+	__int64 filelength;
+	REFERENCE_TIME totalduration = 0;
+	REFERENCE_TIME startPCRSave = 0;
+	REFERENCE_TIME endPCRtotal = 0;
+	pPids->start = 0;
+	pPids->end = 0;
+	__int64 tolerence = 100000UL;
+	__int64 startFilePos = 0;
+	long lDataLength = 2000000;
+	PBYTE pData = new BYTE[lDataLength];
+	m_pFileReader->GetFileSize(&filelength);	
+
+	__int64 endFilePos = filelength;
+	m_fileLenOffset = filelength;
+	m_fileStartOffset = 0;
+	m_fileEndOffset = 0;
+
+	// find first Duration
+	while (m_fileStartOffset < filelength){
+		
+		hr = GetPCRduration(pData, lDataLength, pPids, filelength, &startFilePos, &endFilePos);
+		if (hr == S_OK){
+			//Save the start PCR only
+			if (startPCRSave == 0 && pPids->start > 0)
+				startPCRSave = pPids->start;
+			//Add the PCR time difference
+			totalduration = totalduration + (__int64)(pPids->end - pPids->start); // add duration to total.
+			//Test if at end of file & return
+			if (endFilePos >= (filelength - tolerence)){
+
+				REFERENCE_TIME PeriodOfPCR = (REFERENCE_TIME)(((__int64)(pPids->end - pPids->start)/9)*1000); 
+
+				//8bits per byte and convert to sec divide by pcr duration then average it
+				pids.rate = long (((endFilePos - startFilePos)*80000000) / PeriodOfPCR);
+
+				break;
+			}
+
+			m_fileStartOffset = endFilePos;
+		}
+		else
+			m_fileStartOffset = m_fileStartOffset + 100000;
+		
+		pPids->start = 0;
+		pPids->end = 0;
+		m_fileLenOffset = filelength - m_fileStartOffset;
+		endFilePos = m_fileLenOffset;
+		m_fileEndOffset = 0;
+	}
+
+	if (startPCRSave != 0){
+		pPids->start = startPCRSave; //Restore to first PCR
+		delete[] pData;
+		return (REFERENCE_TIME)((totalduration)/9) * 1000;
+	}
+
+	delete[] pData;
+	return 0; //Duration not found
+}
+
+HRESULT PidParser::GetPCRduration(PBYTE pData, long lDataLength, PidInfo *pPids, __int64 filelength, __int64* pStartFilePos, __int64* pEndFilePos)
+{
+	HRESULT hr;
+	long pos;
+	REFERENCE_TIME midPCR;
+	__int64 filetolerence = 100000UL;
+	
+	pos = 0;
+	m_pFileReader->SetFilePointer(m_fileStartOffset, FILE_BEGIN);
+	m_pFileReader->Read(pData, lDataLength);
+	hr = FindNextPCR(pData, lDataLength, pPids, &pPids->start, &pos, 1); //Get the PCR
+	if (hr == S_OK){
+
+		m_fileLenOffset = m_fileLenOffset - (__int64)(pos - 1);
+		*pStartFilePos = m_fileStartOffset + (__int64)(pos - 1); 
+	}
+
+	while(m_fileLenOffset > (__int64)(10 * 188))
+	{
+		if (pPids->start == 0)
+			break; //exit if no PCR found
+
+		pos = lDataLength - 188;
+		m_pFileReader->SetFilePointer(-(__int64)(m_fileEndOffset + (__int64)lDataLength), FILE_END);
+		m_pFileReader->Read(pData, lDataLength);
+		hr = FindNextPCR(pData, lDataLength, pPids, &pPids->end, &pos, -1); //Get the PCR
+		if (hr != S_OK){
+			break; //exit if no PCR found
+		}
+		*pEndFilePos = filelength - m_fileEndOffset - (__int64)lDataLength + (__int64)pos - 1;// 
+
+		if (*pEndFilePos <= *pStartFilePos){
+			break; //exit if past start time
+		}
+		m_fileEndOffset = m_fileEndOffset + (__int64)(m_fileLenOffset / 2); //Set file mid search pos
+
+		//exit if bad PCR timming found
+		if (pPids->end > pPids->start)
+		{
+
+			pos = lDataLength - 188;
+			m_pFileReader->SetFilePointer(-(__int64)(m_fileEndOffset + (__int64)lDataLength), FILE_END);
+			m_pFileReader->Read(pData, lDataLength);
+			hr = FindNextPCR(pData, lDataLength, pPids, &midPCR, &pos, -1); //Get the PCR
+			if (hr != S_OK){
+				break; //exit if no PCR found
+			}
+
+			//Test if mid file pos is the mid PCR time.
+			if ((__int64)((__int64)midPCR - (__int64)pPids->start) <= (__int64)((__int64)(pPids->end - pPids->start) / 2) + filetolerence
+				&& (__int64)((__int64)midPCR - (__int64)pPids->start) > (__int64)((__int64)(pPids->end - pPids->start) / 2) - filetolerence){
+
+				m_fileLenOffset = (__int64)(m_fileLenOffset / 2); //Set file length offset for next search  
+
+				return S_OK; // File length matchs PCR time
+			}
+		}
+		m_fileLenOffset = (__int64)(m_fileLenOffset / 2); //Set file length offset for next search 
+	}
+	return S_FALSE; // File length does not match PCR time
+}
+
+
+//**********************************************************************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+TCHAR sz[100];
+wsprintf(sz, TEXT("%u %u %u"), ((DWORD)0),((DWORD)0),((DWORD)pidArray.Count())); // 1f f0
+MessageBox(NULL, sz, TEXT("kk"), MB_OK);
+*/

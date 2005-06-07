@@ -67,6 +67,20 @@ public:
 	BOOL get_RateControl();
 	void set_RateControl(BOOL bRateControl);
 
+//*********************************************************************************************
+//Bitrate addition
+
+	long get_BitRate();
+	void set_BitRate(long rate);
+
+	void GetBitRateAverage(__int64 bitratesample);
+	__int64 FindFirstPCR(long* a, PBYTE pbData, long lbufflen);
+	__int64 FindLastPCR(long* a, PBYTE pbData, long lbufflen);
+	__int64 PinGetNextPCR(PBYTE pbData, long lbufflen, long* a, int step);
+	HRESULT PinSyncBuffer(PBYTE pbData, long lbuflen, long* a, int step);
+	HRESULT PinCheckForPCR(PBYTE pbData, long pos, REFERENCE_TIME* pcrtime);
+
+//*********************************************************************************************
 protected:
 	HRESULT GetReferenceClock(IReferenceClock **pClock);
 	//HRESULT FillBufferSyncTS(IMediaSample *pSample);
@@ -101,6 +115,19 @@ protected:
 	BOOL   m_bRateControl;
 
 	int debugcount;
+
+//*********************************************************************************************
+//Bitrate addition
+
+	REFERENCE_TIME m_WaitForPCR;
+	long m_DataRate;
+	int m_BitRateCycle;
+	int m_BitRateCount;
+	__int64 m_BitRateStore[256];
+
+
+
+//*********************************************************************************************
 };
 
 #endif

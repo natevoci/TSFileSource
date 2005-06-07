@@ -133,6 +133,14 @@ protected:
 
 	STDMETHODIMP GetReadOnly(WORD* pFileMode);
 
+//*********************************************************************************************
+//Bitrate addition
+
+	STDMETHODIMP GetBitRate(long* pRate);
+	STDMETHODIMP SetBitRate(long Rate);
+
+//*********************************************************************************************
+
 protected:
 	CTSFileSourcePin       *m_pPin;          // A simple rendered input pin
 

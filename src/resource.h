@@ -28,7 +28,13 @@
 #define IDC_RATECONTROL                 1020
 #define IDC_MPEG1MODE                   1022
 #define IDC_RATECONTROL2                1024
-#define IDC_CREATETSPIN                 1024
+#define IDC_CREATETSPIN                 1025
+
+//**********************************************************************************************
+//BitRate Additions
+
+#define IDC_DATARATE					1026
+//**********************************************************************************************
 
 // Next default values for new objects
 //

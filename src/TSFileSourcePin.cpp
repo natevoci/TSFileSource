@@ -49,9 +49,22 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_lNextPCRByteOffset = 0;
 	m_lPrevPCRByteOffset = 0;
 
-	m_lTSPacketDeliverySize = 188*1000;
+//**********************************************************************************************
+//bitrate Additions
 
-	m_bRateControl = TRUE;
+	m_WaitForPCR = 0;
+	m_lByteDelta = 0;
+
+	m_BitRateCycle = 0;
+	m_BitRateCount = 0;
+
+	m_lTSPacketDeliverySize = 188*16;
+	m_bRateControl = FALSE;
+
+//Removed	m_bRateControl = TRUE;
+//Removed	m_lTSPacketDeliverySize = 188*1000;
+
+//**********************************************************************************************
 
 	m_pTSBuffer = new CTSBuffer(m_pTSFileSourceFilter->get_FileReader(), &m_pTSFileSourceFilter->get_Pids()->pids);
 
@@ -125,6 +138,9 @@ HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
 		m_pTSFileSourceFilter->OnConnect();
 		m_rtDuration = m_pTSFileSourceFilter->get_Pids()->pids.dur;
 		m_rtStop = m_rtDuration;
+		//Set inital Data rate from pid store
+		m_DataRate = m_pTSFileSourceFilter->get_Pids()->pids.rate;
+
 	}
 	return hr;
 }
@@ -149,11 +165,37 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 
 	//FillBufferSyncTS(pSample);
 
+//**********************************************************************************************
+//Bitrate Additions
+
+#define USE_EVENT
+#ifdef USE_EVENT
+#else
+
+//**********************************************************************************************
+
 	m_pTSBuffer->Require(lDataLength);
+
+//**********************************************************************************************
+//Bitrate Additions
+
+#endif
+
+//**********************************************************************************************
 
 	//Test if constant Bitrate disabled
 	if (!m_bRateControl)
 	{
+
+//**********************************************************************************************
+//Bitrate Additions
+
+#ifdef USE_EVENT
+
+		m_pTSBuffer->Require(lDataLength);
+#endif
+//**********************************************************************************************
+
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
 
 		//Reset base PCR time and exit normaly if not constant Bitrate
@@ -162,6 +204,120 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	}
 	else
 	{
+
+//**********************************************************************************************
+//Bitrate Additions
+
+#ifdef USE_EVENT
+
+		hr = m_pTSFileSourceFilter->get_FileReader()->Read(pData, lDataLength);
+
+
+		//Skip if first PCR has already been found else find it
+		if (m_llBasePCR == -1)
+		{
+			m_llPrevPCR = -1; //reset last PCR
+			m_WaitForPCR = 0;
+			m_lByteDelta = 0;
+			m_BitRateCycle = 0;
+			m_BitRateCount = 0;
+
+			long a;
+			m_llBasePCR = FindFirstPCR(&a, pData, lDataLength); //returns -1 if not found
+			if (m_llBasePCR != (__int64) -1) //If PCR found then set the start time reference
+			{
+				IReferenceClock* pReferenceClock = NULL;
+				hr = GetReferenceClock(&pReferenceClock);
+
+				if (pReferenceClock != NULL)
+				{
+					pReferenceClock->GetTime(&m_rtStartTime);
+					pReferenceClock->Release();
+				}
+			}
+		}
+
+		long a;
+		//Get the last PCR anyway and save it if found
+		m_llNextPCR = FindLastPCR(&a, pData, lDataLength);
+		if (m_llNextPCR != (__int64)-1)
+		{
+			if (m_llPrevPCR != (__int64)-1)
+			{
+				m_llPCRDelta = (REFERENCE_TIME)((ConvertPCRtoRT(m_llNextPCR - m_llPrevPCR))); 
+				//8bits per byte and convert to sec divide by pcr duration then average it
+				__int64 dataRate = ((((__int64)m_lByteDelta + (__int64)a)*(__int64)80000000) / m_llPCRDelta);
+				GetBitRateAverage(dataRate);
+				//Reset data Gap Register to PCR position in buffer.
+				m_lByteDelta =  - (__int64)a;// - 94; //sample length is added later to get true pos
+			}
+
+			m_llPrevPCR = m_llNextPCR;
+		}
+		m_lByteDelta = m_lByteDelta + lDataLength;
+
+		//Skip if last PCR has not been found
+		if (m_llPrevPCR != (__int64)-1)
+		{
+			REFERENCE_TIME rtStart = (REFERENCE_TIME)(m_llPrevPCR - m_llBasePCR);
+			rtStart = ConvertPCRtoRT(rtStart);
+
+			REFERENCE_TIME rtNextTime = m_rtStartTime + rtStart;//m_llPCRDelta;
+
+			IReferenceClock* pReferenceClock = NULL;
+			hr = GetReferenceClock(&pReferenceClock);
+
+			if (pReferenceClock != NULL)
+			{
+				REFERENCE_TIME rtCurrTime;
+				pReferenceClock->GetTime(&rtCurrTime);
+
+				if ((__int64)rtCurrTime < (__int64)rtNextTime)
+				{
+					HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+					DWORD dwAdviseCookie = 0;
+					pReferenceClock->AdviseTime(0, rtNextTime, (HEVENT)hEvent, &dwAdviseCookie);
+					DWORD dwWaitResult = WaitForSingleObject(hEvent, INFINITE);
+					CloseHandle(hEvent);
+					m_WaitForPCR = 0;
+				}
+				else
+				{
+					//Get number of buffer cycles in a second from bit data rate
+					__int64 cyclesinPCR = m_DataRate / lDataLength;
+
+					//make sure cycle is not in error
+					if ((__int64)cyclesinPCR < (__int64)1 || (__int64)cyclesinPCR > (__int64)100000)
+					{
+						cyclesinPCR = (__int64)lDataLength;
+					}
+					//add calculated average wait to the wait durations
+					m_WaitForPCR = m_WaitForPCR + (REFERENCE_TIME)(80000000 / cyclesinPCR);
+					rtNextTime = rtNextTime + m_WaitForPCR;
+					pReferenceClock->GetTime(&rtCurrTime);
+
+					if ((__int64)rtCurrTime < (__int64)rtNextTime)
+					{
+						HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+						DWORD dwAdviseCookie = 0;
+						pReferenceClock->AdviseTime(0, rtNextTime, (HEVENT)hEvent, &dwAdviseCookie);
+						DWORD dwWaitResult = WaitForSingleObject(hEvent, INFINITE);
+						CloseHandle(hEvent);
+						m_WaitForPCR = 0;
+					}
+
+				}
+				pReferenceClock->Release();
+			}
+		}
+	}
+	return hr;
+}
+
+#else
+
+		// nates code
+
 		if (m_llPrevPCR == -1)
 		{
 			Debug(TEXT("Finding the next two PCRs\n"));
@@ -222,6 +378,15 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 
 				TCHAR sz[60];
 				__int64 bitrate = (__int64)m_lByteDelta * (__int64)90000 / m_llPCRDelta;
+
+//**********************************************************************************************
+//bitrate Additions
+
+				//8bits per byte and convert to sec divide by pcr duration then average it
+				GetBitRateAverage(((__int64)m_lByteDelta * (__int64)80000000) / (__int64)ConvertPCRtoRT(m_llPCRDelta));
+
+//**********************************************************************************************
+
 				wsprintf(sz, TEXT("bitrate %i\n"), bitrate);
 				Debug(sz);
 			}
@@ -302,8 +467,10 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 
 		return hr;
 	}
-
 }
+#endif
+//**********************************************************************************************
+
 
 HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 {
@@ -534,4 +701,125 @@ void CTSFileSourcePin::Debug(LPCTSTR lpOutputString)
 	::OutputDebugString(sz);
 	debugcount++;
 }
+
+//*********************************************************************************************
+//Bitrate addition
+
+__int64 CTSFileSourcePin::FindFirstPCR(long* a, PBYTE pbData, long lbufflen)
+{
+	*a = 0; 
+	return PinGetNextPCR(pbData, lbufflen, a, 1);
+}
+
+__int64 CTSFileSourcePin::FindLastPCR(long* a, PBYTE pbData, long lbufflen)
+{
+	*a = lbufflen - 188; 
+	return PinGetNextPCR(pbData, lbufflen, a, -1);
+}
+
+
+__int64 CTSFileSourcePin::PinGetNextPCR(PBYTE pbData, long lbufflen, long* a, int step)
+{
+	REFERENCE_TIME pcrtime;
+	HRESULT hr = S_OK;
+
+	pcrtime = 0;
+
+	while( pcrtime == 0 && hr == S_OK)
+    {	
+		hr = PinSyncBuffer(pbData,lbufflen, a, step);
+		if (S_FALSE == PinCheckForPCR(pbData, *a, &pcrtime)) {
+			*a = *a + (step * 188);
+		}
+		else 
+		{
+			return pcrtime;
+		}
+	}
+		return -1;
+}
+
+HRESULT CTSFileSourcePin::PinSyncBuffer(PBYTE pbData, long lbuflen, long* a, int step)
+{
+	while( ((pbData[*a] != 0x47) || (pbData[*a+188] != 0x47) || (pbData[*a+376] != 0x47))
+			&& *a < lbuflen && *a > -1 )
+	{ 
+		*a = *a + step;
+	};
+
+
+	if (*a < lbuflen && *a > -1) {
+
+		return S_OK;
+	} else {
+		return S_FALSE;
+	}	
+}
+
+HRESULT CTSFileSourcePin::PinCheckForPCR(PBYTE pbData, long pos, REFERENCE_TIME* pcrtime)
+{    
+
+	if ((WORD)((0x1F & pbData[pos+1])<<8 | (0xFF & pbData[pos+2])) == m_pTSFileSourceFilter->get_Pids()->pids.pcr) {
+
+		WORD pcrbit = 0x30;
+		if (m_pTSFileSourceFilter->get_Pids()->pids.pcr != m_pTSFileSourceFilter->get_Pids()->pids.vid){pcrbit = 0x20;};
+
+		if (((pbData[pos+3] & 0x30) == pcrbit)
+
+			&& (pbData[pos+4] != 0x00)
+			&& ((pbData[pos+5] & 0x10) != 0x00)) {
+
+			*pcrtime = (REFERENCE_TIME) 
+							((REFERENCE_TIME)(0xFF & pbData[pos+6])<<25) | 
+					        ((REFERENCE_TIME)(0xFF & pbData[pos+7])<<17) | 
+							((REFERENCE_TIME)(0xFF & pbData[pos+8])<<9)  | 
+							((REFERENCE_TIME)(0xFF & pbData[pos+9])<<1)  |
+							((REFERENCE_TIME)(0x80 & pbData[pos+10])>>7);
+
+			return S_OK;
+		};
+	}
+	return S_FALSE;
+}
+
+long CTSFileSourcePin::get_BitRate()
+{
+    return m_DataRate;
+}
+
+void CTSFileSourcePin::set_BitRate(long rate)
+{
+    m_DataRate = rate;
+}
+
+void  CTSFileSourcePin::GetBitRateAverage(__int64 bitratesample)
+{
+
+	if (bitratesample < (__int64)1) return;
+
+	//Setup for first sample and inc through array
+	m_BitRateCycle++;
+
+	//Set Number of counts to average
+	if (m_BitRateCount < 257)
+		m_BitRateCount = m_BitRateCycle;
+
+	//Rotate array
+	if (m_BitRateCycle > 255)
+		m_BitRateCycle = 0;
+
+	//Store the sample
+	m_BitRateStore[m_BitRateCycle] = bitratesample;
+
+	__int64 datarate = 0;
+
+	//Add all Bitrate Smaples
+	for (int i = 0; i < m_BitRateCount; i++)
+	{
+		datarate = datarate + m_BitRateStore[i];
+	}
+	m_DataRate = (long)(datarate / (__int64)m_BitRateCount);
+	return;
+}
+//*********************************************************************************************
 

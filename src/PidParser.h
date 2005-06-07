@@ -62,8 +62,8 @@ protected:
 	static HRESULT CheckForPCR(PBYTE pData, LONG lDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
 
 protected:
-	HRESULT ParsePAT(PBYTE pData, LONG lDataLength, int pos);
-	HRESULT ParsePMT(PBYTE pData, LONG lDataLength, int pos);
+	HRESULT ParsePAT(PBYTE pData, LONG lDataLength, long pos);
+	HRESULT ParsePMT(PBYTE pData, LONG lDataLength, long pos);
 	BOOL CheckEsDescriptorForAC3(PBYTE pData, LONG lDataLength, int pos, int lastpos);
 	BOOL CheckEsDescriptorForTeletext(PBYTE pData, LONG lDataLength, int pos, int lastpos);
 
@@ -83,6 +83,12 @@ protected:
 	void SetPidArray(int n);
 	void AddTsPid(PidInfo *pidInfo, WORD pid);
 
+//**********************************************************************************************
+//Duration Additions
+	REFERENCE_TIME GetFileDuration(PidInfo *pPids);
+	HRESULT GetPCRduration(PBYTE pData, long lDataLength, PidInfo *pPids, __int64 filelength, __int64* pStartFilePos, __int64* pEndFilePos);
+//**********************************************************************************************
+
 protected:
 	FileReader *m_pFileReader;
 
@@ -93,8 +99,18 @@ protected:
 	BYTE	m_shortdescr[128];
 	BYTE	m_extenddescr[600];
 
-	__int64	filepos;
+//	__int64	filepos;
 	WORD	m_pgmnumb;
+
+//**********************************************************************************************
+//Duration Additions
+	__int64	filepos;
+	__int64 m_fileLenOffset;
+	__int64	m_fileEndOffset;
+	__int64	m_fileStartOffset;
+//**********************************************************************************************
+
+
 
 };
 

@@ -71,6 +71,16 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown)
 	STDMETHOD(SetCreateTSPinOnDemux) (THIS_ WORD bCreatePin) PURE;
 
 	STDMETHOD(GetReadOnly) (THIS_ WORD * pFileMode) PURE;
+
+//*********************************************************************************************
+//Bitrate addition
+
+	STDMETHOD (GetBitRate) (THIS_ long *pRate) PURE;
+	STDMETHOD (SetBitRate) (THIS_ long Rate) PURE;
+
+//*********************************************************************************************
+
+
 };
 
 

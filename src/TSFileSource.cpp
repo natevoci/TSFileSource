@@ -610,7 +610,7 @@ STDMETHODIMP CTSFileSourceFilter::SetRateControlMode(WORD RateControl)
 {
 	CAutoLock lock(&m_Lock);
 	m_pPin->set_RateControl(RateControl);
-	m_pDemux->AOnConnect(GetFilterGraph());
+//	m_pDemux->AOnConnect(GetFilterGraph());
 	return NOERROR;
 }
 
@@ -642,6 +642,33 @@ STDMETHODIMP CTSFileSourceFilter::GetReadOnly(WORD *ReadOnly)
 	return NOERROR;
 }
 
+//*********************************************************************************************
+//Bitrate addition
+
+STDMETHODIMP CTSFileSourceFilter::GetBitRate(long *pRate)
+{
+    if(!pRate)
+        return E_INVALIDARG;
+
+    CAutoLock lock(&m_Lock);
+
+    *pRate = m_pPin->get_BitRate();
+
+    return NOERROR;
+
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetBitRate(long Rate)
+{
+    CAutoLock lock(&m_Lock);
+
+    m_pPin->set_BitRate(Rate);
+
+    return NOERROR;
+
+}
+
+//*********************************************************************************************
 //////////////////////////////////////////////////////////////////////////
 // End of interface implementations
 //////////////////////////////////////////////////////////////////////////

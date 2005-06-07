@@ -42,7 +42,7 @@ BEGIN
     EDITTEXT        IDC_CNT,51,115,40,12,ES_AUTOHSCROLL | ES_READONLY
     PUSHBUTTON      "&Enter",IDC_ENTER,10,100,40,12,WS_GROUP
     PUSHBUTTON      "&Next",IDC_NEXT,10,115,39,12,WS_GROUP
-    RADIOBUTTON     "MPEG 1",IDC_MPEG2MODE,195,18,65,8,WS_GROUP
+    RADIOBUTTON     "MPEG 1",IDC_MPEG1MODE,195,18,65,8,WS_GROUP
     LTEXT           "Video",IDC_STATIC,105,15,25,8
     LTEXT           "Audio",IDC_STATIC,105,30,25,8
     LTEXT           "AC3",IDC_STATIC,105,60,27,8
@@ -50,8 +50,15 @@ BEGIN
     LTEXT           "SID",IDC_STATIC,105,75,25,8
     EDITTEXT        IDC_DURATION,11,25,80,13,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Duration",IDC_STATIC,11,15,50,10
-    EDITTEXT        IDC_STARTTIME,11,50,80,13,ES_AUTOHSCROLL
-    LTEXT           "Starttime",IDC_STATIC,11,40,65,8
+//**********************************************************************************************
+//BitRate Additions
+
+    EDITTEXT        IDC_DATARATE,11,50,80,13,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "File Bit Rate",IDC_STATIC,11,40,65,8
+//Removed    EDITTEXT        IDC_STARTTIME,11,50,80,13,ES_AUTOHSCROLL
+//Removed    LTEXT           "Starttime",IDC_STATIC,11,40,65,8
+//**********************************************************************************************
+//Duration Additions
     LTEXT           "PCR",IDC_STATIC,31,85,15,8
     EDITTEXT        IDC_PCR,51,85,40,12,ES_AUTOHSCROLL | ES_READONLY
     GROUPBOX        "",IDC_STATIC,100,5,80,100
@@ -66,7 +73,7 @@ BEGIN
     LTEXT           "File Status",IDC_STATIC,100,110,35,8
     EDITTEXT        IDC_FILEMODE,140,110,40,12,ES_AUTOHSCROLL | ES_READONLY
     GROUPBOX        "MPEG Audio Pin Type",IDC_STATIC,185,5,85,40
-    RADIOBUTTON     "MPEG 2",IDC_MPEG1MODE,195,30,65,8,WS_GROUP
+    RADIOBUTTON     "MPEG 2",IDC_MPEG2MODE,195,30,65,8,WS_GROUP
     CONTROL         "AC3 Preference",IDC_AC3MODE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,185,65,85,10
     CONTROL         "Create TS Pin",IDC_CREATETSPIN,"Button",BS_AUTOCHECKBOX | 
@@ -145,14 +152,14 @@ BEGIN
             VALUE "Comments", "Push Source filter for MPEG-2 Transport Stream Files.(BDA Compatable)\0"
             VALUE "CompanyName", "\0"
             VALUE "FileDescription", "TS File Source(AU)\0"
-            VALUE "FileVersion", "2, 0, 1, 6\0"
+            VALUE "FileVersion", "2, 0, 1, 6z\0"
             VALUE "InternalName", "TS File Source(AU)\0"
             VALUE "LegalCopyright", "This filter is published under Gnu Public Licence © 2003. Written by DH & bear@forums.dvbowners.com & nate@forums.dvbowners.com.\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "TSFileSource.ax\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "TS File Source(AU)\0"
-            VALUE "ProductVersion", "2, 0, 1, 6\0"
+            VALUE "ProductVersion", "2, 0, 1, 6z\0"
             VALUE "SpecialBuild", "\0"
         END
     END
