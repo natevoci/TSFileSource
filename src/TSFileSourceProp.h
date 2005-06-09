@@ -43,15 +43,9 @@ public:
 	HRESULT OnConnect(IUnknown *pUnk);
 	HRESULT OnDisconnect(void);
 	HRESULT OnActivate(void);
-
-//**********************************************************************************************
-//Property Apply Additions
-
 	HRESULT OnApplyChanges(void);
-
-//**********************************************************************************************
-
 	void SetDirty();
+
 	BOOL OnRefreshProgram();
 	BOOL PopulateDialog();
 	BOOL OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);

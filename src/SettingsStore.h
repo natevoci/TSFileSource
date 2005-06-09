@@ -48,18 +48,11 @@ public:
 	BOOL getAutoModeReg();
 	void setAutoModeReg(BOOL bAuto);
 
-//*********************************************************************************************
-//NP Control Additions
-
 	BOOL getNPControlReg();
 	void setNPControlReg(BOOL bNPConrtol);
 
-//NP Slave Additions
-
 	BOOL getNPSlaveReg();
 	void setNPSlaveReg(BOOL bNPSlave);
-
-//*********************************************************************************************
 
 	BOOL getMP2ModeReg();
 	void setMP2ModeReg(BOOL bMP2);
@@ -89,18 +82,8 @@ private:
 
 
 	BOOL 	autoMode;
-
-//*********************************************************************************************
-//NP Control Additions
-
 	BOOL 	nPControl;
-
-//NP Slave Additions
-
 	BOOL 	nPSlave;
-
-//*********************************************************************************************
-
 	BOOL	mp2Mode;
 	BOOL	ac3Mode;
 	BOOL	tsPinMode;

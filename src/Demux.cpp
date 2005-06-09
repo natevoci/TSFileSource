@@ -29,133 +29,72 @@
 #include "ksmedia.h"
 #include "bdamedia.h"
 #include "mediaformats.h"
-
 #include "Demux.h"
-
-//*********************************************************************************************
-//NP Control Additions
-
 #include "Bdatif.h"
 #include "tuner.h"
 #include <commctrl.h>
 #include <atlbase.h>
-
-//NP Slave Additions
-
 #include "TunerEvent.h"
 
-//*********************************************************************************************
 
- Demux::Demux(PidParser *pPidParser) :
+Demux::Demux(PidParser *pPidParser) :
 	m_bAuto(TRUE),
 	m_bMPEG2AudioMediaType(TRUE),
-
-//*********************************************************************************************
-//Audio2 Additions
-
 	m_bMPEG2Audio2Mode(FALSE),
-
-//NP Control Additions
-
 	m_bNPControl(TRUE),
-
-//NP Slave Additions
-
 	m_bNPSlave(FALSE),
-	OnConnectBusyFlag(false),
-
-//*********************************************************************************************
-
+	m_bConnectBusyFlag(false),
 	m_WasPlaying(FALSE),
 	m_bAC3Mode(TRUE),
 	m_bCreateTSPinOnDemux(FALSE)
 {
 	m_pPidParser = pPidParser;
-//*********************************************************************************************
-//Bug fix
-
 	m_pGraphBuilder = NULL;
 	m_pFilterChain = NULL;
 	m_pMediaControl = NULL;
-
-//*********************************************************************************************
-
 }
 
 Demux::~Demux()
 {
-//*********************************************************************************************
-//Bug fix
-
 	if (m_pMediaControl != NULL){m_pMediaControl->Release(); m_pMediaControl = NULL;}
 	if (m_pFilterChain != NULL){m_pFilterChain->Release();	m_pFilterChain = NULL;}
 	if (m_pGraphBuilder != NULL){m_pGraphBuilder->Release(); m_pGraphBuilder = NULL;}
-
-//*********************************************************************************************
-
 }
 
 HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 {
-
-//*********************************************************************************************
-//Bug fix
-
 	if (m_pGraphBuilder == NULL)
-
-//*********************************************************************************************
-
 		if(FAILED(pGraph->QueryInterface(IID_IGraphBuilder, (void **) &m_pGraphBuilder)))
 		{
 			return S_FALSE;
 		}
 
-//*********************************************************************************************
-//Bug fix
-
 	if (m_pFilterChain == NULL)
-
-//*********************************************************************************************
-
 		if(FAILED(pGraph->QueryInterface(IID_IFilterChain, (void **) &m_pFilterChain)))
 		{
 			m_pGraphBuilder->Release();
 			return S_FALSE;
 		}
 
-//*********************************************************************************************
-//Bug fix
-
 	if (m_pMediaControl == NULL)
-
-//*********************************************************************************************
-
-	// if there is no streaming, the following variables will not be initialized.
-	if(m_pGraphBuilder != NULL){
-		if(FAILED(m_pGraphBuilder->QueryInterface(IID_IMediaControl, (void **) &m_pMediaControl)))
+		if(m_pGraphBuilder != NULL)
 		{
-			m_pFilterChain->Release();
-			m_pGraphBuilder->Release();
-			return S_FALSE;
+			if(FAILED(m_pGraphBuilder->QueryInterface(IID_IMediaControl, (void **) &m_pMediaControl)))
+			{
+				m_pFilterChain->Release();
+				m_pGraphBuilder->Release();
+				return S_FALSE;
+			}
 		}
-	}
 
-//*********************************************************************************************
-//NP Control & Slave Additions
-	if (OnConnectBusyFlag)
+	if (m_bConnectBusyFlag)
 		return S_FALSE;
 
 	// Check if Enabled
 	if (!m_bAuto && !m_bNPControl && !m_bNPSlave)
 		return S_FALSE;
 
-	OnConnectBusyFlag = true;
-
-//Removed	if (!m_bAuto)
-//Removed		return S_FALSE;
-
-//*********************************************************************************************
-
+	m_bConnectBusyFlag = true;
 	m_WasPlaying = FALSE;
 	m_TimeOut[0] = 0;
 	m_TimeOut[1] = 0;
@@ -165,12 +104,7 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 		m_WasPlaying = TRUE;
 	}
 
-// declare local variables
 	IEnumFilters* EnumFilters;
-//Removed as not needed	IBaseFilter* m_pDemux = NULL;
-
-//*********************************************************************************************
-//NP Control Additions
 
 	// Parse only the existing Network Provider Filter
 	// in the filter graph, we do this by looking for filters
@@ -193,7 +127,6 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 		EnumFilters->Release();
 	}
 
-//*********************************************************************************************
 
 	// Parse only the existing Mpeg2 Demultiplexer Filter
 	// in the filter graph, we do this by looking for filters
@@ -232,20 +165,7 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 		}
 	}
 
-//	m_pMediaControl->Release();
-//	m_pMediaControl = NULL;
-//	m_pFilterChain->Release();
-//	m_pFilterChain = NULL;
-//	m_pGraphBuilder->Release();
-//	m_pGraphBuilder = NULL;
-
-//*********************************************************************************************
-//NP Control Additions
-
-	OnConnectBusyFlag = false;
-
-//*********************************************************************************************
-
+	m_bConnectBusyFlag = false;
 	return NOERROR;
 }
 
@@ -257,37 +177,16 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 	if(pDemux == NULL)
 		return hr;
 
-//*********************************************************************************************
-//NP Control Additions
-
 	// Check if Enabled
 	if (!m_bAuto)
 	{
 		return S_FALSE;
 	}
 
-//*********************************************************************************************
-
 	// Get an instance of the Demux control interface
 	IMpeg2Demultiplexer* muxInterface = NULL;
 	if(SUCCEEDED(pDemux->QueryInterface (&muxInterface)))
 	{
-
-//TCHAR sz[100];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz, TEXT("UpdateDemuxPins"), MB_OK);
-//*********************************************************************************************
-//TIF Additions
-
-		// Update TIF Pin
-//		if (SUCCEEDED(CheckTIFPin(pDemux))){
-			// If TIF was found
-
-		
-//		} //Just wanted to see if this would work and it did.
-	
-//*********************************************************************************************
-
 		// Update Video Pin
 		if (FAILED(CheckVideoPin(pDemux))){
 			// If no Video Pin was found
@@ -309,16 +208,10 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 				else{
 					// If we do have an mp1/2 audio pin
 					USHORT pPid;
-					//GetAudioPid(&pPid);
 					pPid = get_MP2AudioPid();
 					if (!pPid){
 						// If we don't have a mp1/2 audio pid
-						//GetAC3Pid(&pPid);
-//**********************************************************************************************
-//Audio2 AC3 Additions
 						pPid = get_AC3_2AudioPid();
-//Removed						pPid = m_pPidParser->pids.ac3;
-//**********************************************************************************************
 						if (pPid && FAILED(CheckAC3Pin(pDemux))){
 							// change pin type if we do have a AC3 pid & can don't already have an AC3 pin
 							LPWSTR PinName = L"Audio";
@@ -345,15 +238,9 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 			else{
 				// If we already have a AC3 Pin
 				USHORT pPid;
-				//GetAC3Pid(&pPid);
-//**********************************************************************************************
-//Audio2 AC3 Additions
 				pPid = get_AC3_2AudioPid();
-//Removed				pPid = m_pPidParser->pids.ac3;
-//**********************************************************************************************
 				if (!pPid){
 					// If we don't have a AC3 Pid
-					//GetAudioPid(&pPid);
 					pPid = get_MP2AudioPid();
 					if (pPid && FAILED(CheckAudioPin(pDemux))){
 						// change pin type if we do have a mp1/2 pid & can don't already have an mp1/2 pin
@@ -391,15 +278,9 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 			else{
 				// If we already have a AC3 Pin
 				USHORT pPid;
-				//GetAC3Pid(&pPid);
-//**********************************************************************************************
-//Audio2 AC3 Additions
 				pPid = get_AC3_2AudioPid();
-//Removed				pPid = m_pPidParser->pids.ac3;
-//**********************************************************************************************
 				if (!pPid){
 					// If we don't have a AC3 Pid
-					//GetAudioPid(&pPid);
 					pPid = get_MP2AudioPid();
 					if (pPid && FAILED(CheckAudioPin(pDemux))){
 						// change pin type if we do have a mp1/2 pid & can don't already have an mp1/2 pin
@@ -427,16 +308,10 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 		else{
 				// If we do have an mp1/2 audio pin
 				USHORT pPid;
-				//GetAudioPid(&pPid);
 				pPid = get_MP2AudioPid();
 				if (!pPid){
 					// If we don't have a mp1/2 Pid
-					//GetAC3Pid(&pPid);
-//**********************************************************************************************
-//Audio2 AC3 Additions
 					pPid = get_AC3_2AudioPid();
-//Removed					pPid = m_pPidParser->pids.ac3;
-//**********************************************************************************************
 					if (pPid && FAILED(CheckAC3Pin(pDemux))){
 						// change pin type if we do have a AC3 pid & can don't already have an AC3 pin
 						LPWSTR PinName = L"Audio";
@@ -527,9 +402,6 @@ HRESULT Demux::CheckDemuxPin(IBaseFilter* pDemux, AM_MEDIA_TYPE pintype, IPin** 
 	return E_FAIL;
 }
 
-//*********************************************************************************************
-//NP Control & Slave Additions
-
 HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 {
 	HRESULT hr = E_INVALIDARG;
@@ -547,9 +419,6 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
     hr = pNetworkProvider->QueryInterface(__uuidof (ITuner), reinterpret_cast <void**> (&pITuner));
     if(SUCCEEDED (hr))
     {
-//TCHAR sz[100];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz, TEXT("UpdateNetworkProvider"), MB_OK);
 		//Setup to get the tune request
 		CComPtr <ITuneRequest> pNewTuneRequest;			
 		CComQIPtr <IDVBTuneRequest> pDVBTTuneRequest (pNewTuneRequest);
@@ -565,13 +434,7 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 			pDVBTTuneRequest->get_TSID(&Tsid);
 
 			if (Onid != m_pPidParser->m_ONetworkID && Tsid != m_pPidParser->m_TStreamID)
-			{
-//TCHAR sz[100];
-//sprintf(sz, "xxxx%u", 0);
-//MessageBox(NULL, sz, TEXT("change channel"), MB_OK);
 				m_pPidParser->RefreshPids();
-			
-			}
 
 			long Sid = 0;
 			pDVBTTuneRequest->get_SID(&Sid); //Get the SID from the NP
@@ -598,7 +461,6 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 			else
 				pDVBTTuneRequest->put_TSID((long)m_pPidParser->m_TStreamID);
 
-//			hr = pDVBTTuneRequest->QueryInterface(&pNewTuneRequest);//IID_ITuneRequest,(void **)
 			//If the tune request is valid then tune.
 			if (pITuner->Validate(pNewTuneRequest) == S_OK)
 			{
@@ -608,9 +470,6 @@ HRESULT Demux::UpdateNetworkProvider(IBaseFilter* pNetworkProvider)
 		pDVBTTuneRequest.Release();
 		pNewTuneRequest.Release();
 		pITuner->Release();
-//TCHAR sz[100];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz, TEXT("put_TuneRequest"), MB_OK);
 	}
 	return hr;
 }
@@ -739,11 +598,6 @@ HRESULT Demux::CheckTIFPin(IBaseFilter* pDemux)
 												mpegComponent->get_ProgramNumber(&progSID);
 												if (progSID == m_pPidParser->pids.sid)
 													foundSID = true;
-
-//				TCHAR sz[100];
-//				sprintf(sz, "%u", progSID);
-//				MessageBox(NULL, sz, TEXT("progSID"), MB_OK);
-
 												mpegComponent.Release();
 											}
 											pComponent.Release();
@@ -761,7 +615,6 @@ HRESULT Demux::CheckTIFPin(IBaseFilter* pDemux)
 					}
 					pGuideData->Release();
 				}
-//				m_pTIF->Stop();
 				m_pTIF->Release();
 			}
 			pIPin->Release();
@@ -787,7 +640,6 @@ HRESULT Demux::CheckVideoPin(IBaseFilter* pDemux)
 	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
 		USHORT pPid;
-		//GetVideoPid(&pPid);
 		pPid = m_pPidParser->pids.vid;
 		if SUCCEEDED(LoadMediaPin(pIPin, pPid)){
 			pIPin->Release();
@@ -810,7 +662,6 @@ HRESULT Demux::CheckAudioPin(IBaseFilter* pDemux)
 	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
 		USHORT pPid;
-		//GetAudioPid(&pPid);
 		pPid = get_MP2AudioPid();
 		if (SUCCEEDED(LoadMediaPin(pIPin, pPid))){
 			pIPin->Release();
@@ -823,7 +674,6 @@ HRESULT Demux::CheckAudioPin(IBaseFilter* pDemux)
 			if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
 				USHORT pPid;
-				//GetAudioPid(&pPid);
 				pPid = get_MP2AudioPid();
 				if (SUCCEEDED(LoadMediaPin(pIPin, pPid))){
 					pIPin->Release();
@@ -847,12 +697,7 @@ HRESULT Demux::CheckAC3Pin(IBaseFilter* pDemux)
 	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
 		USHORT pPid;
-		//GetAC3Pid(&pPid);
-//**********************************************************************************************
-//Audio2 AC3 Additions
 		pPid = get_AC3_2AudioPid();
-//Removed	pPid = m_pPidParser->pids.ac3;
-//**********************************************************************************************
 		if (SUCCEEDED(LoadMediaPin(pIPin, pPid))){
 			pIPin->Release();
 			return S_OK;
@@ -874,7 +719,6 @@ HRESULT Demux::CheckTelexPin(IBaseFilter* pDemux)
 	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
 		USHORT pPid;
-		//GetTelexPid(&pPid);
 		pPid = m_pPidParser->pids.txt;
 		if (SUCCEEDED(LoadTelexPin(pIPin, pPid))){
 			pIPin->Release();
@@ -911,7 +755,7 @@ HRESULT Demux::NewTsPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 
 	if(muxInterface == NULL){return hr;}
 
-	// Create out new pin of type GUID_NULL
+	// Create out new pin  
 	AM_MEDIA_TYPE type;
 	GetTSMedia(&type);
 
@@ -928,14 +772,13 @@ HRESULT Demux::NewTsPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 HRESULT Demux::NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 {
 	USHORT pPid;
-	//GetVideoPid( &pPid);
 	pPid = m_pPidParser->pids.vid;
 
 	HRESULT hr = E_INVALIDARG;
 
 	if(muxInterface == NULL || pPid == 0){return hr;}
 
-	// Create out new pin of type GUID_NULL
+	// Create out new pin 
 	AM_MEDIA_TYPE type;
 	ZeroMemory(&type, sizeof(AM_MEDIA_TYPE));
 	GetVideoMedia(&type);
@@ -953,14 +796,13 @@ HRESULT Demux::NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 HRESULT Demux::NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 {
 	USHORT pPid;
-	//GetAudioPid(&pPid);
 	pPid = get_MP2AudioPid();
 
 	HRESULT hr = E_INVALIDARG;
 
 	if(muxInterface == NULL || pPid == 0){return hr;}
 
-	// Create out new pin of type GUID_NULL
+	// Create out new pin 
 	AM_MEDIA_TYPE type;
 	ZeroMemory(&type, sizeof(AM_MEDIA_TYPE));
 	if (m_bMPEG2AudioMediaType)
@@ -981,18 +823,13 @@ HRESULT Demux::NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 {
 	USHORT pPid;
-	//GetAC3Pid( &pPid);
-//**********************************************************************************************
-//Audio2 AC3 Additions
 	pPid = get_AC3_2AudioPid();
-//Removed	pPid = m_pPidParser->pids.ac3;
-//**********************************************************************************************
 
 	HRESULT hr = E_INVALIDARG;
 
 	if(muxInterface == NULL || pPid == 0){return hr;}
 
-	// Create out new pin of type GUID_NULL
+	// Create out new pin 
 	AM_MEDIA_TYPE type;
 	GetAC3Media(&type);
 
@@ -1009,14 +846,13 @@ HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 HRESULT Demux::NewTelexPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 {
 	USHORT pPid;
-	//GetTelexPid(&pPid);
 	pPid = m_pPidParser->pids.txt;
 
 	HRESULT hr = E_INVALIDARG;
 
 	if(muxInterface == NULL || pPid == 0){return hr;}
 
-	// Create out new pin of type GUID_NULL
+	// Create out new pin 
 	AM_MEDIA_TYPE type;
 	GetTelexMedia(&type);
 
@@ -1043,14 +879,9 @@ HRESULT Demux::LoadTsPin(IPin* pIPin)
 	IMPEG2PIDMap* muxMapPid;
 	if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid)))
 	{
-		//ULONG pPidArray[15];
-		//hr = GetTsArray(&pPidArray[0]);
-		//ULONG count = pPidArray[0];
-		//muxMapPid->MapPID(count,&pPidArray[1] , MEDIA_TRANSPORT_PACKET);
 		muxMapPid->MapPID(m_pPidParser->pids.TsArray[0] + 1, &m_pPidParser->pids.TsArray[1], MEDIA_TRANSPORT_PACKET);
 		muxMapPid->Release();
 		hr = S_OK;
-
 	}
 	return hr;
 }
@@ -1068,9 +899,9 @@ HRESULT Demux::LoadMediaPin(IPin* pIPin, ULONG pid)
 	IMPEG2PIDMap* muxMapPid;
 	if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid)))
 	{
-		if (pid){
+		if (pid)
 			muxMapPid->MapPID(1, &pid , MEDIA_ELEMENTARY_STREAM);
-		}
+
 		muxMapPid->Release();
 		hr = S_OK;
 	}
@@ -1091,7 +922,7 @@ HRESULT Demux::LoadTelexPin(IPin* pIPin, ULONG pid)
 	if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid)))
 	{
 		if (pid){
-			muxMapPid->MapPID(1, &pid , MEDIA_TRANSPORT_PACKET); //MEDIA_MPEG2_PSI
+			muxMapPid->MapPID(1, &pid , MEDIA_TRANSPORT_PACKET); 
 		}
 		muxMapPid->Release();
 		hr = S_OK;
@@ -1171,8 +1002,6 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 							if (SUCCEEDED(pIPin->Disconnect())){
 
-//**********************************************************************************************
-//Another Bug Fix
 								*pConnect = FALSE;
 								if (m_bMPEG2AudioMediaType)
 									GetMP2Media(&pintype);
@@ -1208,20 +1037,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 						}
 
-//Removed								*pConnect = TRUE;
-//Removed								m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
-//Removed				}
-//Removed							if (m_bMPEG2AudioMediaType)
-//Removed								GetMP2Media(&pintype);
-//Removed							else
-//Removed								GetMP1Media(&pintype);
-//Removed							GetMP2Media(&pintype);
-//Removed							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
-
-//**********************************************************************************************
-
 						USHORT pPid;
-						//GetAudioPid(&pPid);
 						pPid = get_MP2AudioPid();
 						LoadMediaPin(pIPin, pPid);
 						pIPin->Release();
@@ -1231,7 +1047,6 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 					GetMP2Media(&pintype);
 					if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
-						//ClearDemuxPin(pIPin);
 
 						pIPin->QueryId(pPinName);
 						IPin* pInpPin;
@@ -1251,8 +1066,6 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 							if (SUCCEEDED(pIPin->Disconnect())){
 
-//**********************************************************************************************
-//Another Bug Fix
 								*pConnect = FALSE;
 								GetAC3Media(&pintype);
 								muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
@@ -1279,25 +1092,9 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 							GetAC3Media(&pintype);
 							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 						}
-//Removed								*pConnect = TRUE;
-//Removed								m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
-//Removed							}
-//Removed						GetAC3Media(&pintype);
-//Removed						muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
-
-//**********************************************************************************************
 
 						USHORT pPid;
-						//GetAC3Pid(&pPid);
-//**********************************************************************************************
-//Audio2 AC3 Additions
-
 						pPid = get_AC3_2AudioPid();
-
-//Removed					pPid = m_pPidParser->pids.ac3;
-
-//**********************************************************************************************
-
 						LoadMediaPin(pIPin, pPid);
 						pIPin->Release();
 						hr = S_OK;
@@ -1325,8 +1122,6 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 								if (SUCCEEDED(pIPin->Disconnect())){
 
-//**********************************************************************************************
-//Another Bug Fix
 									*pConnect = FALSE;
 									GetAC3Media(&pintype);
 									muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
@@ -1354,22 +1149,8 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 								muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 							}
 
-//Removed									*pConnect = TRUE;
-//Removed									m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
-//Removed								}
-//Removed							GetAC3Media(&pintype);
-//Removed							muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
-
-//**********************************************************************************************
-
 							USHORT pPid;
-							//GetAC3Pid(&pPid);
-//**********************************************************************************************
-//Audio2 AC3 Additions
 							pPid = get_AC3_2AudioPid();
-//Removed							pPid = m_pPidParser->pids.ac3;
-//**********************************************************************************************
-
 							LoadMediaPin(pIPin, pPid);
 							pIPin->Release();
 							hr = S_OK;
@@ -1518,10 +1299,10 @@ HRESULT Demux::GetMP2Media(AM_MEDIA_TYPE *pintype)
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Audio;
-	pintype->subtype = MEDIASUBTYPE_MPEG2_AUDIO; //MEDIASUBTYPE_MPEG1Payload;
-	pintype->formattype = FORMAT_WaveFormatEx; //FORMAT_None; //
-	pintype->cbFormat = sizeof(g_MPEG1AudioFormat); //Mpeg2ProgramVideo
-	pintype->pbFormat = g_MPEG1AudioFormat; //;Mpeg2ProgramVideo
+	pintype->subtype = MEDIASUBTYPE_MPEG2_AUDIO; 
+	pintype->formattype = FORMAT_WaveFormatEx; 
+	pintype->cbFormat = sizeof(g_MPEG1AudioFormat);
+	pintype->pbFormat = g_MPEG1AudioFormat; 
 	pintype->bFixedSizeSamples = TRUE;
 	pintype->bTemporalCompression = 0;
 	pintype->lSampleSize = 1;
@@ -1540,7 +1321,7 @@ HRESULT Demux::GetMP1Media(AM_MEDIA_TYPE *pintype)
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Audio;
 	pintype->subtype = MEDIASUBTYPE_MPEG1Payload;
-	pintype->formattype = FORMAT_WaveFormatEx; //FORMAT_None; //
+	pintype->formattype = FORMAT_WaveFormatEx; 
 	pintype->cbFormat = sizeof(MPEG1AudioFormat);
 	pintype->pbFormat = MPEG1AudioFormat;
 	pintype->bFixedSizeSamples = TRUE;
@@ -1572,9 +1353,6 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 	return S_OK;
 }
 
-//*********************************************************************************************
-//TIF Additions
-
 HRESULT Demux::GetTIFMedia(AM_MEDIA_TYPE *pintype)
 
 {
@@ -1584,13 +1362,11 @@ HRESULT Demux::GetTIFMedia(AM_MEDIA_TYPE *pintype)
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = KSDATAFORMAT_TYPE_MPEG2_SECTIONS;
-	pintype->subtype = MEDIASUBTYPE_DVB_SI; //MEDIASUBTYPE_MPEG2DATA; //Sections & tables
+	pintype->subtype = MEDIASUBTYPE_DVB_SI; 
 	pintype->formattype = KSDATAFORMAT_SPECIFIER_NONE;
 
 	return S_OK;
 }
-
-//*********************************************************************************************
 
 HRESULT Demux::GetTelexMedia(AM_MEDIA_TYPE *pintype)
 
@@ -1601,8 +1377,8 @@ HRESULT Demux::GetTelexMedia(AM_MEDIA_TYPE *pintype)
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = KSDATAFORMAT_TYPE_MPEG2_SECTIONS;
-	pintype->subtype = KSDATAFORMAT_SUBTYPE_NONE; //MEDIASUBTYPE_None;
-	pintype->formattype = KSDATAFORMAT_SPECIFIER_NONE; //GUID_NULL; //FORMAT_MPEGStreams
+	pintype->subtype = KSDATAFORMAT_SUBTYPE_NONE; 
+	pintype->formattype = KSDATAFORMAT_SPECIFIER_NONE; 
 
 	return S_OK;
 }
@@ -1616,8 +1392,8 @@ HRESULT Demux::GetTSMedia(AM_MEDIA_TYPE *pintype)
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Stream;
-	pintype->subtype = KSDATAFORMAT_SUBTYPE_BDA_MPEG2_TRANSPORT; //MEDIASUBTYPE_MPEG2_TRANSPORT; //KSDATAFORMAT_SUBTYPE_BDA_MPEG2_TRANSPORT;
-	pintype->formattype = FORMAT_None; //GUID_NULL; //FORMAT_MPEGStreams; //
+	pintype->subtype = KSDATAFORMAT_SUBTYPE_BDA_MPEG2_TRANSPORT; 
+	pintype->formattype = FORMAT_None; 
 
 	return S_OK;
 }
@@ -1747,16 +1523,12 @@ HRESULT Demux::DoPause()
 
 
 	if (!m_pMediaControl)
-	{
-//		ErrorMessageBox(TEXT("Media Control interface is null"));
 		return S_OK;
-	}
+
 	hr = m_pMediaControl->Pause();
 	if (FAILED(hr))
-	{
-//		ErrorMessageBox(TEXT("Error stopping graph"));
 		return S_OK;
-	}
+
 	return S_OK;
 }
 
@@ -1770,9 +1542,6 @@ void Demux::set_Auto(BOOL bAuto)
 	m_bAuto = bAuto;
 }
 
-//*********************************************************************************************
-//NP Control Additions
-
 BOOL Demux::get_NPControl()
 {
 	return m_bNPControl;
@@ -1783,8 +1552,6 @@ void Demux::set_NPControl(BOOL bNPControl)
 	m_bNPControl = bNPControl;
 }
 
-//NP Slave Additions
-
 BOOL Demux::get_NPSlave()
 {
 	return m_bNPSlave;
@@ -1794,8 +1561,6 @@ void Demux::set_NPSlave(BOOL bNPSlave)
 {
 	m_bNPSlave = bNPSlave;
 }
-
-//*********************************************************************************************
 
 BOOL Demux::get_AC3Mode()
 {
@@ -1827,9 +1592,6 @@ void Demux::set_MPEG2AudioMediaType(BOOL bMPEG2AudioMediaType)
 	m_bMPEG2AudioMediaType = bMPEG2AudioMediaType;
 }
 
-//**********************************************************************************************
-//Audio2 Additions
-
 BOOL Demux::get_MPEG2Audio2Mode()
 {
 	return m_bMPEG2Audio2Mode;
@@ -1856,7 +1618,6 @@ int Demux::get_AC3_2AudioPid()
 	else
 		return m_pPidParser->pids.ac3;
 }
-//**********************************************************************************************
 
 
 

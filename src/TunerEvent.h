@@ -51,65 +51,15 @@ protected:
 	Demux *m_pDemux;
 	IFilterGraph *m_pFilterGraph;
 
-public:
-
-    // IUnknown methods
-    STDMETHODIMP_(ULONG) AddRef()
-    {
-        return InterlockedIncrement(&m_nRefCount);
-    }
-    STDMETHODIMP_(ULONG) Release()
-    {
-        _ASSERT(m_nRefCount >= 0);
-        ULONG uCount = InterlockedDecrement(&m_nRefCount);
-        if (uCount == 0)
-        {
-            delete this;
-        }
-        // Return the temporary variable, not the member
-        // variable, for thread safety.
-        return uCount;
-    }
-    STDMETHODIMP QueryInterface(REFIID riid, void **ppvObject)
-    {
-        if (NULL == ppvObject)
-            return E_POINTER;
-        if (riid == __uuidof(IUnknown))
-            *ppvObject = static_cast<IUnknown*>(this);
-        else if (riid == __uuidof(IBroadcastEvent))
-            *ppvObject = static_cast<IBroadcastEvent*>(this);
-        else 
-            return E_NOINTERFACE;
-        AddRef();
-        return S_OK;
-    }
-
-    // The one IBroadcastEvent method.
-    STDMETHOD(Fire)(GUID eventID)
-    {
-		// The tuner changed stations or channels.
-        if (eventID == EVENTID_TuningChanged && !EventBusyFlag)
-        {
-			EventBusyFlag = true; //set Event flag to prevent looping
-			DoChannelChange(); //Change The Channel
-			EventBusyFlag = false; //Reset set Event flag to prevent looping
-        }
-        return S_OK;
-    }
-
-    void SetEventFlag(bool flag)
-    {
-		EventBusyFlag = flag;
-	}
-
-    TunerEvent(Demux *pDemux, IUnknown *pUnk) : m_dwBroadcastEventCookie(0), m_nRefCount(1)
-	{
-		m_pTSFileSourceFilter = pUnk;
-		m_pDemux = pDemux;
-		m_spBroadcastEvent = NULL;
-	};
-
 public: //private
+
+	STDMETHODIMP_(ULONG) AddRef();
+	STDMETHODIMP_(ULONG) Release();
+	STDMETHODIMP QueryInterface(REFIID riid, void **ppvObject);
+	STDMETHOD(Fire)(GUID eventID);
+	void SetEventFlag(bool flag);
+	TunerEvent(Demux *pDemux, IUnknown *pUnk);
+
     HRESULT HookupGraphEventService(IFilterGraph *pGraph);
     HRESULT RegisterForTunerEvents();
     HRESULT UnRegisterForTunerEvents();

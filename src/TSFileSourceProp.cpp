@@ -125,38 +125,21 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	m_pProgram->GetAC3Pid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AC3), sz);
-
-//***********************************************************************************************
-//Audio2 Additions
-
 	m_pProgram->GetAC3_2Pid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AC3_2), sz);
-
-//**********************************************************************************************
-//NID Additions
-
 	m_pProgram->GetNIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_NID), sz);
-
-//NID Additions
-
 	unsigned char netname[128];
 	m_pProgram->GetNetworkName((unsigned char*)&netname);
 	sprintf(sz, "%s",netname);
 	SetWindowText(GetDlgItem(m_hwnd, IDC_NETID), sz);
-
 	unsigned char chnumb[128];
 	m_pProgram->GetChannelNumber((unsigned char*)&chnumb);
-
-//ONID Additions
-
 	m_pProgram->GetONIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_ONID), sz);
-
-
 	unsigned char onetname[128];
 	unsigned char chname[128];
 	m_pProgram->GetONetworkName((unsigned char*)&onetname);
@@ -165,15 +148,9 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	SetWindowText(GetDlgItem(m_hwnd, IDC_ONETID), sz);
 	sprintf(sz, "Ch %s :- %s",chnumb, chname);
 	SetWindowText(GetDlgItem(m_hwnd, IDC_CHID), sz);
-
-//TSID Additions
-	
 	m_pProgram->GetTSIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_TSID), sz);
-
-//***********************************************************************************************
-	
 	m_pProgram->GetPMTPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_PMT), sz);
@@ -191,7 +168,6 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	ms -= (secs*1000);
 	secs -= (mins*60);
 	mins -= (hours*60);
-	//wsprintf(sz, TEXT("%lu ms"), ConvertToMilliseconds(dur));
 	wsprintf(sz, TEXT("%02i:%02i:%02i.%03i"), hours, mins, secs, ms);
 	SetWindowText(GetDlgItem(m_hwnd, IDC_DURATION), sz);
 
@@ -222,29 +198,17 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	CheckDlgButton(m_hwnd,IDC_MPEG1MODE,!PidNr);
 	CheckDlgButton(m_hwnd,IDC_MPEG2MODE,PidNr);
 
-//**********************************************************************************************
-//Audio2 Additions
-
 	m_pProgram->GetAudio2Mode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_AUDIO2MODE,PidNr);
-
-//**********************************************************************************************
 
 	m_pProgram->GetAutoMode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_AUTOMODE,PidNr);
 
-//**********************************************************************************************
-//NP Control Additions
-
 	m_pProgram->GetNPControl(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_NPCTRL,PidNr);
 
-//NP Slave Additions
-
 	m_pProgram->GetNPSlave(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_NPSLAVE,PidNr);
-
-//**********************************************************************************************
 
 	m_pProgram->GetRateControlMode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_RATECONTROL,PidNr);
@@ -292,9 +256,6 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					break ;
 				}
 
-//**********************************************************************************************
-//Registry Additions
-
 				case IDC_SAVE :
 				{
 					// Save Registry settings
@@ -304,20 +265,11 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					break ;
 				}
 
-//**********************************************************************************************
-
 				case IDC_ENTER:
 				{
 					m_pProgram->SetPgmNumb((WORD) GetDlgItemInt(hwnd, IDC_PGM, &bRet, TRUE));
 					OnRefreshProgram () ;
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
 
@@ -325,50 +277,24 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				{
 					m_pProgram->NextPgmNumb();
 					OnRefreshProgram () ;
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
-
-//**********************************************************************************************
-//Prev button Additions
 
 				case IDC_PREV:
 				{
 					m_pProgram->PrevPgmNumb();
 					OnRefreshProgram () ;
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
-
-//**********************************************************************************************
 
 				case IDC_CREATETSPIN:
 				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_CREATETSPIN);
 					m_pProgram->SetCreateTSPinOnDemux(checked);
 					OnRefreshProgram();
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
 				case IDC_AC3MODE:
@@ -376,14 +302,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_AC3MODE);
 					m_pProgram->SetAC3Mode(checked);
 					OnRefreshProgram () ;
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
 
@@ -393,14 +312,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					CheckDlgButton(hwnd,IDC_MPEG1MODE,TRUE);
 					CheckDlgButton(hwnd,IDC_MPEG2MODE,FALSE);
 					OnRefreshProgram () ;
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
 
@@ -410,58 +322,29 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					CheckDlgButton(hwnd,IDC_MPEG1MODE,FALSE);
 					CheckDlgButton(hwnd,IDC_MPEG2MODE,TRUE);
 					OnRefreshProgram () ;
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
-
-//**********************************************************************************************
-//Audio2 Additions
 
 				case IDC_AUDIO2MODE:
 				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_AUDIO2MODE);
 					m_pProgram->SetAudio2Mode(checked);
 					OnRefreshProgram () ;
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
-
-//**********************************************************************************************
-
 
 				case IDC_AUTOMODE:
 				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_AUTOMODE);
 					m_pProgram->SetAutoMode(checked);
 					OnRefreshProgram () ;
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
 
-//**********************************************************************************************
-//NP Control Additions
-					case IDC_NPCTRL:
+				case IDC_NPCTRL:
 				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_NPCTRL);
 					m_pProgram->SetNPControl(checked);
@@ -470,9 +353,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					break;
 				}
 
-//NP Slave Additions
-
-					case IDC_NPSLAVE:
+				case IDC_NPSLAVE:
 				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_NPSLAVE);
 					m_pProgram->SetNPSlave(checked);
@@ -481,10 +362,8 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					break;
 				}
 
-					case IDC_EPGINFO:
+				case IDC_EPGINFO:
 				{
-//					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_NPSLAVE);
-//					m_pProgram->SetNPSlave(checked);
 					if (m_pProgram->GetEPGFromFile() == S_OK)
 					{
 						unsigned char netname[128];
@@ -527,21 +406,12 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					break;
 				}
 
-//**********************************************************************************************
-
 				case IDC_DELAYMODE:
 				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_DELAYMODE);
 					m_pProgram->SetDelayMode(checked);
 					OnRefreshProgram () ;
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
 
@@ -550,14 +420,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_RATECONTROL);
 					m_pProgram->SetRateControlMode(checked);
 					OnRefreshProgram ();
-
-//**********************************************************************************************
-//Property Apply Additions
-
 					SetDirty();
-
-//**********************************************************************************************
-
 					break;
 				}
 
@@ -579,9 +442,6 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 	return TRUE;
 }
 
-//**********************************************************************************************
-//Property Apply Additions
-
 HRESULT CTSFileSourceProp::OnApplyChanges(void)
 {
 
@@ -595,5 +455,4 @@ HRESULT CTSFileSourceProp::OnApplyChanges(void)
 	}
 	return NOERROR;
 }
-//**********************************************************************************************
 

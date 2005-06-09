@@ -73,23 +73,18 @@ public:
 	void set_BitRate(long rate);
 
 protected:
+
 	HRESULT GetReferenceClock(IReferenceClock **pClock);
-	//HRESULT FillBufferSyncTS(IMediaSample *pSample);
-
-	__int64 ConvertPCRtoRT(REFERENCE_TIME pcrtime);
-
 	HRESULT FindNextPCR(__int64 *pcrtime, long *byteOffset, long maxOffset);
 	HRESULT FindPrevPCR(__int64 *pcrtime, long *byteOffset);
-
+	__int64 ConvertPCRtoRT(REFERENCE_TIME pcrtime);
 	void AddBitRateForAverage(__int64 bitratesample);
-
 	void Debug(LPCTSTR lpOutputString);
 
 protected:
 	CTSFileSourceFilter * const m_pTSFileSourceFilter;
 	FileReader * const m_pFileReader;
 	PidParser * const m_pPidParser;
-
 	CTSBuffer *m_pTSBuffer;
 	
 	CCritSec  m_FillLock;
@@ -105,20 +100,17 @@ protected:
 	__int64 m_llPrevPCR;
 	__int64 m_llPCRDelta;
 
+	int debugcount;
+	BOOL   m_bRateControl;
 	long m_lNextPCRByteOffset;
 	long m_lPrevPCRByteOffset;
 	long m_lByteDelta;
-
 	long m_lTSPacketDeliverySize;
-
-	BOOL   m_bRateControl;
-
 	long m_DataRate;
-	__int64 m_DataRateTotal;
 	long m_BitRateCycle;
+	__int64 m_DataRateTotal;
 	__int64 m_BitRateStore[256];
 
-	int debugcount;
 };
 
 #endif

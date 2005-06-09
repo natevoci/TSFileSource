@@ -23,9 +23,6 @@
 *    http://forums.dvbowners.com/
 */
 
-//#if !defined(CAPTURE_ENGINE_MEDIAFORMATS)
-//#define CAPTURE_ENGINE_FILE_FUNCTIONS
-
 static BYTE g_Mpeg2ProgramVideo [] = {
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
@@ -182,6 +179,3 @@ static	BYTE	MPEG1AudioFormat [] = {
 	0x01, 0x00,	0x1C, 0x00, 0x00, 0x00,	0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 } ;
 
-//**********************************************************************************************
-
-//#endif

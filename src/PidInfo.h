@@ -43,38 +43,22 @@ public:
 	int aud;
 	int aud2;
 	int ac3;
-//***********************************************************************************************
-//Audio 2 Additions
-
 	int ac3_2;
-
-//NID Additions
-
 	int chnumb;
-	
-//ONID Additions
-
-	unsigned char chname[128];
-	unsigned char onetname[128];
-
-//Descriptor Fix
-
-	unsigned char sdesc[128];
-	unsigned char edesc[600];
-	unsigned char sndesc[128];
-	unsigned char endesc[600];
-
-//***********************************************************************************************
 	int txt;
 	int sid;
 	int pmt;
 	int pcr;
+	long bitrate;
 	__int64 start;
 	__int64 end;
 	__int64 dur;
-
-	long bitrate;
-
+	unsigned char chname[128];
+	unsigned char onetname[128];
+	unsigned char sdesc[128];
+	unsigned char edesc[600];
+	unsigned char sndesc[128];
+	unsigned char endesc[600];
 	unsigned long TsArray[16];
 };
 

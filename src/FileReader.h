@@ -40,50 +40,26 @@ public:
 	HRESULT SetFileName(LPCOLESTR pszFileName);
 	HRESULT OpenFile();
 	HRESULT CloseFile();
+	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes);
+	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod);
+	HRESULT get_ReadOnly(WORD *ReadOnly);
+	HRESULT get_DelayMode(WORD *DelayMode);
+	HRESULT set_DelayMode(WORD DelayMode);
+	HRESULT GetFileSize(__int64 *lpllsize);
 
 	BOOL IsFileInvalid();
 
-	HRESULT GetFileSize(__int64 *lpllsize);
 	DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	__int64 GetFilePointer();
-
-//***********************************************************************************************
-//File Growing Fix
-
 	__int64 get_FileSize(void);
-
-//***********************************************************************************************
-
-	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes);
-	HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod);
-
-//***********************************************************************************************
-//Found this bug
-	
-	HRESULT get_ReadOnly(WORD *ReadOnly);
-
-// Removed	HRESULT get_ReadOnly(WORD *AutoMode);
-
-//**********************************************************************************************
-	HRESULT get_DelayMode(WORD *DelayMode);
-	HRESULT set_DelayMode(WORD DelayMode);
 
 protected:
 	HANDLE   m_hFile;               // Handle to file for streaming
+	HANDLE   m_hInfoFile;           // Handle to Infofile for filesize
 	LPOLESTR m_pFileName;           // The filename where we stream
 	BOOL     m_bReadOnly;
 	BOOL     m_bDelay;
-//***********************************************************************************************
-//File Growing Fix
-
 	__int64 m_fileSize;
-
-//File Writer Additions
-
-	HANDLE   m_hInfoFile;               // Handle to Infofile for filesize
-
-//***********************************************************************************************
-
 
 };
 

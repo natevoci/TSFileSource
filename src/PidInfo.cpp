@@ -42,29 +42,14 @@ void PidInfo::Clear()
 	aud   = 0;
 	aud2  = 0;
 	ac3   = 0;
-
-//***********************************************************************************************
-//Audio 2 Additions
-
 	ac3_2   = 0;
-
-//NID Additions
-
 	chnumb	= 0;
-
-//ONID Additions
-
 	ZeroMemory(onetname, 128);
 	ZeroMemory(chname, 128);
-
-//Descriptor Fix
-
 	ZeroMemory(sdesc, 128);
 	ZeroMemory(edesc, 600);
 	ZeroMemory(sndesc, 128);
 	ZeroMemory(endesc, 600);
-
-//***********************************************************************************************
 
 	txt   = 0;
 	sid   = 0;
@@ -85,29 +70,14 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 	aud   = pidInfo->aud;
 	aud2  = pidInfo->aud2;
 	ac3   = pidInfo->ac3;
-
-//***********************************************************************************************
-//Audio 2 Additions
-
 	ac3_2   = pidInfo->ac3_2;
-
-//NID Additions
-
 	chnumb	= pidInfo->chnumb;
-
-//ONID Additions
-
 	memcpy(onetname, pidInfo->onetname, 128);
 	memcpy(chname, pidInfo->chname, 128);
-
-//Descriptor Fix
-
 	memcpy(sdesc, pidInfo->sdesc, 128);
 	memcpy(edesc, pidInfo->edesc, 600);
 	memcpy(sndesc, pidInfo->sndesc, 128);
 	memcpy(endesc, pidInfo->endesc, 600);
-
-//***********************************************************************************************
 
 	txt   = pidInfo->txt;
 	sid   = pidInfo->sid;

@@ -41,14 +41,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	CSourceSeeking(NAME("MPEG2 Source Output"), pUnk, phr, &m_SeekLock ),
 	m_pTSFileSourceFilter(pFilter),
 	m_pFileReader(pFileReader),
-
-//*********************************************************************************************
-//Registry Additions
-
 	m_bRateControl(FALSE),
-
-//*********************************************************************************************
-
 	m_pPidParser(pPidParser)
 {
 	m_dwSeekingCaps =	
@@ -73,15 +66,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_DataRateTotal = 0;
 	m_BitRateCycle = 0;
 
-//***********************************************************************************************
-//Refresh additions
-
 	m_pTSBuffer = new CTSBuffer(m_pFileReader, &m_pPidParser->pids, &m_pPidParser->pidArray);
-
-//Removed	m_pTSBuffer = new CTSBuffer(m_pFileReader, &m_pPidParser->pids);
-
-//***********************************************************************************************
-
 
 	debugcount = 0;
 }
@@ -109,8 +94,6 @@ HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 	pmt->InitMediaType();
 	pmt->SetType      (& MEDIATYPE_Stream);
 	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);
-//	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_PROGRAM);
-//	pmt->SetFormatType   (& FORMAT_MPEG2_VIDEO);
 
     return S_OK;
 }
@@ -165,10 +148,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	CheckPointer(pSample, E_POINTER);
 	if (m_pFileReader->IsFileInvalid())
 	{
-
-//**********************************************************************************************
-//wait for Growing File Additions
-
 		int count = 0;
 		__int64	fileSize = 0;
 		m_pFileReader->GetFileSize(&fileSize);
@@ -183,11 +162,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		CheckPointer(pSample, E_POINTER);
 		if (m_pFileReader->IsFileInvalid())
 			return NOERROR;
-
-//Removed		return NOERROR;
-
-//**********************************************************************************************
-
 	}
 
 	if (m_bSeeking)
@@ -205,8 +179,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		return hr;
 	}
 	lDataLength = pSample->GetActualDataLength();
-
-	//FillBufferSyncTS(pSample);
 
 	hr = m_pTSBuffer->Require(lDataLength);
 	if (FAILED(hr))
@@ -395,16 +367,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	m_pFileReader->get_ReadOnly(&readonly);
 	if (readonly)
 	{
-
-//***********************************************************************************************
-//Refreash pids additions
-
 		m_pPidParser->RefreshDuration(TRUE, m_pFileReader);
-
-//Removed		m_pPidParser->RefreshDuration();
-
-//***********************************************************************************************
-
 		SetDuration(m_pPidParser->pids.dur);
 	}
 /*
@@ -434,32 +397,22 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 	m_llPrevPCR = -1;
 	debugcount = 0;
 
-
-//*********************************************************************************************
-//wait for Growing File Additions
-
-			//Check if file is being recorded
-			if(m_pFileReader->get_FileSize() < 2001000)
-			{
-//				if (m_pPidParser->RefreshPids() == S_OK)
-				if (m_pTSFileSourceFilter->RefreshPids() == S_OK)
-				{
-					m_pTSFileSourceFilter->LoadPgmReg();
-					DeliverBeginFlush();
-					DeliverEndFlush();
-					SetDuration(m_pPidParser->pids.dur);
-				}
-			}
-
-//Property Page Additions
+	//Check if file is being recorded
+	if(m_pFileReader->get_FileSize() < 2001000)
+	{
+		if (m_pTSFileSourceFilter->RefreshPids() == S_OK)
+		{
+			m_pTSFileSourceFilter->LoadPgmReg();
+			DeliverBeginFlush();
+			DeliverEndFlush();
+			SetDuration(m_pPidParser->pids.dur);
+		}
+	}
 
 	if (m_pPidParser->pidArray.Count() >= 2)
 	{
 //		m_pTSFileSourceFilter->ShowFilterProperties();
 	}
-
-//*********************************************************************************************
-
 
 	CAutoLock lock(&m_SeekLock);
 
@@ -470,7 +423,6 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 
 HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 {
-	//m_rtStartTime = tStart;
 	return CBaseOutputPin::Run(tStart);
 }
 
@@ -564,57 +516,6 @@ HRESULT CTSFileSourcePin::GetReferenceClock(IReferenceClock **pClock)
 	}
 	return E_FAIL;
 }
-
-/*
-//This was an early attempt to see if vlc handled it better if we were sync
-//byte aligned, but it didn't seem to make any difference.
-//If this is be reimplemented it will be different now because CTSBuffer
-//has been introduced since.
-
-HRESULT CTSFileSourcePin::FillBufferSyncTS(IMediaSample *pSample)
-{
-	PBYTE pData;
-	LONG lDataLength;
-
-	HRESULT hr = pSample->GetPointer(&pData);
-	if (FAILED(hr))
-	{
-		return hr;
-	}
-	lDataLength = pSample->GetActualDataLength();
-
-	PBYTE pTempData = new BYTE[lDataLength];
-	hr = m_pTSFileSourceFilter->get_FileReader()->Read(pTempData, lDataLength);
-	if (FAILED(hr))
-		return hr;
-
-	if (lDataLength % 188 == 0)
-	{
-		//Attempt to find a sync byte and start the buffer from there.
-		//We shouldn't need to worry about this, but it can't hurt
-		long lOffset = 0;
-		hr = PidParser::FindSyncByte(pTempData, lDataLength, &lOffset, 1);
-
-		if (SUCCEEDED(hr))
-		{
-			memcpy(pData, pTempData+lOffset, lDataLength-lOffset);
-			if (lOffset > 0)
-			{
-				hr = m_pTSFileSourceFilter->get_FileReader()->Read(pTempData+lDataLength-lOffset, lOffset);
-				if (FAILED(hr))
-					return hr;
-			}
-			return S_OK;
-		}
-	}
-	//We didn't sync we just return the data as we read it.
-	memcpy(pData, pTempData, lDataLength);
-
-	return S_OK;
-}
-*/
-
-//**********************************************************************************************
 
 __int64 CTSFileSourcePin::ConvertPCRtoRT(__int64 pcrtime)
 {
@@ -726,8 +627,4 @@ void CTSFileSourcePin::Debug(LPCTSTR lpOutputString)
 	::OutputDebugString(sz);
 	debugcount++;
 }
-
-//TCHAR sz[100];
-//sprintf(sz, "%lu", (__int64)fileSize);
-//MessageBox(NULL, sz, TEXT("GetFileSize"), MB_OK);
 

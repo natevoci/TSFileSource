@@ -23,12 +23,49 @@
 *    http://forums.dvbowners.com/
 */
 
+#include <streams.h>
 #include "TunerEvent.h"
 #include "ITSFileSource.h"
 
-//TunerEvent::TunerEvent(Demux *pDemux, IUnknown *pUnk);
-//TunerEvent:: ~TunerEvent();
+TunerEvent::TunerEvent(Demux *pDemux, IUnknown *pUnk) : m_dwBroadcastEventCookie(0), m_nRefCount(1)
+{
+	m_pTSFileSourceFilter = pUnk;
+	m_pDemux = pDemux;
+	m_spBroadcastEvent = NULL;
+}
 
+// IUnknown methods
+ULONG TunerEvent::AddRef()
+{
+	return InterlockedIncrement(&m_nRefCount);
+}
+
+STDMETHODIMP TunerEvent::QueryInterface(REFIID riid, void **ppvObject)
+{
+	if (NULL == ppvObject)
+		return E_POINTER;
+	if (riid == __uuidof(IUnknown))
+		*ppvObject = static_cast<IUnknown*>(this);
+	else if (riid == __uuidof(IBroadcastEvent))
+		*ppvObject = static_cast<IBroadcastEvent*>(this);
+	else 
+		return E_NOINTERFACE;
+	AddRef();
+	return S_OK;
+}
+
+ULONG TunerEvent::Release()
+{
+	_ASSERT(m_nRefCount >= 0);
+	ULONG uCount = InterlockedDecrement(&m_nRefCount);
+	if (uCount == 0)
+	{
+		delete this;
+	}
+	// Return the temporary variable, not the member
+	// variable, for thread safety.
+	return uCount;
+}
 
 // Query the Filter Graph Manager for the broadcast event service.
 // If not found, create it and register it.
@@ -163,3 +200,23 @@ HRESULT TunerEvent::DoChannelChange()
 	}
 	return hr;
 }
+
+void TunerEvent::SetEventFlag(bool flag)
+{
+	EventBusyFlag = flag;
+}
+
+// The one IBroadcastEvent method.
+HRESULT TunerEvent::Fire(GUID eventID)
+{
+	// The tuner changed stations or channels.
+	if (eventID == EVENTID_TuningChanged && !EventBusyFlag)
+	{
+		EventBusyFlag = true; //set Event flag to prevent looping
+		DoChannelChange(); //Change The Channel
+		EventBusyFlag = false; //Reset set Event flag to prevent looping
+	}
+	return S_OK;
+}
+
+

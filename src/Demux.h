@@ -35,50 +35,27 @@ public:
 
 	Demux(PidParser *pPidParser);
 
-//*********************************************************************************************
-//Bug fix
 	virtual ~Demux();
 
 	STDMETHODIMP AOnConnect(IFilterGraph *pGraph);
-
-	BOOL get_Auto();
-	void set_Auto(BOOL bAuto);
-
-//*********************************************************************************************
-//NP Control Additions
-
-	BOOL get_NPControl();
-	void set_NPControl(BOOL bNPControl);
-
-//NP Slave Additions
-
-	BOOL get_NPSlave();
-	void set_NPSlave(BOOL bNPSlave);
-
-//Stop TIF Additions
-
 	HRESULT SetTIFState(IFilterGraph *pGraph, REFERENCE_TIME tStart);
 
-//*********************************************************************************************
-
+	BOOL get_Auto();
+	BOOL get_NPControl();
+	BOOL get_NPSlave();
 	BOOL get_AC3Mode();
-	void set_AC3Mode(BOOL bAC3Mode);
-
 	BOOL get_CreateTSPinOnDemux();
-	void set_CreateTSPinOnDemux(BOOL bCreateTSPinOnDemux);
-
 	BOOL get_MPEG2AudioMediaType();
-	void set_MPEG2AudioMediaType(BOOL bMPEG2AudioMediaType);
-
-//**********************************************************************************************
-//Audio2 Additions
-
 	BOOL get_MPEG2Audio2Mode();
+	void set_MPEG2AudioMediaType(BOOL bMPEG2AudioMediaType);
+	void set_CreateTSPinOnDemux(BOOL bCreateTSPinOnDemux);
+	void set_AC3Mode(BOOL bAC3Mode);
+	void set_NPSlave(BOOL bNPSlave);
+	void set_NPControl(BOOL bNPControl);
+	void set_Auto(BOOL bAuto);
 	void set_MPEG2Audio2Mode(BOOL bMPEG2Audio2Mode);
 	int  get_MP2AudioPid();
 	int Demux::get_AC3_2AudioPid();
-
-//**********************************************************************************************
 
 protected:
 	HRESULT UpdateDemuxPins(IBaseFilter* pDemux);
@@ -111,56 +88,26 @@ protected:
 	HRESULT	DoStop();
 	HRESULT	DoStart();
 	HRESULT	DoPause();
-
-//**********************************************************************************************
-//NP Control Additions
-
 	HRESULT UpdateNetworkProvider(IBaseFilter* pNetworkProvider);
-
-//TIF Additions
-
 	HRESULT CheckTIFPin(IBaseFilter* pDemux);
 	HRESULT GetTIFMedia(AM_MEDIA_TYPE *pintype);
 
-//**********************************************************************************************
-
-protected:
 	PidParser *m_pPidParser;
-
-	BOOL   m_bAuto;
-
-//*********************************************************************************************
-//Bug fix
-
-	bool	OnConnectBusyFlag;
-
-//NP Control Additions
-
-	BOOL 	m_bNPControl;
-
-//NP Slave Additions
-
-	BOOL 	m_bNPSlave;
-
-//*********************************************************************************************
-
-	BOOL   m_bAC3Mode;
-	BOOL   m_bCreateTSPinOnDemux;
-	BOOL   m_bMPEG2AudioMediaType;
-
-//**********************************************************************************************
-//Audio2 Additions
-
-	BOOL m_bMPEG2Audio2Mode;
-
-//**********************************************************************************************
-
-	LONG   m_TimeOut[1];
-	BOOL   m_WasPlaying;
-
 	IGraphBuilder * m_pGraphBuilder;
 	IMediaControl * m_pMediaControl;
 	IFilterChain * m_pFilterChain;
+
+	BOOL m_bAuto;
+	bool m_bConnectBusyFlag;
+	BOOL m_bNPControl;
+	BOOL m_bNPSlave;
+	BOOL m_bAC3Mode;
+	BOOL m_bCreateTSPinOnDemux;
+	BOOL m_bMPEG2AudioMediaType;
+	BOOL m_bMPEG2Audio2Mode;
+	BOOL m_WasPlaying;
+	LONG m_TimeOut[2];
+
 
 };
 

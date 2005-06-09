@@ -30,18 +30,8 @@ FileReader::FileReader() :
 	m_hFile(INVALID_HANDLE_VALUE),
 	m_pFileName(0),
 	m_bReadOnly(FALSE),
-
-//***********************************************************************************************
-//File Growing Fix
-
 	m_fileSize(0),
-
-//File Writer Additions
-
 	m_hInfoFile(INVALID_HANDLE_VALUE),
-
-//***********************************************************************************************
-
 	m_bDelay(FALSE)
 {
 }
@@ -162,7 +152,7 @@ HRESULT FileReader::OpenFile()
 			FILE_SHARE_WRITE,   // Share access
 			NULL,      // Security
 			OPEN_EXISTING,    // Open flags
-			FILE_ATTRIBUTE_NORMAL, // |	FILE_FLAG_RANDOM_ACCESS, // More flags
+			FILE_ATTRIBUTE_NORMAL, // More flags
 			NULL);
 
 //***********************************************************************************************
@@ -243,50 +233,16 @@ HRESULT FileReader::GetFileSize(__int64 *lpllsize)
 	LARGE_INTEGER li;
 	li.LowPart = dwSizeLow;
 	li.HighPart = dwSizeHigh;
-
-//File Growing Fix
-
 	m_fileSize = li.QuadPart;
 
 	*lpllsize = li.QuadPart;
 	return S_OK;
 }
 
-//Removed
-/*
-
-HRESULT FileReader::GetFileSize(__int64 *lpllsize)
-{
-	DWORD dwSizeLow;
-	DWORD dwSizeHigh;
-
-	dwSizeLow = ::GetFileSize(m_hFile, &dwSizeHigh);
-	if ((dwSizeLow == 0xFFFFFFFF) && (GetLastError() != NO_ERROR ))
-	{
-		return E_FAIL;
-	}
-
-	LARGE_INTEGER li;
-	li.LowPart = dwSizeLow;
-	li.HighPart = dwSizeHigh;
-
-	*lpllsize = li.QuadPart;
-	return S_OK;
-}
-*/
-
-//***********************************************************************************************
-
-
-//***********************************************************************************************
-//File Growing Fix
-
 __int64 FileReader::get_FileSize(void)
 {
 	return m_fileSize;
 }
-
-//***********************************************************************************************
 
 
 //***********************************************************************************************
@@ -314,15 +270,6 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 
 	return ::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, dwMoveMethod);
 }
-//Removed
-/*
-DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
-{
-	LARGE_INTEGER li;
-	li.QuadPart = llDistanceToMove;
-	return ::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, dwMoveMethod);
-}
-*/
 
 //***********************************************************************************************
 
@@ -366,30 +313,6 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 	if (*dwReadBytes < (ULONG)lDataLength)
 		return S_FALSE;
 
-//*********************************************************************************************
-//Live File Additions
-/*		if (m_bReadOnly)
-		{
-			if (*dwReadBytes < (ULONG)lDataLength)
-			{
-				if (m_bDelay)
-					Sleep(10000);
-				else
-					Sleep(100);
-
-				LARGE_INTEGER li;
-				li.QuadPart = (__int64)(m_filecurrent);
-				::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, FILE_BEGIN);
-				hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, dwReadBytes, NULL);
-			}
-			if (FAILED(hr) || *dwReadBytes == 0)
-			{
-				return S_FALSE;
-			}
-			return S_OK;
-		}
-*/
-//*********************************************************************************************
 	return S_OK;
 }
 
