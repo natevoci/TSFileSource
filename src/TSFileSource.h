@@ -165,7 +165,7 @@ protected:
 	PidParser *m_pPidParser;
 	FileReader *m_pFileReader;
 	Demux *m_pDemux;
-
+//	IFilterGraph *m_pFilterGraph;
 	BOOL	m_PropOpen;
 	CCritSec m_Lock;                // Main renderer critical section
 };

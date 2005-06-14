@@ -36,8 +36,16 @@
 #include <atlbase.h>
 #include "TunerEvent.h"
 
+//********************************************************************************************
+//Filter Peers Additions
 
-Demux::Demux(PidParser *pPidParser) :
+ 
+Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
+
+//Removed Demux::Demux(PidParser *pPidParser) :
+
+//********************************************************************************************
+
 	m_bAuto(TRUE),
 	m_bMPEG2AudioMediaType(TRUE),
 	m_bMPEG2Audio2Mode(FALSE),
@@ -48,45 +56,151 @@ Demux::Demux(PidParser *pPidParser) :
 	m_bAC3Mode(TRUE),
 	m_bCreateTSPinOnDemux(FALSE)
 {
+
+//********************************************************************************************
+//Filter Peers Additions
+
+	m_pTSFileSourceFilter = pFilter;
+
+//********************************************************************************************
+
 	m_pPidParser = pPidParser;
-	m_pGraphBuilder = NULL;
-	m_pFilterChain = NULL;
-	m_pMediaControl = NULL;
 }
 
 Demux::~Demux()
 {
-	if (m_pMediaControl != NULL){m_pMediaControl->Release(); m_pMediaControl = NULL;}
-	if (m_pFilterChain != NULL){m_pFilterChain->Release();	m_pFilterChain = NULL;}
-	if (m_pGraphBuilder != NULL){m_pGraphBuilder->Release(); m_pGraphBuilder = NULL;}
 }
 
-HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
+//********************************************************************************************
+//Filter Peers Additions
+
+// Find all the immediate upstream or downstream peers of a filter.
+HRESULT Demux::GetPeerFilters(
+    IBaseFilter *pFilter, // Pointer to the starting filter
+    PIN_DIRECTION Dir,    // Direction to search (upstream or downstream)
+    CFilterList &FilterList)  // Collect the results in this list.
 {
-	if (m_pGraphBuilder == NULL)
-		if(FAILED(pGraph->QueryInterface(IID_IGraphBuilder, (void **) &m_pGraphBuilder)))
-		{
-			return S_FALSE;
-		}
+    if (!pFilter) return E_POINTER;
 
-	if (m_pFilterChain == NULL)
-		if(FAILED(pGraph->QueryInterface(IID_IFilterChain, (void **) &m_pFilterChain)))
-		{
-			m_pGraphBuilder->Release();
-			return S_FALSE;
-		}
+    IEnumPins *pEnum = 0;
+    IPin *pPin = 0;
+    HRESULT hr = pFilter->EnumPins(&pEnum);
+    if (FAILED(hr)) return hr;
+    while (S_OK == pEnum->Next(1, &pPin, 0))
+    {
+        // See if this pin matches the specified direction.
+        PIN_DIRECTION ThisPinDir;
+        hr = pPin->QueryDirection(&ThisPinDir);
+        if (FAILED(hr))
+        {
+            // Something strange happened.
+            hr = E_UNEXPECTED;
+            pPin->Release();
+            break;
+        }
+        if (ThisPinDir == Dir)
+        {
+            // Check if the pin is connected to another pin.
+            IPin *pPinNext = 0;
+            hr = pPin->ConnectedTo(&pPinNext);
+            if (SUCCEEDED(hr))
+            {
+                // Get the filter that owns that pin.
+                PIN_INFO PinInfo;
+                hr = pPinNext->QueryPinInfo(&PinInfo);
+                pPinNext->Release();
+                if (FAILED(hr) || (PinInfo.pFilter == NULL))
+                {
+                    // Something strange happened.
+                    pPin->Release();
+                    pEnum->Release();
+                    return E_UNEXPECTED;
+                }
+                // Insert the filter into the list.
+                AddFilterUnique(FilterList, PinInfo.pFilter);
+                PinInfo.pFilter->Release();
+            }
+        }
+        pPin->Release();
+    }
+    pEnum->Release();
+    return S_OK;
+}
+void Demux::AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew)
+{
+    if (pNew == NULL) return;
 
-	if (m_pMediaControl == NULL)
-		if(m_pGraphBuilder != NULL)
-		{
-			if(FAILED(m_pGraphBuilder->QueryInterface(IID_IMediaControl, (void **) &m_pMediaControl)))
-			{
-				m_pFilterChain->Release();
-				m_pGraphBuilder->Release();
-				return S_FALSE;
-			}
-		}
+    POSITION pos = FilterList.GetHeadPosition();
+    while (pos)
+    {
+        IBaseFilter *pF = FilterList.GetNext(pos);
+        if (IsEqualObject(pF, pNew))
+        {
+            return;
+        }
+    }
+    pNew->AddRef();  // The caller must release everything in the list.
+    FilterList.AddTail(pNew);
+}
 
+// Get the first upstream or downstream filter
+HRESULT Demux::GetNextFilter(
+    IBaseFilter *pFilter, // Pointer to the starting filter
+    PIN_DIRECTION Dir,    // Direction to search (upstream or downstream)
+    IBaseFilter **ppNext) // Receives a pointer to the next filter.
+{
+    if (!pFilter || !ppNext) return E_POINTER;
+
+    IEnumPins *pEnum = 0;
+    IPin *pPin = 0;
+    HRESULT hr = pFilter->EnumPins(&pEnum);
+    if (FAILED(hr)) return hr;
+    while (S_OK == pEnum->Next(1, &pPin, 0))
+    {
+        // See if this pin matches the specified direction.
+        PIN_DIRECTION ThisPinDir;
+        hr = pPin->QueryDirection(&ThisPinDir);
+        if (FAILED(hr))
+        {
+            // Something strange happened.
+            hr = E_UNEXPECTED;
+            pPin->Release();
+            break;
+        }
+        if (ThisPinDir == Dir)
+        {
+            // Check if the pin is connected to another pin.
+            IPin *pPinNext = 0;
+            hr = pPin->ConnectedTo(&pPinNext);
+            if (SUCCEEDED(hr))
+            {
+                // Get the filter that owns that pin.
+                PIN_INFO PinInfo;
+                hr = pPinNext->QueryPinInfo(&PinInfo);
+                pPinNext->Release();
+                pPin->Release();
+                pEnum->Release();
+                if (FAILED(hr) || (PinInfo.pFilter == NULL))
+                {
+                    // Something strange happened.
+                    return E_UNEXPECTED;
+                }
+                // This is the filter we're looking for.
+                *ppNext = PinInfo.pFilter; // Client must release.
+                return S_OK;
+            }
+        }
+        pPin->Release();
+    }
+    pEnum->Release();
+    // Did not find a matching filter.
+    return E_FAIL;
+}
+
+//********************************************************************************************
+
+HRESULT Demux::AOnConnect()
+{
 	if (m_bConnectBusyFlag)
 		return S_FALSE;
 
@@ -105,29 +219,67 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 	}
 
 	IEnumFilters* EnumFilters;
+	FILTER_INFO Info;
+	m_pTSFileSourceFilter->QueryFilterInfo(&Info);
 
 	// Parse only the existing Network Provider Filter
 	// in the filter graph, we do this by looking for filters
 	// that implement the ITuner interface while
 	// the count is still active.
-	if(SUCCEEDED(pGraph->EnumFilters(&EnumFilters)))
+	if(SUCCEEDED(Info.pGraph->EnumFilters(&EnumFilters)))
 	{
-		IBaseFilter* m_pNetworkProvider;
+		IBaseFilter* pFilter;
 		ULONG Fetched(0);
-		while(EnumFilters->Next(1, &m_pNetworkProvider, &Fetched) == S_OK)
+		while(EnumFilters->Next(1, &pFilter, &Fetched) == S_OK)
 		{
-			if(m_pNetworkProvider != NULL)
+			if(pFilter != NULL)
 			{
-				UpdateNetworkProvider(m_pNetworkProvider);
+				UpdateNetworkProvider(pFilter);
 	
-				m_pNetworkProvider->Release();
-				m_pNetworkProvider = NULL;
+				pFilter->Release();
+				pFilter = NULL;
 			}
 		}
 		EnumFilters->Release();
 	}
+	Info.pGraph->Release();
 
+//********************************************************************************************
+//Filter Peers Additions
 
+	// Parse only the existing Mpeg2 Demultiplexer Filter
+	// in the filter graph, we do this by looking for filters
+	// that implement the IMpeg2Demultiplexer interface while
+	// the count is still active.
+	CFilterList FList(NAME("MyList"));  // List to hold the downstream peers.
+	if (SUCCEEDED(GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList)) && FList.GetHeadPosition())
+	{
+		IBaseFilter* pFilter = NULL;
+		POSITION pos = FList.GetHeadPosition();
+		pFilter = FList.GetNext(pos);
+		while (SUCCEEDED(GetPeerFilters(pFilter, PINDIR_OUTPUT, FList)) && pos)
+		{
+			pFilter = FList.GetNext(pos);
+		}
+
+		pos = FList.GetHeadPosition();
+		while (pos)
+		{
+			pFilter = FList.GetNext(pos);
+			if(pFilter != NULL)
+			{
+				UpdateDemuxPins(pFilter);
+				pFilter = NULL;
+			}
+		}
+	}
+
+//Removed
+/*
+
+  
+	
+	  
 	// Parse only the existing Mpeg2 Demultiplexer Filter
 	// in the filter graph, we do this by looking for filters
 	// that implement the IMpeg2Demultiplexer interface while
@@ -149,6 +301,9 @@ HRESULT Demux::AOnConnect(IFilterGraph *pGraph)
 		}
 		EnumFilters->Release();
 	}
+*/
+
+//********************************************************************************************
 
 	if (m_WasPlaying && IsPlaying() == S_FALSE)
 	{
@@ -227,7 +382,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 								IPin* pIPin;
 								if (SUCCEEDED(pDemux->FindPin(PinName, &pIPin))){
 									// Reconnect pin
-									m_pGraphBuilder->Render(pIPin);
+									RenderFilterPin(pIPin);
 									pIPin->Release();
 								}
 							}
@@ -257,7 +412,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 							IPin* pIPin;
 							if (SUCCEEDED(pDemux->FindPin(PinName, &pIPin))){
 								// Reconnect pin
-								m_pGraphBuilder->Render(pIPin);
+								RenderFilterPin(pIPin);
 								pIPin->Release();
 							}
 						}
@@ -297,7 +452,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 							IPin* pIPin;
 							if (SUCCEEDED(pDemux->FindPin(PinName, &pIPin))){
 								// Reconnect pin
-								m_pGraphBuilder->Render(pIPin);
+								RenderFilterPin(pIPin);
 								pIPin->Release();
 							}
 						}
@@ -327,7 +482,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 							IPin* pIPin;
 							if (SUCCEEDED(pDemux->FindPin(PinName, &pIPin))){
 								// Reconnect pin
-								m_pGraphBuilder->Render(pIPin);
+								RenderFilterPin(pIPin);
 								pIPin->Release();
 							}
 						}
@@ -741,7 +896,7 @@ HRESULT Demux::CheckTsPin(IBaseFilter* pDemux)
 	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
 		if (SUCCEEDED(LoadTsPin(pIPin))){
-			m_pGraphBuilder->Reconnect(pIPin);
+			ReconnectFilterPin(pIPin);
 			pIPin->Release();
 			return S_OK;
 		}
@@ -1011,7 +1166,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 								muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 								if (FAILED(pInpPin->QueryAccept(&pintype)))
 									*pConnect = TRUE;
-								else if (FAILED(m_pGraphBuilder->Reconnect(pInpPin)))
+								else if (FAILED(ReconnectFilterPin(pInpPin)))
 									*pConnect = TRUE;
 								else if (FAILED(pIPin->ConnectedTo(&pInpPin)))
 									*pConnect = TRUE;
@@ -1023,7 +1178,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 								}
 								
 								if (*pConnect == TRUE)
-									m_pFilterChain->RemoveChain(pinInfo.pFilter, pinInfo.pFilter);
+									RemoveFilterChain(pinInfo.pFilter, pinInfo.pFilter);
 							}
 							return S_FALSE;
 						}
@@ -1071,7 +1226,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 								muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 								if (FAILED(pInpPin->QueryAccept(&pintype)))
 									*pConnect = TRUE;
-								else if (FAILED(m_pGraphBuilder->Reconnect(pInpPin)))
+								else if (FAILED(ReconnectFilterPin(pInpPin)))
 									*pConnect = TRUE;
 								else if (FAILED(pIPin->ConnectedTo(&pInpPin)))
 									*pConnect = TRUE;
@@ -1083,7 +1238,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 								}
 								
 								if (*pConnect == TRUE)
-									m_pFilterChain->RemoveChain(pinInfo.pFilter, pinInfo.pFilter);
+									RemoveFilterChain(pinInfo.pFilter, pinInfo.pFilter);
 							}
 							return S_FALSE;
 						}
@@ -1127,7 +1282,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 									muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
 									if (FAILED(pInpPin->QueryAccept(&pintype)))
 										*pConnect = TRUE;
-									else if (FAILED(m_pGraphBuilder->Reconnect(pInpPin)))
+									else if (FAILED(ReconnectFilterPin(pInpPin)))
 										*pConnect = TRUE;
 									else if (FAILED(pIPin->ConnectedTo(&pInpPin)))
 										*pConnect = TRUE;
@@ -1139,7 +1294,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 									}
 								
 									if (*pConnect == TRUE)
-										m_pFilterChain->RemoveChain(pinInfo.pFilter, pinInfo.pFilter);
+										RemoveFilterChain(pinInfo.pFilter, pinInfo.pFilter);
 								}
 								return S_FALSE;
 							}
@@ -1184,7 +1339,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 					if (SUCCEEDED(pIPin->Disconnect())){
 						*pConnect = TRUE;
-						m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
+						RemoveFilterChain(pinInfo.pFilter, NULL);
 					}
 				}
 
@@ -1219,7 +1374,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 					if (SUCCEEDED(pIPin->Disconnect())){
 						*pConnect = TRUE;
-						m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
+						RemoveFilterChain(pinInfo.pFilter, NULL);
 					}
 				}
 
@@ -1256,7 +1411,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 					if (SUCCEEDED(pIPin->Disconnect())){
 						*pConnect = TRUE;
-						m_pFilterChain->RemoveChain(pinInfo.pFilter, NULL);
+						RemoveFilterChain(pinInfo.pFilter, NULL);
 					}
 				}
 				pIPin->Disconnect();
@@ -1414,15 +1569,21 @@ HRESULT Demux::Sleeps(ULONG Duration, long TimeOut[])
 HRESULT Demux::IsStopped()
 {
 	HRESULT hr;
-	if (m_pMediaControl == NULL)
-		hr = m_pGraphBuilder->QueryInterface (&m_pMediaControl);
 
-	if (!m_pMediaControl)
-	{
-		return S_OK;
-	}
 	FILTER_STATE state;
-	hr = m_pMediaControl->GetState(5000, (OAFilterState*)&state);
+
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		IMediaControl *pMediaControl;
+		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+		{
+			hr = pMediaControl->GetState(5000, (OAFilterState*)&state);
+			pMediaControl->Release();
+		}
+		Info.pGraph->Release();
+	}
+
 	if (hr == S_OK && state == State_Stopped){return S_OK;}
 	if (hr == VFW_S_STATE_INTERMEDIATE)
 	{
@@ -1435,15 +1596,21 @@ HRESULT Demux::IsStopped()
 HRESULT Demux::IsPlaying()
 {
 	HRESULT hr;
-	if (m_pMediaControl == NULL)
-		hr = m_pGraphBuilder->QueryInterface (&m_pMediaControl);
 
-	if (!m_pMediaControl)
-	{
-		return S_OK;
-	}
 	FILTER_STATE state;
-	hr = m_pMediaControl->GetState(5000, (OAFilterState*)&state);
+
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		IMediaControl *pMediaControl;
+		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+		{
+			hr = pMediaControl->GetState(5000, (OAFilterState*)&state);
+			pMediaControl->Release();
+		}
+		Info.pGraph->Release();
+	}
+
 	if (hr == S_OK && state == State_Running){return S_OK;}
 	if (hr == VFW_S_STATE_INTERMEDIATE)
 	{
@@ -1455,15 +1622,21 @@ HRESULT Demux::IsPlaying()
 HRESULT Demux::IsPaused()
 {
 	HRESULT hr;
-	if (m_pMediaControl == NULL)
-		hr = m_pGraphBuilder->QueryInterface (&m_pMediaControl);
 
-	if (!m_pMediaControl)
-	{
-		return S_OK;
-	}
 	FILTER_STATE state;
-	hr = m_pMediaControl->GetState(5000, (OAFilterState*)&state);
+
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		IMediaControl *pMediaControl;
+		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+		{
+			hr = pMediaControl->GetState(5000, (OAFilterState*)&state);
+			pMediaControl->Release();
+		}
+		Info.pGraph->Release();
+	}
+
 	if (hr == S_OK && state == State_Paused){return S_OK;}
 	if (hr == VFW_S_STATE_INTERMEDIATE)
 	{
@@ -1481,51 +1654,62 @@ HRESULT Demux::DoStop()
 {
 	HRESULT hr;
 
-	if (m_pMediaControl == NULL)
-		hr = m_pGraphBuilder->QueryInterface (&m_pMediaControl);
-
-
-	if (!m_pMediaControl)
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
 	{
-		return S_OK;
+		IMediaControl *pMediaControl;
+		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+		{
+			hr = pMediaControl->Stop(); 
+			pMediaControl->Release();
+		}
+		Info.pGraph->Release();
 	}
 
-	if (m_pMediaControl->Stop() != S_OK)
-	{
+	if (FAILED(hr))
 		return S_OK;
-	}
+
 	return S_OK;
 }
 
 HRESULT Demux::DoStart()
 {
 	HRESULT hr;
-	if (m_pMediaControl == NULL)
-		hr = m_pGraphBuilder->QueryInterface (&m_pMediaControl);
 
-	if (!m_pMediaControl)
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
 	{
-		return S_OK;
+		IMediaControl *pMediaControl;
+		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+		{
+			hr = pMediaControl->Run();
+			pMediaControl->Release();
+		}
+		Info.pGraph->Release();
 	}
-	hr = m_pMediaControl->Run();
+
 	if (FAILED(hr))
-	{
 		return S_OK;
-	}
+
 	return S_OK;
 }
 
 HRESULT Demux::DoPause()
 {
 	HRESULT hr;
-	if (m_pMediaControl == NULL)
-		hr = m_pGraphBuilder->QueryInterface (&m_pMediaControl);
 
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		IMediaControl *pMediaControl;
+		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+		{
+			hr = pMediaControl->Pause();
+			pMediaControl->Release();
+		}
+		Info.pGraph->Release();
+	}
 
-	if (!m_pMediaControl)
-		return S_OK;
-
-	hr = m_pMediaControl->Pause();
 	if (FAILED(hr))
 		return S_OK;
 
@@ -1619,11 +1803,55 @@ int Demux::get_AC3_2AudioPid()
 		return m_pPidParser->pids.ac3;
 }
 
+HRESULT Demux::RemoveFilterChain(IBaseFilter *pStartFilter, IBaseFilter *pEndFilter)
+{
+	HRESULT hr = E_FAIL;
 
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		IFilterChain *pFilterChain;
+		if(SUCCEEDED(Info.pGraph->QueryInterface(IID_IFilterChain, (void **) &pFilterChain)))
+		{
+			hr = pFilterChain->RemoveChain(pStartFilter, pEndFilter);
+			pFilterChain->Release();
+		}
+		Info.pGraph->Release();
+	}
+	return hr;
+}
 
+HRESULT Demux::RenderFilterPin(IPin *pIPin)
+{
+	HRESULT hr = E_FAIL;
 
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		IGraphBuilder *pGraphBuilder;
+		if(SUCCEEDED(Info.pGraph->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
+		{
+			hr = pGraphBuilder->Render(pIPin);
+			pGraphBuilder->Release();
+		}
+		Info.pGraph->Release();
+	}
+	return hr;
+}
 
+HRESULT Demux::ReconnectFilterPin(IPin *pIPin)
+{
+	HRESULT hr = E_FAIL;
 
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		hr = Info.pGraph->Reconnect(pIPin);
+		Info.pGraph->Release();
+	}
+
+	return hr;
+}
 
 
 

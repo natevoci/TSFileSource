@@ -29,15 +29,33 @@
 #include "PidParser.h"
 #include "Control.h"
 
+//********************************************************************************************
+//Comm Release Fix Additions
+
+#include <atlbase.h>
+
+//********************************************************************************************
+
 class Demux
 {
 public:
 
-	Demux(PidParser *pPidParser);
+//********************************************************************************************
+//Filter Peers Additions
+
+	// Define a typedef for a list of filters.
+typedef CGenericList<IBaseFilter> CFilterList;
+
+	Demux(PidParser *pPidParser, IBaseFilter *pFilter);
+
+//Removed	Demux(PidParser *pPidParser);
+
+//********************************************************************************************
 
 	virtual ~Demux();
 
-	STDMETHODIMP AOnConnect(IFilterGraph *pGraph);
+
+	STDMETHODIMP AOnConnect();
 	HRESULT SetTIFState(IFilterGraph *pGraph, REFERENCE_TIME tStart);
 
 	BOOL get_Auto();
@@ -92,10 +110,21 @@ protected:
 	HRESULT CheckTIFPin(IBaseFilter* pDemux);
 	HRESULT GetTIFMedia(AM_MEDIA_TYPE *pintype);
 
+//********************************************************************************************
+//Filter Peers Additions
+
+	HRESULT GetPeerFilters(IBaseFilter *pFilter, PIN_DIRECTION Dir, CFilterList &FilterList);  
+	HRESULT GetNextFilter(IBaseFilter *pFilter, PIN_DIRECTION Dir, IBaseFilter **ppNext);
+	void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
+	HRESULT RemoveFilterChain(IBaseFilter *pStartFilter, IBaseFilter *pEndFilter);
+	HRESULT RenderFilterPin(IPin *pIPin);
+	HRESULT ReconnectFilterPin(IPin *pIPin);
+
+	IBaseFilter *m_pTSFileSourceFilter;
+
+//********************************************************************************************
+
 	PidParser *m_pPidParser;
-	IGraphBuilder * m_pGraphBuilder;
-	IMediaControl * m_pMediaControl;
-	IFilterChain * m_pFilterChain;
 
 	BOOL m_bAuto;
 	bool m_bConnectBusyFlag;

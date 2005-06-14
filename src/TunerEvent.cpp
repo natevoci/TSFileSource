@@ -71,7 +71,7 @@ ULONG TunerEvent::Release()
 // If not found, create it and register it.
 HRESULT TunerEvent::HookupGraphEventService(IFilterGraph *pGraph)
 {
-	m_pFilterGraph = pGraph;
+//	m_pFilterGraph = pGraph;
 	
     HRESULT hr = S_OK;
     if (!m_spBroadcastEvent)
@@ -181,9 +181,6 @@ HRESULT TunerEvent::DoChannelChange()
 	hr = m_pTSFileSourceFilter->QueryInterface(IID_ITSFileSource, (void**)(&pProgram));
 	if(SUCCEEDED(hr))
 	{
-//TCHAR sz[100];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz, TEXT("DoChannelChange"), MB_OK);
 		m_bNPControlSave = m_pDemux->get_NPControl(); //Save NP Control mode
 		m_pDemux->set_NPControl(false); //Turn off NP Control else we will loop
 

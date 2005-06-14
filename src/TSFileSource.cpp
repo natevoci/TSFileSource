@@ -62,7 +62,16 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 
 	m_pFileReader = new FileReader();
 	m_pPidParser = new PidParser(m_pFileReader);
-	m_pDemux = new Demux(m_pPidParser);
+
+//********************************************************************************************
+//Filter Peers Additions
+
+	m_pDemux = new Demux(m_pPidParser, this);
+
+//Removed	m_pDemux = new Demux(m_pPidParser);
+
+//********************************************************************************************
+
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, m_pFileReader, m_pPidParser, phr);
 
 	if (m_pPin == NULL) {
@@ -87,10 +96,10 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	delete 	m_pTunerEvent;
 	delete 	m_pRegStore;
 	delete  m_pSettingsStore;
-	delete m_pDemux;
-	delete m_pFileReader;
-	delete m_pPidParser;
-	delete m_pPin;
+	delete	m_pDemux;
+	delete	m_pFileReader;
+	delete	m_pPidParser;
+	delete	m_pPin;
 }
 
 STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void ** ppv)
@@ -204,7 +213,7 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 HRESULT CTSFileSourceFilter::OnConnect()
 {
-	return m_pDemux->AOnConnect(GetFilterGraph());
+	return m_pDemux->AOnConnect();
 }
 
 STDMETHODIMP CTSFileSourceFilter::GetPages(CAUUID *pPages)
@@ -288,7 +297,7 @@ HRESULT CTSFileSourceFilter::Refresh()
 		m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
 	}
 	m_pPin->ChangeStart();
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	m_pPin->ChangeStop();
 	return S_OK;
 }
@@ -635,7 +644,7 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	m_pPin->ChangeStart();
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	m_pPin->ChangeStop();
 
 	return NOERROR;
@@ -659,7 +668,7 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	m_pPin->ChangeStart();
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	m_pPin->ChangeStop();
 
 	return NOERROR;
@@ -683,7 +692,7 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	m_pPin->ChangeStart();
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	m_pPin->ChangeStop();
 	return NOERROR;
 }
@@ -719,7 +728,7 @@ STDMETHODIMP CTSFileSourceFilter::SetAC3Mode(WORD AC3Mode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_AC3Mode(AC3Mode);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	return NOERROR;
 }
 
@@ -737,7 +746,7 @@ STDMETHODIMP CTSFileSourceFilter::SetMP2Mode(WORD MP2Mode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_MPEG2AudioMediaType(MP2Mode);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	return NOERROR;
 }
 
@@ -755,7 +764,7 @@ STDMETHODIMP CTSFileSourceFilter::SetAudio2Mode(WORD Audio2Mode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_MPEG2Audio2Mode(Audio2Mode);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	return NOERROR;
 }
 
@@ -773,7 +782,7 @@ STDMETHODIMP CTSFileSourceFilter::SetAutoMode(WORD AutoMode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_Auto(AutoMode);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	return NOERROR;
 }
 
@@ -791,7 +800,7 @@ STDMETHODIMP CTSFileSourceFilter::SetNPControl(WORD NPControl)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_NPControl(NPControl);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	return NOERROR;
 }
 
@@ -809,7 +818,7 @@ STDMETHODIMP CTSFileSourceFilter::SetNPSlave(WORD NPSlave)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_NPSlave(NPSlave);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	return NOERROR;
 }
 
@@ -838,7 +847,7 @@ STDMETHODIMP CTSFileSourceFilter::SetDelayMode(WORD DelayMode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pFileReader->set_DelayMode(DelayMode);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	return NOERROR;
 }
 
@@ -873,7 +882,7 @@ STDMETHODIMP CTSFileSourceFilter::SetCreateTSPinOnDemux(WORD bCreatePin)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_CreateTSPinOnDemux(bCreatePin);
-	m_pDemux->AOnConnect(GetFilterGraph());
+	m_pDemux->AOnConnect();
 	return NOERROR;
 }
 
