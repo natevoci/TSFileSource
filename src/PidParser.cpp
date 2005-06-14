@@ -894,7 +894,7 @@ bool PidParser::CheckForEPG(PBYTE pData, int pos, bool *extPacket, int *sectlen,
 		&& (pidArray[*sidcount].sid == (((0xFF & pData[pos + 8]) << 8) | (0xFF & pData[pos + 9])))
 		)
 	{
-		*sectlen =((0x0F & pData[pos + 6]) << 8)|(0xFF & pData[pos + 7])+8;
+		*sectlen =((0x0F & pData[pos + 6]) << 8)|(0xFF & pData[pos + 7]);// + 8;
 
 		 // test if next packet required 
 		if (*sectlen > 176)
@@ -906,7 +906,7 @@ bool PidParser::CheckForEPG(PBYTE pData, int pos, bool *extPacket, int *sectlen,
 			*extPacket = false; // set for next packet
 
 			//if no descriptor info
-			if (*sectlen <= 0x10)
+			if (*sectlen <= 0x0F)
 				*sectlen = 0;
 		};
 
@@ -1421,8 +1421,12 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 	
 	if (hr == S_OK){
 
-		m_fileLenOffset = m_fileLenOffset - (__int64)(pos - 1);
-		*pStartFilePos = m_fileStartOffset + (__int64)(pos - 1); 
+		m_fileLenOffset = m_fileLenOffset - (((__int64)pos) - 1);
+		*pStartFilePos = m_fileStartOffset + (__int64)pos + 1;
+//		m_fileLenOffset = m_fileLenOffset - (((__int64)pos) - 1);
+//		*pStartFilePos = m_fileStartOffset + (((__int64)pos) - 1);
+//		m_fileLenOffset = m_fileLenOffset - (__int64)(pos - 1);
+//		*pStartFilePos = m_fileStartOffset + (__int64)(pos - 1); 
 	}
 
 	pos = lDataLength - 188;
