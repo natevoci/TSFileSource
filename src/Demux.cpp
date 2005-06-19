@@ -218,31 +218,32 @@ HRESULT Demux::AOnConnect()
 		m_WasPlaying = TRUE;
 	}
 
-	IEnumFilters* EnumFilters;
-	FILTER_INFO Info;
-	m_pTSFileSourceFilter->QueryFilterInfo(&Info);
-
 	// Parse only the existing Network Provider Filter
 	// in the filter graph, we do this by looking for filters
 	// that implement the ITuner interface while
 	// the count is still active.
-	if(SUCCEEDED(Info.pGraph->EnumFilters(&EnumFilters)))
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
-		IBaseFilter* pFilter;
-		ULONG Fetched(0);
-		while(EnumFilters->Next(1, &pFilter, &Fetched) == S_OK)
+		IEnumFilters* EnumFilters;
+		if(SUCCEEDED(Info.pGraph->EnumFilters(&EnumFilters)))
 		{
-			if(pFilter != NULL)
+			IBaseFilter* pFilter;
+			ULONG Fetched(0);
+			while(EnumFilters->Next(1, &pFilter, &Fetched) == S_OK)
 			{
-				UpdateNetworkProvider(pFilter);
+				if(pFilter != NULL)
+				{
+					UpdateNetworkProvider(pFilter);
 	
-				pFilter->Release();
-				pFilter = NULL;
+					pFilter->Release();
+					pFilter = NULL;
+				}
 			}
+			EnumFilters->Release();
 		}
-		EnumFilters->Release();
+		Info.pGraph->Release();
 	}
-	Info.pGraph->Release();
 
 //********************************************************************************************
 //Filter Peers Additions
@@ -1568,12 +1569,12 @@ HRESULT Demux::Sleeps(ULONG Duration, long TimeOut[])
 
 HRESULT Demux::IsStopped()
 {
-	HRESULT hr;
+	HRESULT hr = S_FALSE;
 
 	FILTER_STATE state;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
 		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
@@ -1582,25 +1583,24 @@ HRESULT Demux::IsStopped()
 			pMediaControl->Release();
 		}
 		Info.pGraph->Release();
-	}
+	
+		if (hr == S_OK && state == State_Stopped)
+			return S_OK;
 
-	if (hr == S_OK && state == State_Stopped){return S_OK;}
-	if (hr == VFW_S_STATE_INTERMEDIATE)
-	{
-		return S_OK;
-	}
-
+		if (hr == VFW_S_STATE_INTERMEDIATE)
+			return S_OK;
+	} 
 	return S_FALSE;
 }
 
 HRESULT Demux::IsPlaying()
 {
-	HRESULT hr;
+	HRESULT hr = S_FALSE;
 
 	FILTER_STATE state;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
 		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
@@ -1609,24 +1609,24 @@ HRESULT Demux::IsPlaying()
 			pMediaControl->Release();
 		}
 		Info.pGraph->Release();
-	}
+	
+		if (hr == S_OK && state == State_Running)
+			return S_OK;
 
-	if (hr == S_OK && state == State_Running){return S_OK;}
-	if (hr == VFW_S_STATE_INTERMEDIATE)
-	{
-		return S_OK;
+		if (hr == VFW_S_STATE_INTERMEDIATE)
+			return S_OK;
 	}
 	return S_FALSE;
 }
 
 HRESULT Demux::IsPaused()
 {
-	HRESULT hr;
+	HRESULT hr = S_FALSE;
 
 	FILTER_STATE state;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
 		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
@@ -1635,27 +1635,25 @@ HRESULT Demux::IsPaused()
 			pMediaControl->Release();
 		}
 		Info.pGraph->Release();
+
+		if (hr == S_OK && state == State_Paused)
+			return S_OK;
+
+		if (hr == VFW_S_STATE_INTERMEDIATE)
+			return S_OK;
+
+		if (hr == VFW_S_CANT_CUE)
+			return hr;
 	}
-
-	if (hr == S_OK && state == State_Paused){return S_OK;}
-	if (hr == VFW_S_STATE_INTERMEDIATE)
-	{
-		return S_OK;
-	}
-
-	if (hr == VFW_S_CANT_CUE)
-		return hr;
-
-
 	return S_FALSE;
 }
 
 HRESULT Demux::DoStop()
 {
-	HRESULT hr;
+	HRESULT hr = S_OK;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
 		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
@@ -1664,20 +1662,19 @@ HRESULT Demux::DoStop()
 			pMediaControl->Release();
 		}
 		Info.pGraph->Release();
+
+		if (FAILED(hr))
+			return S_OK;
 	}
-
-	if (FAILED(hr))
-		return S_OK;
-
 	return S_OK;
 }
 
 HRESULT Demux::DoStart()
 {
-	HRESULT hr;
+	HRESULT hr = S_OK;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
 		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
@@ -1686,20 +1683,19 @@ HRESULT Demux::DoStart()
 			pMediaControl->Release();
 		}
 		Info.pGraph->Release();
+
+		if (FAILED(hr))
+			return S_OK;
 	}
-
-	if (FAILED(hr))
-		return S_OK;
-
 	return S_OK;
 }
 
 HRESULT Demux::DoPause()
 {
-	HRESULT hr;
+	HRESULT hr = S_OK;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
 		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
@@ -1708,10 +1704,10 @@ HRESULT Demux::DoPause()
 			pMediaControl->Release();
 		}
 		Info.pGraph->Release();
-	}
 
-	if (FAILED(hr))
-		return S_OK;
+		if (FAILED(hr))
+			return S_OK;
+	}
 
 	return S_OK;
 }
@@ -1808,7 +1804,7 @@ HRESULT Demux::RemoveFilterChain(IBaseFilter *pStartFilter, IBaseFilter *pEndFil
 	HRESULT hr = E_FAIL;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IFilterChain *pFilterChain;
 		if(SUCCEEDED(Info.pGraph->QueryInterface(IID_IFilterChain, (void **) &pFilterChain)))
@@ -1826,7 +1822,7 @@ HRESULT Demux::RenderFilterPin(IPin *pIPin)
 	HRESULT hr = E_FAIL;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IGraphBuilder *pGraphBuilder;
 		if(SUCCEEDED(Info.pGraph->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
@@ -1844,7 +1840,7 @@ HRESULT Demux::ReconnectFilterPin(IPin *pIPin)
 	HRESULT hr = E_FAIL;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		hr = Info.pGraph->Reconnect(pIPin);
 		Info.pGraph->Release();

@@ -1054,6 +1054,12 @@ STDMETHODIMP CTSFileSourceFilter::ShowFilterProperties()
 //	CloseHandle(phWnd);
 	return NOERROR;
 }
+
+BOOL CTSFileSourceFilter::get_AutoMode()
+{
+	return m_pDemux->get_Auto();
+}
+
 //**********************************************************************************************
 
 //////////////////////////////////////////////////////////////////////////

@@ -90,6 +90,7 @@ public:
 	STDMETHODIMP ShowFilterProperties();
 	STDMETHODIMP SetTunerEvent(void);
 	STDMETHODIMP Refresh();
+	BOOL get_AutoMode();
 
 protected:
 

@@ -139,9 +139,6 @@ HRESULT FileReader::OpenFile()
 		m_bReadOnly = TRUE;
 	}
 
-//***********************************************************************************************
-//File Writer Additions
-
 	TCHAR infoName[512];
 	strcpy(infoName, pFileName);
 	strcat(infoName, ".info");
@@ -154,8 +151,6 @@ HRESULT FileReader::OpenFile()
 			OPEN_EXISTING,    // Open flags
 			FILE_ATTRIBUTE_NORMAL, // More flags
 			NULL);
-
-//***********************************************************************************************
 
 	return S_OK;
 
@@ -180,15 +175,10 @@ HRESULT FileReader::CloseFile()
 	CloseHandle(m_hFile);
 	m_hFile = INVALID_HANDLE_VALUE; // Invalidate the file
 
-//***********************************************************************************************
-//File Writer Additions
-
 	if (m_hInfoFile != INVALID_HANDLE_VALUE)
 		CloseHandle(m_hInfoFile);
 
 	m_hInfoFile = INVALID_HANDLE_VALUE; // Invalidate the file
-
-//***********************************************************************************************
 
 	return NOERROR;
 
@@ -199,27 +189,25 @@ BOOL FileReader::IsFileInvalid()
 	return (m_hFile == INVALID_HANDLE_VALUE);
 }
 
-//***********************************************************************************************
-//File Writer Additions
-
 HRESULT FileReader::GetFileSize(__int64 *lpllsize)
 {
-	__int64 length = -1;
-	DWORD read = 0;
 	if (m_hInfoFile != INVALID_HANDLE_VALUE)
 	{
+		__int64 length = -1;
+		DWORD read = 0;
 		LARGE_INTEGER li;
 		li.QuadPart = 0;
 		::SetFilePointer(m_hInfoFile, li.LowPart, &li.HighPart, FILE_BEGIN);
 		ReadFile(m_hInfoFile, (PVOID)&length, (DWORD)sizeof(__int64), &read, NULL);
+
+		if(length > -1)
+		{
+			m_fileSize = length;
+			*lpllsize = length;
+			return S_OK;
+		}
 	}
 
-	if(length > -1)
-	{
-		m_fileSize = length;
-		*lpllsize = length;
-		return S_OK;
-	}
 
 	DWORD dwSizeLow;
 	DWORD dwSizeHigh;
@@ -245,14 +233,11 @@ __int64 FileReader::get_FileSize(void)
 }
 
 
-//***********************************************************************************************
-//File Writer Additions
-
 DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 {
 	LARGE_INTEGER li;
 
-	if (dwMoveMethod == FILE_END)
+	if (dwMoveMethod == FILE_END && m_hInfoFile != INVALID_HANDLE_VALUE)
 	{
 		__int64 length = 0;
 		GetFileSize(&length);
@@ -270,8 +255,6 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 
 	return ::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, dwMoveMethod);
 }
-
-//***********************************************************************************************
 
 __int64 FileReader::GetFilePointer()
 {
@@ -292,21 +275,17 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 	//Get File Position
 	__int64 m_filecurrent = GetFilePointer();
 
-//***********************************************************************************************
-//FileWriter Additions
-
-
-	__int64 length = 0;
-	GetFileSize(&length);
-
-	if (length < (__int64)(m_filecurrent + (__int64)lDataLength))
-		hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)(length - m_filecurrent), dwReadBytes, NULL);
+	if (m_hInfoFile != INVALID_HANDLE_VALUE)
+	{
+		__int64 length = 0;
+		GetFileSize(&length);
+		if (length < (__int64)(m_filecurrent + (__int64)lDataLength))
+			hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)(length - m_filecurrent), dwReadBytes, NULL);
+		else
+			hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, dwReadBytes, NULL);
+	}
 	else
-
-//***********************************************************************************************
-
-		//Read file data into buffer
-		hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, dwReadBytes, NULL);
+		hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, dwReadBytes, NULL);//Read file data into buffer
 
 	if (FAILED(hr))
 		return hr;

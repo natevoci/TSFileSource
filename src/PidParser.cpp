@@ -897,7 +897,7 @@ bool PidParser::CheckForEPG(PBYTE pData, int pos, bool *extPacket, int *sectlen,
 		*sectlen =((0x0F & pData[pos + 6]) << 8)|(0xFF & pData[pos + 7]);// + 8;
 
 		 // test if next packet required 
-		if (*sectlen > 176)
+		if (*sectlen > 176 - 8)
 		{
 			*extPacket = true; //set search for extended packet
 		}
@@ -1368,7 +1368,8 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 				REFERENCE_TIME PeriodOfPCR = (REFERENCE_TIME)(((__int64)(pPids->end - pPids->start)/9)*1000); 
 
 				//8bits per byte and convert to sec divide by pcr duration then average it
-				pids.bitrate = long (((endFilePos - startFilePos)*80000000) / PeriodOfPCR);
+				if (PeriodOfPCR > 0)
+					pids.bitrate = long (((endFilePos - startFilePos)*80000000) / PeriodOfPCR);
 
 				break;
 			}
@@ -1422,7 +1423,7 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 	if (hr == S_OK){
 
 		m_fileLenOffset = m_fileLenOffset - (((__int64)pos) - 1);
-		*pStartFilePos = m_fileStartOffset + (__int64)pos + 1;
+		*pStartFilePos = m_fileStartOffset + (((__int64)pos) - 1);
 //		m_fileLenOffset = m_fileLenOffset - (((__int64)pos) - 1);
 //		*pStartFilePos = m_fileStartOffset + (((__int64)pos) - 1);
 //		m_fileLenOffset = m_fileLenOffset - (__int64)(pos - 1);

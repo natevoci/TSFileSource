@@ -94,6 +94,7 @@ HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 	pmt->InitMediaType();
 	pmt->SetType      (& MEDIATYPE_Stream);
 	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);
+	pmt->SetTemporalCompression(TRUE);
 
     return S_OK;
 }
@@ -128,6 +129,42 @@ HRESULT CTSFileSourcePin::DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROP
     }
 
     return S_OK;
+}
+
+HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
+{
+	HRESULT hr = CBaseOutputPin::CheckConnect(pReceivePin);
+	if (SUCCEEDED(hr) && m_pTSFileSourceFilter->get_AutoMode())
+	{
+		PIN_INFO pInfo;
+		if (SUCCEEDED(pReceivePin->QueryPinInfo(&pInfo)))
+		{
+			FILTER_INFO pFilterInfo;
+			if (SUCCEEDED(pInfo.pFilter->QueryFilterInfo(&pFilterInfo)))
+			{
+				TCHAR name[128];
+				sprintf(name, "%S", pFilterInfo.achName);
+				//Test for an infinite tee filter
+				if (strstr(name, "Tee") != NULL)
+					return hr;
+			}
+
+			// Get an instance of the Demux control interface
+			IMpeg2Demultiplexer* muxInterface = NULL;
+			if(SUCCEEDED(pInfo.pFilter->QueryInterface (&muxInterface)))
+			{
+				pInfo.pFilter->Release();
+				muxInterface->Release();
+				return hr;
+			}
+			else
+			{
+				pInfo.pFilter->Release();
+				return E_FAIL;
+			}
+		}
+	}
+	return hr;
 }
 
 HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
@@ -244,12 +281,15 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 			m_lByteDelta = m_lNextPCRByteOffset - m_lPrevPCRByteOffset;
 
 			//8bits per byte and convert to sec divide by pcr duration then average it
-			__int64 bitrate = ((__int64)m_lByteDelta * (__int64)80000000) / (__int64)ConvertPCRtoRT(m_llPCRDelta);
-			AddBitRateForAverage(bitrate);
+			if ((__int64)ConvertPCRtoRT(m_llPCRDelta) > 0) 
+			{
+				__int64 bitrate = ((__int64)m_lByteDelta * (__int64)80000000) / (__int64)ConvertPCRtoRT(m_llPCRDelta);
+				AddBitRateForAverage(bitrate);
 
-			TCHAR sz[60];
-			wsprintf(sz, TEXT("bitrate %i\n"), bitrate);
-			Debug(sz);
+				TCHAR sz[60];
+				wsprintf(sz, TEXT("bitrate %i\n"), bitrate);
+				Debug(sz);
+			}
 		}
 		else
 		{
@@ -496,10 +536,8 @@ HRESULT CTSFileSourcePin::GetReferenceClock(IReferenceClock **pClock)
 {
 	HRESULT hr;
 
-	FILTER_INFO		filterInfo;
-	hr = m_pFilter->QueryFilterInfo(&filterInfo);
-
-	if (filterInfo.pGraph)
+	FILTER_INFO	filterInfo;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&filterInfo)) && filterInfo.pGraph != NULL)
 	{
 		// Get IMediaFilter interface
 		IMediaFilter* pMediaFilter = NULL;

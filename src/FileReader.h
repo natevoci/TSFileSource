@@ -54,8 +54,8 @@ public:
 	__int64 get_FileSize(void);
 
 protected:
-	HANDLE   m_hFile;               // Handle to file for streaming
-	HANDLE   m_hInfoFile;           // Handle to Infofile for filesize
+	HANDLE   m_hFile; 				// Handle to file for streaming
+	HANDLE   m_hInfoFile;           // Handle to Infofile for filesize from FileWriter
 	LPOLESTR m_pFileName;           // The filename where we stream
 	BOOL     m_bReadOnly;
 	BOOL     m_bDelay;

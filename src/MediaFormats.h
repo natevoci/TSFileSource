@@ -112,8 +112,6 @@ static BYTE g_MPEG1AudioFormat [] = {
 	0x01, 0x00, 0x01, 0x00, //dwChannelMask
 	0x01, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
-//**********************************************************************************************
-// Extra Functions additions
 
 static BYTE	Mpeg2ProgramVideo [] = {
 	0x00, 0x00, 0x00, 0x00,                         //  .hdr.rcSource.left              = 0x00000000
