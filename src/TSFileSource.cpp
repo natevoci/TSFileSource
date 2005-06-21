@@ -125,10 +125,114 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 	{
 		return m_pPin->NonDelegatingQueryInterface(riid, ppv);
 	}
+	if (riid == IID_IAMStreamSelect)
+	{
+		return GetInterface((IAMStreamSelect*)this, ppv);
+	}
 
 	return CSource::NonDelegatingQueryInterface(riid, ppv);
 
 } // NonDelegatingQueryInterface
+
+STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams)
+{
+	if(!pcStreams)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	if (!m_pPidParser->pidArray.Count() || !m_pPidParser->m_StreamReady)
+		return VFW_E_NOT_CONNECTED;
+
+	*pcStreams = m_pPidParser->pidArray.Count();
+	
+	return S_OK;
+}
+
+STDMETHODIMP  CTSFileSourceFilter::Info( 
+						long lIndex,
+						AM_MEDIA_TYPE **ppmt,
+						DWORD *pdwFlags,
+						LCID *plcid,
+						DWORD *pdwGroup,
+						WCHAR **ppszName,
+						IUnknown **ppObject,
+						IUnknown **ppUnk)
+{
+
+	CAutoLock lock(&m_Lock);
+
+	//Check if file has been parsed
+	if(!m_pPidParser->m_StreamReady)
+		return E_FAIL;
+	
+	//Check if in the bounds of index
+	if(lIndex > m_pPidParser->pidArray.Count() || lIndex < 0)
+		return S_FALSE;
+
+	if(!ppmt)
+		return E_INVALIDARG;
+	else
+		ppmt = NULL;
+
+	m_dwGroup = lIndex + 1;
+	if(!pdwGroup)
+		return E_INVALIDARG;
+	else
+		*pdwGroup = lIndex + 1;
+
+	if(!pdwFlags)
+		return E_INVALIDARG;
+	else
+		if (lIndex == m_pPidParser->get_ProgramNumber())
+			*pdwFlags = AMSTREAMSELECTINFO_EXCLUSIVE; //AMSTREAMSELECTINFO_ENABLED;
+		else
+			*pdwFlags = NULL;
+
+	if(!plcid)
+		return E_INVALIDARG;
+	else
+		plcid = NULL;
+
+	TCHAR szBuffer[256];
+	if (lIndex == m_pPidParser->get_ProgramNumber())
+		sprintf(szBuffer,"* %i:%i: %s", m_pPidParser->pidArray[(int)lIndex].chnumb,
+										m_pPidParser->pidArray[(int)lIndex].sid,
+										m_pPidParser->pidArray[(int)lIndex].chname);
+	else
+		sprintf(szBuffer,"  %i:%i: %s", m_pPidParser->pidArray[(int)lIndex].chnumb,
+										m_pPidParser->pidArray[(int)lIndex].sid,
+										m_pPidParser->pidArray[(int)lIndex].chname);
+
+
+	mbstowcs(m_StreamName, (const char*)&szBuffer, 256);
+	if(!ppszName)
+		return E_INVALIDARG;
+	else
+		*ppszName = (WCHAR*)(&m_StreamName);
+
+	if(!ppObject)
+		return E_INVALIDARG;
+	else
+	ppObject = NULL;
+
+	if(!ppUnk)
+		return E_INVALIDARG;
+	else
+	ppUnk = NULL;
+
+	return NOERROR;
+}
+
+STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags)
+{
+	if (!m_pPidParser->pidArray.Count() || !m_pPidParser->m_StreamReady)
+		return VFW_E_NOT_CONNECTED;
+
+	SetPgmNumb(lIndex + 1);
+	SetRegProgram();
+	return S_OK;
+}
+
 
 CBasePin * CTSFileSourceFilter::GetPin(int n)
 {

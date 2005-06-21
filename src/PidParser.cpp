@@ -39,6 +39,7 @@
 PidParser::PidParser(FileReader *pFileReader)
 {
 	m_pFileReader = pFileReader;
+	m_StreamReady = false;
 }
 
 PidParser::~PidParser()
@@ -55,6 +56,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	{
 		return NOERROR;
 	}
+
+	m_StreamReady = false;
 
 	//Store file pointer so we can reset it before leaving this method
 	__int64 originalFilePointer = m_pFileReader->GetFilePointer();
@@ -307,6 +310,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 	pFileReader->CloseFile();
 	delete pFileReader;
+
+	m_StreamReady = true;
 
 	return hr;
 }
@@ -998,8 +1003,7 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 		bool extPacket = false; //Start at first packet
 		int sectLen = 0;
 		m_buflen = 0;
-		ULONG pos;
-		pos = 0;
+		ULONG pos = 100000;
 		int iterations = 0;
 		bool nitfound = false;
 
@@ -1103,7 +1107,7 @@ bool PidParser::CheckForNID(PBYTE pData, int pos, bool *extpacket, int *sectlen)
 			*extpacket = false; // set for next packet
 
 			//if no descriptor info
-			if (*sectlen <= 0x10)
+			if (*sectlen <= 0x0F + 4)
 				*sectlen = 0;
 		};
 

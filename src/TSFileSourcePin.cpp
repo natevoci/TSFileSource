@@ -139,6 +139,12 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 		PIN_INFO pInfo;
 		if (SUCCEEDED(pReceivePin->QueryPinInfo(&pInfo)))
 		{
+			TCHAR name[128];
+			sprintf(name, "%S", pInfo.achName);
+			//Test for an infinite tee filter
+			if (strstr(name, "MPEG-2") != NULL)
+				return hr;
+
 			FILTER_INFO pFilterInfo;
 			if (SUCCEEDED(pInfo.pFilter->QueryFilterInfo(&pFilterInfo)))
 			{
@@ -146,6 +152,8 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 				sprintf(name, "%S", pFilterInfo.achName);
 				//Test for an infinite tee filter
 				if (strstr(name, "Tee") != NULL)
+					return hr;
+				else if (strstr(name, "Flow") != NULL)
 					return hr;
 			}
 

@@ -129,7 +129,7 @@ protected:
 	BOOL m_bMPEG2Audio2Mode;
 	BOOL m_WasPlaying;
 	LONG m_TimeOut[2];
-
+public:
 
 };
 

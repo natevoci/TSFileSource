@@ -54,7 +54,9 @@ class CTSFileSourceFilter;
 class CTSFileSourceFilter : public CSource,
 							public IFileSourceFilter,
 							public ITSFileSource,
+							public IAMStreamSelect,
 							public ISpecifyPropertyPages
+
 {
 	//friend class CTSFileSourcePin;
 public:
@@ -79,7 +81,6 @@ public:
 	STDMETHODIMP Stop();
 
 
-
 	HRESULT FileSeek(REFERENCE_TIME seektime);
 
 	HRESULT LoadPgmReg(void);
@@ -93,6 +94,18 @@ public:
 	BOOL get_AutoMode();
 
 protected:
+
+	// IAMStreamSelect
+	STDMETHODIMP Count(DWORD *pcStreams);
+	STDMETHODIMP Info( long lIndex,
+					AM_MEDIA_TYPE **ppmt,
+					DWORD *pdwFlags,
+					LCID *plcid,
+					DWORD *pdwGroup,
+					WCHAR **ppszName,
+					IUnknown **ppObject,
+					IUnknown **ppUnk);
+	STDMETHODIMP  Enable(long lIndex, DWORD dwFlags);
 
 	// ISpecifyPropertyPages
 	STDMETHODIMP GetPages(CAUUID *pPages);
@@ -166,9 +179,10 @@ protected:
 	PidParser *m_pPidParser;
 	FileReader *m_pFileReader;
 	Demux *m_pDemux;
-//	IFilterGraph *m_pFilterGraph;
 	BOOL	m_PropOpen;
 	CCritSec m_Lock;                // Main renderer critical section
+	WCHAR m_StreamName[256];
+	DWORD m_dwGroup;
 };
 
 #endif
