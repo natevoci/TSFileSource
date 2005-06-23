@@ -127,6 +127,14 @@ SOURCE=.\src\setup.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\StreamInfo.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\StreamParser.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\TSBuffer.cpp
 # End Source File
 # Begin Source File
@@ -188,6 +196,14 @@ SOURCE=.\src\resource.h
 # Begin Source File
 
 SOURCE=.\src\SettingsStore.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\StreamInfo.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\StreamParser.h
 # End Source File
 # Begin Source File
 

@@ -62,16 +62,8 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 
 	m_pFileReader = new FileReader();
 	m_pPidParser = new PidParser(m_pFileReader);
-
-//********************************************************************************************
-//Filter Peers Additions
-
 	m_pDemux = new Demux(m_pPidParser, this);
-
-//Removed	m_pDemux = new Demux(m_pPidParser);
-
-//********************************************************************************************
-
+	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, m_pFileReader, m_pPidParser, phr);
 
 	if (m_pPin == NULL) {
@@ -140,10 +132,10 @@ STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams)
 		return E_INVALIDARG;
 
 	CAutoLock lock(&m_Lock);
-	if (!m_pPidParser->pidArray.Count() || !m_pPidParser->m_StreamReady)
+	if (!m_pStreamParser->StreamArray.Count())
 		return VFW_E_NOT_CONNECTED;
 
-	*pcStreams = m_pPidParser->pidArray.Count();
+	*pcStreams = m_pStreamParser->StreamArray.Count();
 	
 	return S_OK;
 }
@@ -162,73 +154,74 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 	CAutoLock lock(&m_Lock);
 
 	//Check if file has been parsed
-	if(!m_pPidParser->m_StreamReady)
+	if (!m_pStreamParser->StreamArray.Count())
 		return E_FAIL;
 	
 	//Check if in the bounds of index
-	if(lIndex > m_pPidParser->pidArray.Count() || lIndex < 0)
+	if(lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return S_FALSE;
 
 	if(!ppmt)
 		return E_INVALIDARG;
 	else
-		ppmt = NULL;
+		*ppmt = &m_pStreamParser->StreamArray[lIndex].media;
 
-	m_dwGroup = lIndex + 1;
 	if(!pdwGroup)
 		return E_INVALIDARG;
 	else
-		*pdwGroup = lIndex + 1;
+		*pdwGroup = m_pStreamParser->StreamArray[lIndex].group;
 
 	if(!pdwFlags)
 		return E_INVALIDARG;
 	else
-		if (lIndex == m_pPidParser->get_ProgramNumber())
-			*pdwFlags = AMSTREAMSELECTINFO_EXCLUSIVE; //AMSTREAMSELECTINFO_ENABLED;
-		else
-			*pdwFlags = NULL;
+		*pdwFlags = m_pStreamParser->StreamArray[lIndex].flags;
+//		if (m_pStreamParser->StreamArray[lIndex].group == m_pPidParser->get_ProgramNumber())
+//			*pdwFlags = AMSTREAMSELECTINFO_EXCLUSIVE; //AMSTREAMSELECTINFO_ENABLED;
+//		else
+//			*pdwFlags = NULL;
 
 	if(!plcid)
 		return E_INVALIDARG;
 	else
-		plcid = NULL;
+		*plcid = m_pStreamParser->StreamArray[lIndex].lcid;
 
-	TCHAR szBuffer[256];
-	if (lIndex == m_pPidParser->get_ProgramNumber())
-		sprintf(szBuffer,"* %i:%i: %s", m_pPidParser->pidArray[(int)lIndex].chnumb,
-										m_pPidParser->pidArray[(int)lIndex].sid,
-										m_pPidParser->pidArray[(int)lIndex].chname);
-	else
-		sprintf(szBuffer,"  %i:%i: %s", m_pPidParser->pidArray[(int)lIndex].chnumb,
-										m_pPidParser->pidArray[(int)lIndex].sid,
-										m_pPidParser->pidArray[(int)lIndex].chname);
-
-
-	mbstowcs(m_StreamName, (const char*)&szBuffer, 256);
 	if(!ppszName)
 		return E_INVALIDARG;
 	else
-		*ppszName = (WCHAR*)(&m_StreamName);
+		*ppszName = (WCHAR*)&m_pStreamParser->StreamArray[lIndex].name;
+return NOERROR;
 
 	if(!ppObject)
 		return E_INVALIDARG;
 	else
-	ppObject = NULL;
+		*ppObject = (IUnknown *)&m_pStreamParser->StreamArray[lIndex].object;
 
 	if(!ppUnk)
 		return E_INVALIDARG;
 	else
-	ppUnk = NULL;
+		*ppUnk = (IUnknown *)&m_pStreamParser->StreamArray[lIndex].unk;
 
 	return NOERROR;
 }
 
 STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags)
 {
-	if (!m_pPidParser->pidArray.Count() || !m_pPidParser->m_StreamReady)
+	//Test if ready
+	if (!m_pStreamParser->StreamArray.Count())
 		return VFW_E_NOT_CONNECTED;
 
-	SetPgmNumb(lIndex + 1);
+	//Test if out of bounds
+	if (lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
+		return E_INVALIDARG;
+
+	m_pDemux->m_StreamAC3 = m_pStreamParser->StreamArray[lIndex].AC3;
+	m_pDemux->m_StreamMP2 = m_pStreamParser->StreamArray[lIndex].Aud;
+	m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
+	SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group);
+	m_pStreamParser->SetStreamActive(m_pStreamParser->StreamArray[lIndex].group);
+	m_pDemux->m_StreamAC3 = 0;
+	m_pDemux->m_StreamMP2 = 0;
+	m_pDemux->m_StreamAud2 = 0;
 	SetRegProgram();
 	return S_OK;
 }
@@ -317,7 +310,10 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 HRESULT CTSFileSourceFilter::OnConnect()
 {
-	return m_pDemux->AOnConnect();
+	HRESULT hr = m_pDemux->AOnConnect();
+
+	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber() + 1);
+	return hr;
 }
 
 STDMETHODIMP CTSFileSourceFilter::GetPages(CAUUID *pPages)
@@ -401,15 +397,19 @@ HRESULT CTSFileSourceFilter::Refresh()
 		m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
 	}
 	m_pPin->ChangeStart();
-	m_pDemux->AOnConnect();
+	OnConnect();
 	m_pPin->ChangeStop();
 	return S_OK;
 }
 
 HRESULT CTSFileSourceFilter::RefreshPids()
 {
+	HRESULT hr;
+
 	CAutoLock lock(&m_Lock);
-	return m_pPidParser->ParseFromFile(m_pFileReader->GetFilePointer());
+	hr = m_pPidParser->ParseFromFile(m_pFileReader->GetFilePointer());
+	m_pStreamParser->ParsePidArray();
+	return hr;
 }
 
 HRESULT CTSFileSourceFilter::RefreshDuration()
@@ -732,7 +732,7 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	CAutoLock lock(&m_Lock);
 
 	//If only one program don't change it
-	if (m_pPidParser->pidArray.Count() < 2)
+	if (m_pPidParser->pidArray.Count() < 1)
 		return NOERROR;
 
 	int PgmNumber = PgmNumb;
@@ -748,7 +748,7 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	m_pPin->ChangeStart();
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	m_pPin->ChangeStop();
 
 	return NOERROR;
@@ -772,7 +772,7 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	m_pPin->ChangeStart();
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	m_pPin->ChangeStop();
 
 	return NOERROR;
@@ -796,7 +796,7 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	m_pPin->ChangeStart();
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	m_pPin->ChangeStop();
 	return NOERROR;
 }
@@ -832,7 +832,7 @@ STDMETHODIMP CTSFileSourceFilter::SetAC3Mode(WORD AC3Mode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_AC3Mode(AC3Mode);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	return NOERROR;
 }
 
@@ -850,7 +850,7 @@ STDMETHODIMP CTSFileSourceFilter::SetMP2Mode(WORD MP2Mode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_MPEG2AudioMediaType(MP2Mode);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	return NOERROR;
 }
 
@@ -868,7 +868,7 @@ STDMETHODIMP CTSFileSourceFilter::SetAudio2Mode(WORD Audio2Mode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_MPEG2Audio2Mode(Audio2Mode);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	return NOERROR;
 }
 
@@ -886,7 +886,7 @@ STDMETHODIMP CTSFileSourceFilter::SetAutoMode(WORD AutoMode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_Auto(AutoMode);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	return NOERROR;
 }
 
@@ -904,7 +904,7 @@ STDMETHODIMP CTSFileSourceFilter::SetNPControl(WORD NPControl)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_NPControl(NPControl);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	return NOERROR;
 }
 
@@ -922,7 +922,7 @@ STDMETHODIMP CTSFileSourceFilter::SetNPSlave(WORD NPSlave)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_NPSlave(NPSlave);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	return NOERROR;
 }
 
@@ -951,7 +951,7 @@ STDMETHODIMP CTSFileSourceFilter::SetDelayMode(WORD DelayMode)
 {
 	CAutoLock lock(&m_Lock);
 	m_pFileReader->set_DelayMode(DelayMode);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	return NOERROR;
 }
 
@@ -986,7 +986,7 @@ STDMETHODIMP CTSFileSourceFilter::SetCreateTSPinOnDemux(WORD bCreatePin)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_CreateTSPinOnDemux(bCreatePin);
-	m_pDemux->AOnConnect();
+	OnConnect();
 	return NOERROR;
 }
 

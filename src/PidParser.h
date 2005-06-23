@@ -71,7 +71,6 @@ PidParser(FileReader *pFileReader);
 	PidInfoArray pidArray;	//Currently selected pids
 	BOOL m_ATSCFlag;
 	unsigned char m_NetworkName[128];
-	BOOL m_StreamReady;
 
 protected:
 

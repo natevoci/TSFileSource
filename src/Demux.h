@@ -66,7 +66,7 @@ typedef CGenericList<IBaseFilter> CFilterList;
 	void set_Auto(BOOL bAuto);
 	void set_MPEG2Audio2Mode(BOOL bMPEG2Audio2Mode);
 	int  get_MP2AudioPid();
-	int Demux::get_AC3_2AudioPid();
+	int  get_AC3_2AudioPid();
 
 protected:
 	HRESULT UpdateDemuxPins(IBaseFilter* pDemux);
@@ -82,7 +82,8 @@ protected:
 	HRESULT	NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewTelexPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	LoadTsPin(IPin* pIPin);
-	HRESULT	LoadMediaPin(IPin* pIPin, ULONG pid);
+	HRESULT	LoadAudioPin(IPin* pIPin, ULONG pid);
+	HRESULT	LoadVideoPin(IPin* pIPin, ULONG pid);
 	HRESULT	LoadTelexPin(IPin* pIPin, ULONG pid);
 	HRESULT	ClearDemuxPin(IPin* pIPin);
 	HRESULT	ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConnect);
@@ -129,8 +130,14 @@ protected:
 	BOOL m_bMPEG2Audio2Mode;
 	BOOL m_WasPlaying;
 	LONG m_TimeOut[2];
+
 public:
 
+	BOOL m_StreamAC3;
+	BOOL m_StreamMP2;
+	BOOL m_StreamAud2;
+	int  m_SelAudioPid;
+	int  m_SelVideoPid;
 };
 
 #endif

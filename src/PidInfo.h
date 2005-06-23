@@ -24,8 +24,8 @@
 */
 
 
-#ifndef TSSTREAMTOOLS_H
-#define TSSTREAMTOOLS_H
+#ifndef PIDINFO_H
+#define PIDINFO_H
 
 #include <vector>
 

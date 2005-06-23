@@ -36,15 +36,7 @@
 #include <atlbase.h>
 #include "TunerEvent.h"
 
-//********************************************************************************************
-//Filter Peers Additions
-
- 
 Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
-
-//Removed Demux::Demux(PidParser *pPidParser) :
-
-//********************************************************************************************
 
 	m_bAuto(TRUE),
 	m_bMPEG2AudioMediaType(TRUE),
@@ -54,25 +46,19 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_bConnectBusyFlag(false),
 	m_WasPlaying(FALSE),
 	m_bAC3Mode(TRUE),
+	m_StreamAC3(FALSE),
+	m_StreamMP2(FALSE),
+	m_StreamAud2(FALSE),
 	m_bCreateTSPinOnDemux(FALSE)
 {
 
-//********************************************************************************************
-//Filter Peers Additions
-
 	m_pTSFileSourceFilter = pFilter;
-
-//********************************************************************************************
-
 	m_pPidParser = pPidParser;
 }
 
 Demux::~Demux()
 {
 }
-
-//********************************************************************************************
-//Filter Peers Additions
 
 // Find all the immediate upstream or downstream peers of a filter.
 HRESULT Demux::GetPeerFilters(
@@ -89,8 +75,8 @@ HRESULT Demux::GetPeerFilters(
     while (S_OK == pEnum->Next(1, &pPin, 0))
     {
         // See if this pin matches the specified direction.
-        PIN_DIRECTION ThisPinDir;
-        hr = pPin->QueryDirection(&ThisPinDir);
+        PIN_DIRECTION thisPinDir;
+        hr = pPin->QueryDirection(&thisPinDir);
         if (FAILED(hr))
         {
             // Something strange happened.
@@ -98,7 +84,7 @@ HRESULT Demux::GetPeerFilters(
             pPin->Release();
             break;
         }
-        if (ThisPinDir == Dir)
+        if (thisPinDir == Dir)
         {
             // Check if the pin is connected to another pin.
             IPin *pPinNext = 0;
@@ -158,8 +144,8 @@ HRESULT Demux::GetNextFilter(
     while (S_OK == pEnum->Next(1, &pPin, 0))
     {
         // See if this pin matches the specified direction.
-        PIN_DIRECTION ThisPinDir;
-        hr = pPin->QueryDirection(&ThisPinDir);
+        PIN_DIRECTION thisPinDir;
+        hr = pPin->QueryDirection(&thisPinDir);
         if (FAILED(hr))
         {
             // Something strange happened.
@@ -167,7 +153,7 @@ HRESULT Demux::GetNextFilter(
             pPin->Release();
             break;
         }
-        if (ThisPinDir == Dir)
+        if (thisPinDir == Dir)
         {
             // Check if the pin is connected to another pin.
             IPin *pPinNext = 0;
@@ -196,8 +182,6 @@ HRESULT Demux::GetNextFilter(
     // Did not find a matching filter.
     return E_FAIL;
 }
-
-//********************************************************************************************
 
 HRESULT Demux::AOnConnect()
 {
@@ -245,9 +229,6 @@ HRESULT Demux::AOnConnect()
 		Info.pGraph->Release();
 	}
 
-//********************************************************************************************
-//Filter Peers Additions
-
 	// Parse only the existing Mpeg2 Demultiplexer Filter
 	// in the filter graph, we do this by looking for filters
 	// that implement the IMpeg2Demultiplexer interface while
@@ -274,37 +255,6 @@ HRESULT Demux::AOnConnect()
 			}
 		}
 	}
-
-//Removed
-/*
-
-  
-	
-	  
-	// Parse only the existing Mpeg2 Demultiplexer Filter
-	// in the filter graph, we do this by looking for filters
-	// that implement the IMpeg2Demultiplexer interface while
-	// the count is still active.
-	if(SUCCEEDED(pGraph->EnumFilters(&EnumFilters)))
-	{
-		IBaseFilter* m_pDemux;
-		ULONG Fetched(0);
-		while(EnumFilters->Next(1, &m_pDemux, &Fetched) == S_OK)
-		{
-			if(m_pDemux != NULL)
-			{
-				// TODO: Change this so that only the first demux filter that is connected gets updated
-				UpdateDemuxPins(m_pDemux);
-
-				m_pDemux->Release();
-				m_pDemux = NULL;
-			}
-		}
-		EnumFilters->Release();
-	}
-*/
-
-//********************************************************************************************
 
 	if (m_WasPlaying && IsPlaying() == S_FALSE)
 	{
@@ -349,8 +299,9 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 			hr = NewVideoPin(muxInterface, L"Video");
 		}
 
-		// If we have AC3 preference
-		if (m_bAC3Mode){
+		// If we have AC3 preference and we are not forcing MP2 Stream
+		// or we are forcing an AC3 Stream
+		if (m_StreamAC3 || (m_bAC3Mode && !m_StreamMP2)){
 			// Update AC3 Pin
 			if (FAILED(CheckAC3Pin(pDemux))){
 				// If no AC3 Pin found
@@ -365,8 +316,8 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 					// If we do have an mp1/2 audio pin
 					USHORT pPid;
 					pPid = get_MP2AudioPid();
-					if (!pPid){
-						// If we don't have a mp1/2 audio pid
+					if (!pPid || m_StreamAC3){
+						// If we don't have a mp1/2 audio pid or we are forcing an AC3 Stream
 						pPid = get_AC3_2AudioPid();
 						if (pPid && FAILED(CheckAC3Pin(pDemux))){
 							// change pin type if we do have a AC3 pid & can don't already have an AC3 pin
@@ -435,8 +386,8 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 				// If we already have a AC3 Pin
 				USHORT pPid;
 				pPid = get_AC3_2AudioPid();
-				if (!pPid){
-					// If we don't have a AC3 Pid
+				if (!pPid || m_StreamMP2){
+					// If we don't have a AC3 Pid or we are forcing an MP2 Stream
 					pPid = get_MP2AudioPid();
 					if (pPid && FAILED(CheckAudioPin(pDemux))){
 						// change pin type if we do have a mp1/2 pid & can don't already have an mp1/2 pin
@@ -514,7 +465,8 @@ HRESULT Demux::CheckDemuxPin(IBaseFilter* pDemux, AM_MEDIA_TYPE pintype, IPin** 
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pDemux == NULL && *pIPin != NULL){return hr;}
+	if(pDemux == NULL && *pIPin != NULL)
+		return hr;
 
 	IPin* pDPin;
 	PIN_DIRECTION  direction;
@@ -680,7 +632,8 @@ HRESULT Demux::CheckTIFPin(IBaseFilter* pDemux)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pDemux == NULL){return hr;}
+	if(pDemux == NULL)
+		return hr;
 
 	AM_MEDIA_TYPE pintype;
 	GetTIFMedia(&pintype);
@@ -781,13 +734,12 @@ HRESULT Demux::CheckTIFPin(IBaseFilter* pDemux)
 	return hr;
 }
 
-//*********************************************************************************************
-
 HRESULT Demux::CheckVideoPin(IBaseFilter* pDemux)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pDemux == NULL){return hr;}
+	if(pDemux == NULL)
+		return hr;
 
 	AM_MEDIA_TYPE pintype;
 	GetVideoMedia(&pintype);
@@ -797,7 +749,7 @@ HRESULT Demux::CheckVideoPin(IBaseFilter* pDemux)
 
 		USHORT pPid;
 		pPid = m_pPidParser->pids.vid;
-		if SUCCEEDED(LoadMediaPin(pIPin, pPid)){
+		if SUCCEEDED(LoadVideoPin(pIPin, pPid)){
 			pIPin->Release();
 			return S_OK;
 		}
@@ -809,7 +761,8 @@ HRESULT Demux::CheckAudioPin(IBaseFilter* pDemux)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pDemux == NULL){return hr;}
+	if(pDemux == NULL)
+		return hr;
 
 	AM_MEDIA_TYPE pintype;
 	GetMP1Media(&pintype);
@@ -819,7 +772,7 @@ HRESULT Demux::CheckAudioPin(IBaseFilter* pDemux)
 
 		USHORT pPid;
 		pPid = get_MP2AudioPid();
-		if (SUCCEEDED(LoadMediaPin(pIPin, pPid))){
+		if (SUCCEEDED(LoadAudioPin(pIPin, pPid))){
 			pIPin->Release();
 			return S_OK;
 		};
@@ -831,7 +784,7 @@ HRESULT Demux::CheckAudioPin(IBaseFilter* pDemux)
 
 				USHORT pPid;
 				pPid = get_MP2AudioPid();
-				if (SUCCEEDED(LoadMediaPin(pIPin, pPid))){
+				if (SUCCEEDED(LoadAudioPin(pIPin, pPid))){
 					pIPin->Release();
 					return S_OK;
 				};
@@ -844,7 +797,8 @@ HRESULT Demux::CheckAC3Pin(IBaseFilter* pDemux)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pDemux == NULL){return hr;}
+	if(pDemux == NULL)
+		return hr;
 
 	AM_MEDIA_TYPE pintype;
 	GetAC3Media(&pintype);
@@ -854,7 +808,7 @@ HRESULT Demux::CheckAC3Pin(IBaseFilter* pDemux)
 
 		USHORT pPid;
 		pPid = get_AC3_2AudioPid();
-		if (SUCCEEDED(LoadMediaPin(pIPin, pPid))){
+		if (SUCCEEDED(LoadAudioPin(pIPin, pPid))){
 			pIPin->Release();
 			return S_OK;
 		}
@@ -866,7 +820,8 @@ HRESULT Demux::CheckTelexPin(IBaseFilter* pDemux)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pDemux == NULL){return hr;}
+	if(pDemux == NULL)
+		return hr;
 
 	AM_MEDIA_TYPE pintype;
 	GetTelexMedia(&pintype);
@@ -888,7 +843,8 @@ HRESULT Demux::CheckTsPin(IBaseFilter* pDemux)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pDemux == NULL){return hr;}
+	if(pDemux == NULL)
+		return hr;
 
 	AM_MEDIA_TYPE pintype;
 	GetTSMedia(&pintype);
@@ -909,7 +865,8 @@ HRESULT Demux::NewTsPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(muxInterface == NULL){return hr;}
+	if(muxInterface == NULL)
+		return hr;
 
 	// Create out new pin  
 	AM_MEDIA_TYPE type;
@@ -931,8 +888,9 @@ HRESULT Demux::NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	pPid = m_pPidParser->pids.vid;
 
 	HRESULT hr = E_INVALIDARG;
-
-	if(muxInterface == NULL || pPid == 0){return hr;}
+	//Test if no interface 
+	if(muxInterface == NULL) //|| !pPid)
+		return hr;
 
 	// Create out new pin 
 	AM_MEDIA_TYPE type;
@@ -942,7 +900,7 @@ HRESULT Demux::NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
-		hr = LoadMediaPin(pIPin, (ULONG)pPid);
+		hr = LoadVideoPin(pIPin, (ULONG)pPid);
 		pIPin->Release();
 		hr = S_OK;
 	}
@@ -956,7 +914,8 @@ HRESULT Demux::NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 
 	HRESULT hr = E_INVALIDARG;
 
-	if(muxInterface == NULL || pPid == 0){return hr;}
+	if(muxInterface == NULL || pPid == 0)
+		return hr;
 
 	// Create out new pin 
 	AM_MEDIA_TYPE type;
@@ -969,7 +928,7 @@ HRESULT Demux::NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
-		hr = LoadMediaPin(pIPin, (ULONG)pPid);
+		hr = LoadAudioPin(pIPin, (ULONG)pPid);
 		pIPin->Release();
 		hr = S_OK;
 	}
@@ -983,7 +942,8 @@ HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 
 	HRESULT hr = E_INVALIDARG;
 
-	if(muxInterface == NULL || pPid == 0){return hr;}
+	if(muxInterface == NULL || pPid == 0)
+		return hr;
 
 	// Create out new pin 
 	AM_MEDIA_TYPE type;
@@ -992,7 +952,7 @@ HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
-		hr = LoadMediaPin(pIPin, (ULONG)pPid);
+		hr = LoadAudioPin(pIPin, (ULONG)pPid);
 		pIPin->Release();
 		hr = S_OK;
 	}
@@ -1006,7 +966,8 @@ HRESULT Demux::NewTelexPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 
 	HRESULT hr = E_INVALIDARG;
 
-	if(muxInterface == NULL || pPid == 0){return hr;}
+	if(muxInterface == NULL || pPid == 0)
+		return hr;
 
 	// Create out new pin 
 	AM_MEDIA_TYPE type;
@@ -1026,7 +987,8 @@ HRESULT Demux::LoadTsPin(IPin* pIPin)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pIPin == NULL){return hr;}
+	if(pIPin == NULL)
+		return hr;
 
 	ClearDemuxPin(pIPin);
 
@@ -1042,11 +1004,12 @@ HRESULT Demux::LoadTsPin(IPin* pIPin)
 	return hr;
 }
 
-HRESULT Demux::LoadMediaPin(IPin* pIPin, ULONG pid)
+HRESULT Demux::LoadVideoPin(IPin* pIPin, ULONG pid)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pIPin == NULL){return hr;}
+	if(pIPin == NULL)
+		return hr;
 
 	ClearDemuxPin(pIPin);
 
@@ -1056,7 +1019,36 @@ HRESULT Demux::LoadMediaPin(IPin* pIPin, ULONG pid)
 	if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid)))
 	{
 		if (pid)
+		{
 			muxMapPid->MapPID(1, &pid , MEDIA_ELEMENTARY_STREAM);
+			m_SelVideoPid = pid;
+		}
+
+		muxMapPid->Release();
+		hr = S_OK;
+	}
+	return hr;
+}
+
+HRESULT Demux::LoadAudioPin(IPin* pIPin, ULONG pid)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pIPin == NULL)
+		return hr;
+
+	ClearDemuxPin(pIPin);
+
+	// Get the Pid Map interface of the pin
+	// and map the pids we want.
+	IMPEG2PIDMap* muxMapPid;
+	if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid)))
+	{
+		if (pid)
+		{
+			muxMapPid->MapPID(1, &pid , MEDIA_ELEMENTARY_STREAM);
+			m_SelAudioPid = pid;
+		}
 
 		muxMapPid->Release();
 		hr = S_OK;
@@ -1068,7 +1060,8 @@ HRESULT Demux::LoadTelexPin(IPin* pIPin, ULONG pid)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pIPin == NULL){return hr;}
+	if(pIPin == NULL)
+		return hr;
 
 	ClearDemuxPin(pIPin);
 
@@ -1090,7 +1083,8 @@ HRESULT Demux::ClearDemuxPin(IPin* pIPin)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pIPin == NULL){return hr;}
+	if(pIPin == NULL)
+		return hr;
 
 	IMPEG2PIDMap* muxMapPid;
 	if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid))){
@@ -1114,7 +1108,8 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pDemux == NULL || pConnect == NULL || pPinName == NULL){return hr;}
+	if(pDemux == NULL || pConnect == NULL || pPinName == NULL)
+		return hr;
 
 	// Get an instance of the Demux control interface
 	IMpeg2Demultiplexer* muxInterface = NULL;
@@ -1195,7 +1190,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 						USHORT pPid;
 						pPid = get_MP2AudioPid();
-						LoadMediaPin(pIPin, pPid);
+						LoadAudioPin(pIPin, pPid);
 						pIPin->Release();
 						hr = S_OK;
 				}
@@ -1251,7 +1246,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 						USHORT pPid;
 						pPid = get_AC3_2AudioPid();
-						LoadMediaPin(pIPin, pPid);
+						LoadAudioPin(pIPin, pPid);
 						pIPin->Release();
 						hr = S_OK;
 					}
@@ -1307,7 +1302,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 							USHORT pPid;
 							pPid = get_AC3_2AudioPid();
-							LoadMediaPin(pIPin, pPid);
+							LoadAudioPin(pIPin, pPid);
 							pIPin->Release();
 							hr = S_OK;
 						}
@@ -1430,7 +1425,8 @@ HRESULT Demux::GetAC3Media(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pintype == NULL){return hr;}
+	if(pintype == NULL)
+		return hr;
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Audio;
@@ -1451,7 +1447,8 @@ HRESULT Demux::GetMP2Media(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pintype == NULL){return hr;}
+	if(pintype == NULL)
+		return hr;
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Audio;
@@ -1472,7 +1469,8 @@ HRESULT Demux::GetMP1Media(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pintype == NULL){return hr;}
+	if(pintype == NULL)
+		return hr;
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Audio;
@@ -1493,7 +1491,8 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pintype == NULL){return hr;}
+	if(pintype == NULL)
+		return hr;
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = KSDATAFORMAT_TYPE_VIDEO;
@@ -1514,7 +1513,8 @@ HRESULT Demux::GetTIFMedia(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pintype == NULL){return hr;}
+	if(pintype == NULL)
+		return hr;
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = KSDATAFORMAT_TYPE_MPEG2_SECTIONS;
@@ -1529,7 +1529,8 @@ HRESULT Demux::GetTelexMedia(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pintype == NULL){return hr;}
+	if(pintype == NULL)
+		return hr;
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = KSDATAFORMAT_TYPE_MPEG2_SECTIONS;
@@ -1544,7 +1545,8 @@ HRESULT Demux::GetTSMedia(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if(pintype == NULL){return hr;}
+	if(pintype == NULL)
+		return hr;
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Stream;
@@ -1785,7 +1787,7 @@ void Demux::set_MPEG2Audio2Mode(BOOL bMPEG2Audio2Mode)
 
 int Demux::get_MP2AudioPid()
 {
-	if (m_bMPEG2Audio2Mode && m_pPidParser->pids.aud2)
+	if ((m_bMPEG2Audio2Mode && m_pPidParser->pids.aud2) || (m_StreamAud2 && m_pPidParser->pids.aud2))
 		return m_pPidParser->pids.aud2;
 	else
 		return m_pPidParser->pids.aud;
@@ -1793,7 +1795,7 @@ int Demux::get_MP2AudioPid()
 
 int Demux::get_AC3_2AudioPid()
 {
-	if (m_bMPEG2Audio2Mode && m_pPidParser->pids.ac3_2)
+	if ((m_bMPEG2Audio2Mode && m_pPidParser->pids.ac3_2) || (m_StreamAud2 && m_pPidParser->pids.ac3_2))
 		return m_pPidParser->pids.ac3_2;
 	else
 		return m_pPidParser->pids.ac3;

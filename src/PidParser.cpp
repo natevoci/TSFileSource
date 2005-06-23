@@ -39,7 +39,6 @@
 PidParser::PidParser(FileReader *pFileReader)
 {
 	m_pFileReader = pFileReader;
-	m_StreamReady = false;
 }
 
 PidParser::~PidParser()
@@ -56,8 +55,6 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	{
 		return NOERROR;
 	}
-
-	m_StreamReady = false;
 
 	//Store file pointer so we can reset it before leaving this method
 	__int64 originalFilePointer = m_pFileReader->GetFilePointer();
@@ -310,8 +307,6 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 	pFileReader->CloseFile();
 	delete pFileReader;
-
-	m_StreamReady = true;
 
 	return hr;
 }
@@ -586,8 +581,10 @@ BOOL PidParser::CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, in
 HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 {
 	HRESULT hr = S_FALSE;
+
 	//exit if no a/v pids to find
-	if (pids.aud + pids.vid + pids.ac3 + pids.txt == 0) {return hr;};
+	if (pids.aud + pids.vid + pids.ac3 + pids.txt == 0)
+		return hr;
 
 	ULONG a, b;
 	WORD pid;
@@ -899,10 +896,10 @@ bool PidParser::CheckForEPG(PBYTE pData, int pos, bool *extPacket, int *sectlen,
 		&& (pidArray[*sidcount].sid == (((0xFF & pData[pos + 8]) << 8) | (0xFF & pData[pos + 9])))
 		)
 	{
-		*sectlen =((0x0F & pData[pos + 6]) << 8)|(0xFF & pData[pos + 7]);// + 8;
+		*sectlen =((0x0F & pData[pos + 6]) << 8)|(0xFF & pData[pos + 7]) + 8;
 
 		 // test if next packet required 
-		if (*sectlen > 176 - 8)
+		if (*sectlen > 176)
 		{
 			*extPacket = true; //set search for extended packet
 		}
@@ -911,7 +908,7 @@ bool PidParser::CheckForEPG(PBYTE pData, int pos, bool *extPacket, int *sectlen,
 			*extPacket = false; // set for next packet
 
 			//if no descriptor info
-			if (*sectlen <= 0x0F)
+			if (*sectlen <= 0x0F + 8)
 				*sectlen = 0;
 		};
 

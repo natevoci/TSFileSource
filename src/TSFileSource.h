@@ -44,6 +44,8 @@ class CTSFileSourceFilter;
 #include "PidParser.h"
 #include "FileReader.h"
 #include "Demux.h"
+#include "StreamInfo.h"
+#include "StreamParser.h"
 
 /**********************************************
  *
@@ -177,12 +179,11 @@ protected:
 	CSettingsStore *m_pSettingsStore;
 	TunerEvent *m_pTunerEvent;
 	PidParser *m_pPidParser;
+	StreamParser *m_pStreamParser;
 	FileReader *m_pFileReader;
 	Demux *m_pDemux;
 	BOOL	m_PropOpen;
 	CCritSec m_Lock;                // Main renderer critical section
-	WCHAR m_StreamName[256];
-	DWORD m_dwGroup;
 };
 
 #endif
