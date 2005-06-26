@@ -49,6 +49,8 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_StreamAC3(FALSE),
 	m_StreamMP2(FALSE),
 	m_StreamAud2(FALSE),
+	m_ClockMode(FALSE),
+	m_DemuxClock(FALSE),
 	m_bCreateTSPinOnDemux(FALSE)
 {
 
@@ -238,23 +240,38 @@ HRESULT Demux::AOnConnect()
 	{
 		IBaseFilter* pFilter = NULL;
 		POSITION pos = FList.GetHeadPosition();
-		pFilter = FList.GetNext(pos);
+		pFilter = FList.Get(pos);
 		while (SUCCEEDED(GetPeerFilters(pFilter, PINDIR_OUTPUT, FList)) && pos)
 		{
 			pFilter = FList.GetNext(pos);
 		}
 
 		pos = FList.GetHeadPosition();
+		bool haveClock = false;
 		while (pos)
 		{
 			pFilter = FList.GetNext(pos);
 			if(pFilter != NULL)
 			{
 				UpdateDemuxPins(pFilter);
+
+				//Set the reference Clock to the first Demux
+				if (!haveClock && m_ClockMode)
+				{
+					IReferenceClock *pClock = NULL;
+					if (SUCCEEDED(pFilter->QueryInterface(IID_IReferenceClock, (void**)&pClock)) && pClock != NULL)
+					{
+						pClock->Release();
+						if (SUCCEEDED(SetReferenceClock(pFilter)) && m_DemuxClock)
+							haveClock = true;
+					}
+				}
 				pFilter = NULL;
 			}
 		}
 	}
+
+//	SetReferenceClock(NULL); //Set default clock
 
 	if (m_WasPlaying && IsPlaying() == S_FALSE)
 	{
@@ -1851,6 +1868,66 @@ HRESULT Demux::ReconnectFilterPin(IPin *pIPin)
 	return hr;
 }
 
+HRESULT Demux::GetReferenceClock(IReferenceClock **pClock)
+{
+	HRESULT hr;
 
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
+	{
+		// Get IMediaFilter interface
+		IMediaFilter* pMediaFilter = NULL;
+		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
+		Info.pGraph->Release();
+		if (pMediaFilter)
+		{
+			// Get IReferenceClock interface
+			hr = pMediaFilter->GetSyncSource(pClock);
+			pMediaFilter->Release();
+			return S_OK;
+		}
+	}
+	return E_FAIL;
+}
 
+HRESULT Demux::SetReferenceClock(IBaseFilter *pFilter)
+{
+	HRESULT hr;
+
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
+	{
+		if (pFilter != NULL)
+		{
+			IReferenceClock *pClock = NULL;
+			if (SUCCEEDED(pFilter->QueryInterface(IID_IReferenceClock, (void**)&pClock)) && pClock != NULL)
+			{
+				// Get IMediaFilter interface
+				IMediaFilter* pMediaFilter = NULL;
+				hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
+				Info.pGraph->Release();
+				if (pMediaFilter != NULL)
+				{
+					// Get IReferenceClock interface
+					hr = pMediaFilter->SetSyncSource(pClock);
+					pClock->Release();
+					pMediaFilter->Release();
+					return S_OK;
+				}
+				pClock->Release();
+			}
+		}
+		else // If Null pFilter set default clock
+		{
+			Info.pGraph->SetDefaultSyncSource();
+			Info.pGraph->Release();
+			return S_FALSE;
+		}
+
+	}
+	return E_FAIL;
+}
+//TCHAR sz[128];
+//sprintf(sz, "%u", pClock);
+//MessageBox(NULL, sz,"test", NULL);
 

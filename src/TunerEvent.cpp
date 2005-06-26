@@ -71,7 +71,6 @@ ULONG TunerEvent::Release()
 // If not found, create it and register it.
 HRESULT TunerEvent::HookupGraphEventService(IFilterGraph *pGraph)
 {
-//	m_pFilterGraph = pGraph;
 	
     HRESULT hr = S_OK;
     if (!m_spBroadcastEvent)

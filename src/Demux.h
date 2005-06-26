@@ -67,6 +67,12 @@ typedef CGenericList<IBaseFilter> CFilterList;
 	void set_MPEG2Audio2Mode(BOOL bMPEG2Audio2Mode);
 	int  get_MP2AudioPid();
 	int  get_AC3_2AudioPid();
+	HRESULT	GetAC3Media(AM_MEDIA_TYPE *pintype);
+	HRESULT	GetMP2Media(AM_MEDIA_TYPE *pintype);
+	HRESULT	GetMP1Media(AM_MEDIA_TYPE *pintype);
+	HRESULT	GetVideoMedia(AM_MEDIA_TYPE *pintype);
+	HRESULT	GetTelexMedia(AM_MEDIA_TYPE *pintype);
+	HRESULT	GetTSMedia(AM_MEDIA_TYPE *pintype);
 
 protected:
 	HRESULT UpdateDemuxPins(IBaseFilter* pDemux);
@@ -87,12 +93,6 @@ protected:
 	HRESULT	LoadTelexPin(IPin* pIPin, ULONG pid);
 	HRESULT	ClearDemuxPin(IPin* pIPin);
 	HRESULT	ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConnect);
-	HRESULT	GetAC3Media(AM_MEDIA_TYPE *pintype);
-	HRESULT	GetMP2Media(AM_MEDIA_TYPE *pintype);
-	HRESULT	GetMP1Media(AM_MEDIA_TYPE *pintype);
-	HRESULT	GetVideoMedia(AM_MEDIA_TYPE *pintype);
-	HRESULT	GetTelexMedia(AM_MEDIA_TYPE *pintype);
-	HRESULT	GetTSMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT	Sleeps(ULONG Duration, long TimeOut[]);
 	HRESULT	IsStopped();
 	HRESULT	IsPlaying();
@@ -113,6 +113,8 @@ protected:
 	HRESULT RemoveFilterChain(IBaseFilter *pStartFilter, IBaseFilter *pEndFilter);
 	HRESULT RenderFilterPin(IPin *pIPin);
 	HRESULT ReconnectFilterPin(IPin *pIPin);
+	HRESULT GetReferenceClock(IReferenceClock **pClock);
+	HRESULT SetReferenceClock(IBaseFilter *pFilter);
 
 	IBaseFilter *m_pTSFileSourceFilter;
 
@@ -129,6 +131,8 @@ protected:
 	BOOL m_bMPEG2AudioMediaType;
 	BOOL m_bMPEG2Audio2Mode;
 	BOOL m_WasPlaying;
+	BOOL m_ClockMode;
+	BOOL m_DemuxClock;
 	LONG m_TimeOut[2];
 
 public:

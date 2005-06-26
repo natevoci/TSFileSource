@@ -175,10 +175,6 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 		return E_INVALIDARG;
 	else
 		*pdwFlags = m_pStreamParser->StreamArray[lIndex].flags;
-//		if (m_pStreamParser->StreamArray[lIndex].group == m_pPidParser->get_ProgramNumber())
-//			*pdwFlags = AMSTREAMSELECTINFO_EXCLUSIVE; //AMSTREAMSELECTINFO_ENABLED;
-//		else
-//			*pdwFlags = NULL;
 
 	if(!plcid)
 		return E_INVALIDARG;
