@@ -170,8 +170,14 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 	STDMETHOD(GetRegSettings) () PURE;
 	STDMETHOD(SetRegProgram) () PURE;
 
-	STDMETHOD(ShowFilterProperties)()PURE;
-	STDMETHOD(Refresh)()PURE;
+	STDMETHOD(ShowFilterProperties)() PURE;
+	STDMETHOD(Refresh)() PURE;
+
+	STDMETHOD (GetROTMode) (WORD *ROTMode) PURE;
+	STDMETHOD (SetROTMode) (WORD ROTMode) PURE;
+	STDMETHOD (GetClockMode) (WORD *ClockMode) PURE;
+	STDMETHOD (SetClockMode) (WORD ClockMode) PURE;
+
 };
 
 

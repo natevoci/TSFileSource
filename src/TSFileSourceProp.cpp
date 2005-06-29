@@ -203,6 +203,11 @@ BOOL CTSFileSourceProp::PopulateDialog()
 
 	m_pProgram->GetAutoMode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_AUTOMODE,PidNr);
+//	EnableWindow(GetDlgItem(m_hwnd, IDC_DEFCLOCK), PidNr);
+//	EnableWindow(GetDlgItem(m_hwnd, IDC_DEMCLOCK), PidNr);
+//	EnableWindow(GetDlgItem(m_hwnd, IDC_RENCLOCK), PidNr);
+//	EnableWindow(GetDlgItem(m_hwnd, IDC_NPCTRL), PidNr);
+//	EnableWindow(GetDlgItem(m_hwnd, IDC_NPSLAVE), PidNr);
 
 	m_pProgram->GetNPControl(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_NPCTRL,PidNr);
@@ -217,6 +222,28 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	wsprintf(sz, (PidNr==0?TEXT("Normal"):TEXT("ReadOnly")));
 	SetWindowText(GetDlgItem(m_hwnd, IDC_FILEMODE), sz);
 	EnableWindow(GetDlgItem(m_hwnd, IDC_DELAYMODE), PidNr);
+
+	PidNr = 0;
+	m_pProgram->GetROTMode(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_ROTMODE,PidNr);
+
+
+	PidNr = 0;
+	m_pProgram->GetClockMode(&PidNr);
+	if (PidNr == 1)
+		CheckDlgButton(m_hwnd,IDC_DEFCLOCK,TRUE);
+	else if (PidNr == 2)
+		CheckDlgButton(m_hwnd,IDC_DEMCLOCK,TRUE);
+	else if (PidNr == 3)
+		CheckDlgButton(m_hwnd,IDC_RENCLOCK,TRUE);
+	else{
+		CheckDlgButton(m_hwnd,IDC_DEFCLOCK,FALSE);
+		CheckDlgButton(m_hwnd,IDC_DEMCLOCK,FALSE);
+		CheckDlgButton(m_hwnd,IDC_RENCLOCK,FALSE);
+	}
+
+
+
 
 	if (PidNr)
 		m_pProgram->GetDelayMode(&PidNr);
@@ -430,6 +457,89 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 						OnRefreshProgram();
 						break;
 					}
+
+				case IDC_ROTMODE:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_ROTMODE);
+					CheckDlgButton(hwnd,IDC_ROTMODE,checked);
+					m_pProgram->SetROTMode(checked);
+					OnRefreshProgram () ;
+					SetDirty();
+					break;
+				}
+
+				case IDC_DEFCLOCK:
+				{
+					CheckDlgButton(hwnd,IDC_DEMCLOCK,FALSE);
+					CheckDlgButton(hwnd,IDC_RENCLOCK,FALSE);
+					if((BOOL)IsDlgButtonChecked(hwnd, IDC_DEFCLOCK))
+					{
+						WORD PidNr = 0;
+						m_pProgram->GetClockMode(&PidNr);
+						if (PidNr != 1){
+							m_pProgram->SetClockMode(1);
+							CheckDlgButton(hwnd,IDC_DEFCLOCK,TRUE);
+						}
+						else
+						{
+							CheckDlgButton(hwnd,IDC_DEFCLOCK,FALSE);
+							m_pProgram->SetClockMode(0);
+						}
+					}
+
+					OnRefreshProgram () ;
+					SetDirty();
+					break;
+				}
+
+				case IDC_DEMCLOCK:
+				{
+					CheckDlgButton(hwnd,IDC_DEFCLOCK,FALSE);
+					CheckDlgButton(hwnd,IDC_RENCLOCK,FALSE);
+					if((BOOL)IsDlgButtonChecked(hwnd, IDC_DEMCLOCK))
+					{
+						WORD PidNr = 0;
+						m_pProgram->GetClockMode(&PidNr);
+						if (PidNr != 2){
+							m_pProgram->SetClockMode(2);
+							CheckDlgButton(hwnd,IDC_DEMCLOCK,TRUE);
+						}
+						else
+						{
+							CheckDlgButton(hwnd,IDC_DEMCLOCK,FALSE);
+							m_pProgram->SetClockMode(0);
+						}
+					}
+
+					OnRefreshProgram () ;
+					SetDirty();
+					break;
+				}
+
+				case IDC_RENCLOCK:
+				{
+					CheckDlgButton(hwnd,IDC_DEFCLOCK,FALSE);
+					CheckDlgButton(hwnd,IDC_DEMCLOCK,FALSE);
+					if((BOOL)IsDlgButtonChecked(hwnd, IDC_RENCLOCK))
+					{
+						WORD PidNr = 0;
+						m_pProgram->GetClockMode(&PidNr);
+						if (PidNr != 3){
+							m_pProgram->SetClockMode(3);
+							CheckDlgButton(hwnd,IDC_RENCLOCK,TRUE);
+						}
+						else
+						{
+							CheckDlgButton(hwnd,IDC_RENCLOCK,FALSE);
+							m_pProgram->SetClockMode(0);
+						}
+					}
+
+					OnRefreshProgram () ;
+					SetDirty();
+					break;
+				}
+
 				
 			};
 			return TRUE;

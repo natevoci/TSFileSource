@@ -72,6 +72,9 @@ private:
 
 	// Overriden to say what interfaces we support where
 	STDMETHODIMP NonDelegatingQueryInterface(REFIID riid, void ** ppv);
+	HRESULT AddGraphToRot(IUnknown *pUnkGraph, DWORD *pdwRegister); 
+	void RemoveGraphFromRot(DWORD pdwRegister);
+	void set_ROTMode();
 
 public:
 	// Pin enumeration
@@ -171,6 +174,10 @@ protected:
 	STDMETHODIMP SetRegSettings();
 	STDMETHODIMP GetRegSettings();
 	STDMETHODIMP SetRegProgram();
+	STDMETHODIMP GetROTMode(WORD *ROTMode);
+	STDMETHODIMP SetROTMode(WORD ROTMode);
+	STDMETHODIMP GetClockMode(WORD *ClockMode);
+	STDMETHODIMP SetClockMode(WORD ClockMode);
 
 protected:
 
@@ -182,8 +189,10 @@ protected:
 	StreamParser *m_pStreamParser;
 	FileReader *m_pFileReader;
 	Demux *m_pDemux;
-	BOOL	m_PropOpen;
+	BOOL m_bRotEnable;
 	CCritSec m_Lock;                // Main renderer critical section
+    //registration number for the RunningObjectTable
+    DWORD m_dwGraphRegister;
 };
 
 #endif

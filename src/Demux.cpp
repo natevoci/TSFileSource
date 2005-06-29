@@ -49,8 +49,7 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_StreamAC3(FALSE),
 	m_StreamMP2(FALSE),
 	m_StreamAud2(FALSE),
-	m_ClockMode(FALSE),
-	m_DemuxClock(FALSE),
+	m_ClockMode(0),
 	m_bCreateTSPinOnDemux(FALSE)
 {
 
@@ -254,24 +253,13 @@ HRESULT Demux::AOnConnect()
 			if(pFilter != NULL)
 			{
 				UpdateDemuxPins(pFilter);
-
-				//Set the reference Clock to the first Demux
-				if (!haveClock && m_ClockMode)
-				{
-					IReferenceClock *pClock = NULL;
-					if (SUCCEEDED(pFilter->QueryInterface(IID_IReferenceClock, (void**)&pClock)) && pClock != NULL)
-					{
-						pClock->Release();
-						if (SUCCEEDED(SetReferenceClock(pFilter)) && m_DemuxClock)
-							haveClock = true;
-					}
-				}
 				pFilter = NULL;
 			}
 		}
 	}
 
-//	SetReferenceClock(NULL); //Set default clock
+	//Set the reference clock type
+	SetRefClock();
 
 	if (m_WasPlaying && IsPlaying() == S_FALSE)
 	{
@@ -1818,6 +1806,16 @@ int Demux::get_AC3_2AudioPid()
 		return m_pPidParser->pids.ac3;
 }
 
+int Demux::get_ClockMode()
+{
+	return m_ClockMode;
+}
+
+void Demux::set_ClockMode(int clockMode)
+{
+	m_ClockMode = clockMode;
+}
+
 HRESULT Demux::RemoveFilterChain(IBaseFilter *pStartFilter, IBaseFilter *pEndFilter)
 {
 	HRESULT hr = E_FAIL;
@@ -1927,6 +1925,58 @@ HRESULT Demux::SetReferenceClock(IBaseFilter *pFilter)
 	}
 	return E_FAIL;
 }
+
+
+void Demux::SetRefClock()
+{
+
+	if (!m_ClockMode) //(!m_ClockMode || !m_bAuto)
+		return;
+
+	if (m_ClockMode == 1){
+		SetReferenceClock(NULL); //Set default clock
+		return;
+	}
+
+	// Parse only the existing Mpeg2 Demultiplexer Filter
+	// in the filter graph, we do this by looking for filters
+	// that implement the IMpeg2Demultiplexer interface while
+	// the count is still active.
+	CFilterList FList(NAME("MyList"));  // List to hold the downstream peers.
+	if (SUCCEEDED(GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList)) && FList.GetHeadPosition())
+	{
+		IBaseFilter* pFilter = NULL;
+		POSITION pos = FList.GetHeadPosition();
+		pFilter = FList.Get(pos);
+		while (SUCCEEDED(GetPeerFilters(pFilter, PINDIR_OUTPUT, FList)) && pos)
+		{
+			pFilter = FList.GetNext(pos);
+		}
+
+		pos = FList.GetHeadPosition();
+		bool haveClock = false;
+		while (pos)
+		{
+			pFilter = FList.GetNext(pos);
+			if(pFilter != NULL)
+			{
+				//Set the reference Clock to the first Demux
+				if (!haveClock)
+				{
+					IReferenceClock *pClock = NULL;
+					if (SUCCEEDED(pFilter->QueryInterface(IID_IReferenceClock, (void**)&pClock)) && pClock != NULL)
+					{
+						pClock->Release();
+						if (SUCCEEDED(SetReferenceClock(pFilter)) && m_ClockMode == 2)
+							haveClock = true;
+					}
+				}
+				pFilter = NULL;
+			}
+		}
+	}
+}
+
 //TCHAR sz[128];
 //sprintf(sz, "%u", pClock);
 //MessageBox(NULL, sz,"test", NULL);

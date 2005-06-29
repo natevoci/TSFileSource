@@ -56,6 +56,7 @@ CUnknown * WINAPI CTSFileSourceFilter::CreateInstance(LPUNKNOWN punk, HRESULT *p
 // Constructor
 CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	CSource(NAME("CTSFileSourceFilter"), pUnk, CLSID_TSFileSource),
+	m_bRotEnable(FALSE),
 	m_pPin(NULL)
 {
 	ASSERT(phr);
@@ -79,11 +80,16 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	// Load Registry Settings data
 	GetRegStore("default");
 
-	m_PropOpen = false;
+
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
 {
+    if (m_dwGraphRegister)
+    {
+        RemoveGraphFromRot(m_dwGraphRegister);
+        m_dwGraphRegister = 0;
+    }
 	m_pTunerEvent->UnRegisterForTunerEvents();
 	delete 	m_pTunerEvent;
 	delete 	m_pRegStore;
@@ -240,6 +246,7 @@ int CTSFileSourceFilter::GetPinCount()
 
 STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 {
+	m_pDemux->SetRefClock();
 	CAutoLock cObjectLock(m_pLock);
 
 	if (m_pFileReader->IsFileInvalid())
@@ -351,6 +358,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 
 	CAutoLock lock(&m_Lock);
 	m_pFileReader->CloseFile();
+
+	set_ROTMode();
 
 	return hr;
 }
@@ -1016,6 +1025,42 @@ STDMETHODIMP CTSFileSourceFilter::SetBitRate(long Rate)
 
 }
 
+STDMETHODIMP CTSFileSourceFilter::GetROTMode(WORD *ROTMode)
+{
+	if(!ROTMode)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*ROTMode = m_bRotEnable;
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetROTMode(WORD ROTMode)
+{
+	CAutoLock lock(&m_Lock);
+	m_bRotEnable = ROTMode;
+	set_ROTMode();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetClockMode(WORD *ClockMode)
+{
+	if(!ClockMode)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*ClockMode = m_pDemux->get_ClockMode();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetClockMode(WORD ClockMode)
+{
+	CAutoLock lock(&m_Lock);
+	m_pDemux->set_ClockMode(ClockMode);
+	m_pDemux->SetRefClock();
+	return NOERROR;
+}
+
 STDMETHODIMP CTSFileSourceFilter::SetRegStore(LPTSTR nameReg)
 {
 
@@ -1045,6 +1090,8 @@ STDMETHODIMP CTSFileSourceFilter::SetRegStore(LPTSTR nameReg)
 		m_pSettingsStore->setAudio2ModeReg((BOOL)m_pDemux->get_MPEG2Audio2Mode());
 		m_pSettingsStore->setAC3ModeReg((BOOL)m_pDemux->get_AC3Mode());
 		m_pSettingsStore->setCreateTSPinOnDemuxReg((BOOL)m_pDemux->get_CreateTSPinOnDemux());
+		m_pSettingsStore->setROTModeReg((int)m_bRotEnable);
+		m_pSettingsStore->setClockModeReg((BOOL)m_pDemux->get_ClockMode());
 
 		m_pRegStore->setSettingsInfo(m_pSettingsStore);
 	}
@@ -1081,6 +1128,8 @@ STDMETHODIMP CTSFileSourceFilter::GetRegStore(LPTSTR nameReg)
 			m_pDemux->set_AC3Mode(m_pSettingsStore->getAC3ModeReg());
 			m_pDemux->set_CreateTSPinOnDemux(m_pSettingsStore->getCreateTSPinOnDemuxReg());
 			m_pPin->set_RateControl(m_pSettingsStore->getRateControlModeReg());
+			m_bRotEnable = m_pSettingsStore->getROTModeReg();
+			m_pDemux->set_ClockMode(m_pSettingsStore->getClockModeReg());
 		}
 	}
 
@@ -1161,6 +1210,79 @@ BOOL CTSFileSourceFilter::get_AutoMode()
 }
 
 //**********************************************************************************************
+// Adds a DirectShow filter graph to the Running Object Table,
+// allowing GraphEdit to "spy" on a remote filter graph.
+HRESULT CTSFileSourceFilter::AddGraphToRot(
+        IUnknown *pUnkGraph, 
+        DWORD *pdwRegister
+        ) 
+{
+    CComPtr <IMoniker>              pMoniker;
+    CComPtr <IRunningObjectTable>   pROT;
+    WCHAR wsz[128];
+    HRESULT hr;
+
+    if (FAILED(GetRunningObjectTable(0, &pROT)))
+        return E_FAIL;
+
+    wsprintfW(wsz, L"FilterGraph %08x pid %08x\0", (DWORD_PTR) pUnkGraph, 
+              GetCurrentProcessId());
+
+    hr = CreateItemMoniker(L"!", wsz, &pMoniker);
+    if (SUCCEEDED(hr))
+	{
+
+		IEnumMoniker *pIEnumMoniker;
+		if (SUCCEEDED(pROT->EnumRunning(&pIEnumMoniker)))
+/*
+		{
+			ULONG pNumb = 0;
+			IMoniker *pMoniker2;
+			while(pIEnumMoniker->Next(1, &pMoniker2, &pNumb) == S_OK)
+			{
+				if (!pMoniker2->IsEqual(pMoniker))
+				{
+TCHAR sz[128];
+sprintf(sz, "%u    %u" , pMoniker , pMoniker2);
+MessageBox(NULL, sz,"test", NULL);
+//					pMoniker2->Release();
+//					pMoniker2 = NULL;
+//					return hr;
+				}
+				pMoniker2->Release();
+				pMoniker2 = NULL;
+			}
+			pIEnumMoniker->Release();
+		}
+*/
+        hr = pROT->Register(ROTFLAGS_REGISTRATIONKEEPSALIVE, pUnkGraph, 
+                            pMoniker, pdwRegister);
+	}
+    return hr;
+}
+        
+// Removes a filter graph from the Running Object Table
+void CTSFileSourceFilter::RemoveGraphFromRot(DWORD pdwRegister)
+{
+    CComPtr <IRunningObjectTable> pROT;
+
+    if (SUCCEEDED(GetRunningObjectTable(0, &pROT))) 
+        pROT->Revoke(pdwRegister);
+}
+
+void CTSFileSourceFilter::set_ROTMode()
+{
+	if (m_bRotEnable)
+	{
+		if (!m_dwGraphRegister && FAILED(AddGraphToRot (GetFilterGraph(), &m_dwGraphRegister)))
+			m_dwGraphRegister = 0;
+	}
+	else if (m_dwGraphRegister)
+	{
+			RemoveGraphFromRot(m_dwGraphRegister);
+			m_dwGraphRegister = 0;
+	}
+}
 
 //////////////////////////////////////////////////////////////////////////
 // End of interface implementations

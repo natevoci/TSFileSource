@@ -191,6 +191,30 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			return FALSE;
 		}
 		setStore->setProgramSIDReg(regSID);
+
+		BOOL regROT(FALSE);
+		datalen = 1;
+		type = 0;
+
+		resp = RegQueryValueEx(settingsKey, "enableROT", NULL, &type, (BYTE*)&regROT, &datalen);
+		if(resp != ERROR_SUCCESS)
+		{
+			RegCloseKey(settingsKey);
+			return FALSE;
+		}
+		setStore->setROTModeReg(regROT);
+
+		int regClock = 0;
+		datalen = 4;
+		type = 0;
+
+		resp = RegQueryValueEx(settingsKey, "clockType", NULL, &type, (BYTE*)&regClock, &datalen);
+		if(resp != ERROR_SUCCESS)
+		{
+			RegCloseKey(settingsKey);
+			return FALSE;
+		}
+		setStore->setClockModeReg(regClock);
 	}
 	
 	BOOL regAC3(TRUE);
@@ -272,6 +296,12 @@ BOOL CRegStore::setSettingsInfo(CSettingsStore *setStore)
 
 		int regSID = setStore->getProgramSIDReg();
 		resp = RegSetValueEx(settingsKey, "ProgramSID", NULL, REG_BINARY, (BYTE*)&regSID, 4);
+
+		BOOL regROT = setStore->getROTModeReg();
+		resp = RegSetValueEx(settingsKey, "enableROT", NULL, REG_BINARY, (BYTE*)&regROT, 1);
+
+		int regClock = setStore->getClockModeReg();
+		resp = RegSetValueEx(settingsKey, "clockType", NULL, REG_BINARY, (BYTE*)&regClock, 4);
 	}
 	BOOL regAudio2 = setStore->getAudio2ModeReg();
 	resp = RegSetValueEx(settingsKey, "enableAudio2", NULL, REG_BINARY, (BYTE*)&regAudio2, 1);

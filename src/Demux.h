@@ -65,8 +65,11 @@ typedef CGenericList<IBaseFilter> CFilterList;
 	void set_NPControl(BOOL bNPControl);
 	void set_Auto(BOOL bAuto);
 	void set_MPEG2Audio2Mode(BOOL bMPEG2Audio2Mode);
+	void set_ClockMode(int clockMode);
+	void SetRefClock();
 	int  get_MP2AudioPid();
 	int  get_AC3_2AudioPid();
+	int get_ClockMode();
 	HRESULT	GetAC3Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetMP2Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetMP1Media(AM_MEDIA_TYPE *pintype);
@@ -131,8 +134,7 @@ protected:
 	BOOL m_bMPEG2AudioMediaType;
 	BOOL m_bMPEG2Audio2Mode;
 	BOOL m_WasPlaying;
-	BOOL m_ClockMode;
-	BOOL m_DemuxClock;
+	int  m_ClockMode;
 	LONG m_TimeOut[2];
 
 public:

@@ -105,6 +105,16 @@ int CSettingsStore::getProgramSIDReg()
 	return programSID;
 }
 
+BOOL CSettingsStore::getROTModeReg()
+{
+	return rotMode;
+}
+
+BOOL CSettingsStore::getClockModeReg()
+{
+	return clockMode;
+}
+
 void CSettingsStore::setAutoModeReg(BOOL bAuto)
 {
 	autoMode = bAuto;
@@ -162,5 +172,17 @@ void CSettingsStore::setAudio2ModeReg(BOOL bAudio2)
 void CSettingsStore::setProgramSIDReg(int bSID)
 {
 	programSID = bSID;
+	return;
+}
+
+void CSettingsStore::setROTModeReg(BOOL bROTMode)
+{
+	rotMode = bROTMode;
+	return;
+}
+
+void CSettingsStore::setClockModeReg(BOOL bClockMode)
+{
+	clockMode = bClockMode;
 	return;
 }

@@ -75,6 +75,13 @@ public:
 	int  getProgramSIDReg();
 	void setProgramSIDReg(int bSID);
 
+	BOOL getROTModeReg();
+	void setROTModeReg(BOOL bROTMode);
+
+	BOOL getClockModeReg();
+	void setClockModeReg(BOOL bClockMode);
+
+
 private:
 	__int64 lastUsed;
 	__int64 startAT;
@@ -91,4 +98,6 @@ private:
 	BOOL	rateMode;
 	BOOL	audio2Mode;
 	int		programSID;
+	BOOL	rotMode;
+	int		clockMode;
 };
