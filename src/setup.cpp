@@ -37,6 +37,7 @@
 
 #define TSFILESOURCENAME		L"TS File Filter(AU)"
 #define TSFILESOURCEPROPERTIES	L"TS File Filter(AU) Properties"
+#define TSFILESOURCEINTERFACE	L"TS File Filter(AU) Interface"
 
 
 // Filter setup data
@@ -83,7 +84,7 @@ CFactoryTemplate g_Templates[] =
 		CTSFileSourceProp::CreateInstance,
 		NULL,
 		NULL
-	}
+	},
 };
 
 int g_cTemplates = sizeof(g_Templates) / sizeof(g_Templates[0]);

@@ -49,7 +49,6 @@ protected:
 
 	IUnknown *m_pTSFileSourceFilter;
 	Demux *m_pDemux;
-//	IFilterGraph *m_pFilterGraph;
 
 public: //private
 

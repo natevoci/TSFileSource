@@ -117,7 +117,7 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 	}
 	if (riid == IID_ISpecifyPropertyPages)
 	{
-		return GetInterface((ISpecifyPropertyPages*)(this), ppv);
+		return GetInterface((ISpecifyPropertyPages*)this, ppv);
 	}
 	if ((riid == IID_IMediaPosition || riid == IID_IMediaSeeking))
 	{
@@ -167,40 +167,27 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 	if(lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return S_FALSE;
 
-	if(!ppmt)
-		return E_INVALIDARG;
-	else
+	if(ppmt)
 		*ppmt = &m_pStreamParser->StreamArray[lIndex].media;
 
-	if(!pdwGroup)
-		return E_INVALIDARG;
-	else
+	if(pdwGroup)
 		*pdwGroup = m_pStreamParser->StreamArray[lIndex].group;
 
-	if(!pdwFlags)
-		return E_INVALIDARG;
-	else
+	if(pdwFlags)
 		*pdwFlags = m_pStreamParser->StreamArray[lIndex].flags;
 
-	if(!plcid)
-		return E_INVALIDARG;
-	else
+	if(plcid)
 		*plcid = m_pStreamParser->StreamArray[lIndex].lcid;
 
-	if(!ppszName)
-		return E_INVALIDARG;
-	else
+	if(ppszName)
 		*ppszName = (WCHAR*)&m_pStreamParser->StreamArray[lIndex].name;
+
 return NOERROR;
 
-	if(!ppObject)
-		return E_INVALIDARG;
-	else
+	if(ppObject)
 		*ppObject = (IUnknown *)&m_pStreamParser->StreamArray[lIndex].object;
 
-	if(!ppUnk)
-		return E_INVALIDARG;
-	else
+	if(ppUnk)
 		*ppUnk = (IUnknown *)&m_pStreamParser->StreamArray[lIndex].unk;
 
 	return NOERROR;
@@ -246,7 +233,6 @@ int CTSFileSourceFilter::GetPinCount()
 
 STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 {
-	m_pDemux->SetRefClock();
 	CAutoLock cObjectLock(m_pLock);
 
 	if (m_pFileReader->IsFileInvalid())

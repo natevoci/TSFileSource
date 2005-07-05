@@ -27,7 +27,6 @@
 *  bear and nate can be reached on the forums at
 *    http://forums.dvbowners.com/
 */
-
 // {559E6E81-FAC4-4EBC-9530-662DAA27EDC2}
 DEFINE_GUID(IID_ITSFileSource,
 0x559e6e81, 0xfac4, 0x4ebc, 0x95, 0x30, 0x66, 0x2d, 0xaa, 0x27, 0xed, 0xc2);
@@ -92,9 +91,13 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) Z & NP test version series only
 };
 
 */  
-	
 DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official release
 {
+//MIDL_INTERFACE("559E6E81-FAC4-4EBC-9530-662DAA27EDC2")	
+//ITSFileSource : public IUnknown
+//{
+//    public:
+
 	STDMETHOD(GetVideoPid) (THIS_ WORD * vpid) PURE;
 	STDMETHOD(GetAudioPid) (THIS_ WORD * apid) PURE;
 	STDMETHOD(GetAudio2Pid) (THIS_ WORD * a2pid) PURE;
@@ -166,17 +169,18 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 
 	STDMETHOD(SetTunerEvent) (void) PURE;
 
-	STDMETHOD(SetRegSettings) () PURE;
-	STDMETHOD(GetRegSettings) () PURE;
-	STDMETHOD(SetRegProgram) () PURE;
+	STDMETHOD(SetRegSettings) (void) PURE;
+	STDMETHOD(GetRegSettings) (void) PURE;
+	STDMETHOD(SetRegProgram) (void) PURE;
 
-	STDMETHOD(ShowFilterProperties)() PURE;
-	STDMETHOD(Refresh)() PURE;
+	STDMETHOD(ShowFilterProperties)(void) PURE;
+	STDMETHOD(Refresh)(void) PURE;
 
-	STDMETHOD (GetROTMode) (WORD *ROTMode) PURE;
-	STDMETHOD (SetROTMode) (WORD ROTMode) PURE;
-	STDMETHOD (GetClockMode) (WORD *ClockMode) PURE;
-	STDMETHOD (SetClockMode) (WORD ClockMode) PURE;
+	STDMETHOD (GetROTMode) (THIS_ WORD *ROTMode) PURE;
+	STDMETHOD (SetROTMode) (THIS_ WORD ROTMode) PURE;
+	STDMETHOD (GetClockMode) (THIS_ WORD *ClockMode) PURE;
+	STDMETHOD (SetClockMode) (THIS_ WORD ClockMode) PURE;
+//	STDMETHOD (NonDelegatingQueryInterface) (THIS_ REFIID riid, void ** ppv) PURE;
 
 };
 
