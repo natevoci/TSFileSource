@@ -79,8 +79,6 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 
 	// Load Registry Settings data
 	GetRegStore("default");
-
-
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()

@@ -246,13 +246,14 @@ HRESULT Demux::AOnConnect()
 		}
 
 		pos = FList.GetHeadPosition();
-		bool haveClock = false;
+
 		while (pos)
 		{
 			pFilter = FList.GetNext(pos);
 			if(pFilter != NULL)
 			{
 				UpdateDemuxPins(pFilter);
+				pFilter->Release();
 				pFilter = NULL;
 			}
 		}
@@ -277,6 +278,7 @@ HRESULT Demux::AOnConnect()
 	}
 
 	m_bConnectBusyFlag = false;
+
 	return NOERROR;
 }
 
@@ -1971,6 +1973,7 @@ void Demux::SetRefClock()
 							haveClock = true;
 					}
 				}
+				pFilter->Release();
 				pFilter = NULL;
 			}
 		}

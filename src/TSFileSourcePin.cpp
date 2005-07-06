@@ -93,7 +93,7 @@ HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 
 	pmt->InitMediaType();
 	pmt->SetType      (& MEDIATYPE_Stream);
-	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);
+	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);//MEDIASUBTYPE_MPEG2_PROGRAM); //
 	pmt->SetTemporalCompression(TRUE);
 
     return S_OK;
@@ -181,6 +181,10 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 
 HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
 {
+	//This is here so reclock can work, why? I have no Idea.
+	FILTER_INFO Info;
+	m_pTSFileSourceFilter->QueryFilterInfo(&Info);
+
 	HRESULT hr = CBaseOutputPin::CompleteConnect(pReceivePin);
 	if (SUCCEEDED(hr))
 	{
@@ -189,6 +193,13 @@ HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
 		m_rtStop = m_rtDuration;
 		m_DataRate = m_pPidParser->pids.bitrate;
 	}
+
+	return hr;
+}
+
+HRESULT CTSFileSourcePin::BreakConnect()
+{
+	HRESULT hr = CBaseOutputPin::BreakConnect();
 	return hr;
 }
 
