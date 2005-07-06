@@ -181,10 +181,6 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 
 HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
 {
-	//This is here so reclock can work, why? I have no Idea.
-	FILTER_INFO Info;
-	m_pTSFileSourceFilter->QueryFilterInfo(&Info);
-
 	HRESULT hr = CBaseOutputPin::CompleteConnect(pReceivePin);
 	if (SUCCEEDED(hr))
 	{

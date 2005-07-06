@@ -52,7 +52,7 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_ClockMode(0),
 	m_bCreateTSPinOnDemux(FALSE)
 {
-
+	m_Info.pGraph = NULL;
 	m_pTSFileSourceFilter = pFilter;
 	m_pPidParser = pPidParser;
 }
@@ -202,6 +202,11 @@ HRESULT Demux::AOnConnect()
 		m_TimeOut[0] = 10000;
 		m_WasPlaying = TRUE;
 	}
+
+	//This is here to maintain a Graph reference so Reclock can work.
+	//don't know why? but it works.
+	if (!m_Info.pGraph)
+		m_pTSFileSourceFilter->QueryFilterInfo(&m_Info);
 
 	// Parse only the existing Network Provider Filter
 	// in the filter graph, we do this by looking for filters
@@ -960,7 +965,7 @@ HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
 		hr = LoadAudioPin(pIPin, (ULONG)pPid);
-		pIPin->Release();
+//		pIPin->Release();
 		hr = S_OK;
 	}
 	return hr;
