@@ -46,6 +46,7 @@ class CTSFileSourceFilter;
 #include "Demux.h"
 #include "StreamInfo.h"
 #include "StreamParser.h"
+#include <comdef.h>
 
 /**********************************************
  *
@@ -75,6 +76,7 @@ private:
 	HRESULT AddGraphToRot(IUnknown *pUnkGraph, DWORD *pdwRegister); 
 	void RemoveGraphFromRot(DWORD pdwRegister);
 	void set_ROTMode();
+	HRESULT GetObjectFromROT(WCHAR* wsFullName, IUnknown **ppUnk);
 
 public:
 	// Pin enumeration

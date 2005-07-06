@@ -1213,34 +1213,22 @@ HRESULT CTSFileSourceFilter::AddGraphToRot(
 
     wsprintfW(wsz, L"FilterGraph %08x pid %08x\0", (DWORD_PTR) pUnkGraph, 
               GetCurrentProcessId());
+	
+	//Search the ROT for the same reference
+	IUnknown *pUnk = NULL;
+	if (SUCCEEDED(GetObjectFromROT(wsz, &pUnk)))
+	{
+		//Exit out if we have an object running in ROT
+		if (pUnk)
+		{
+			pUnk->Release();
+			return S_OK;
+		}
+	}
 
     hr = CreateItemMoniker(L"!", wsz, &pMoniker);
     if (SUCCEEDED(hr))
 	{
-
-		IEnumMoniker *pIEnumMoniker;
-		if (SUCCEEDED(pROT->EnumRunning(&pIEnumMoniker)))
-/*
-		{
-			ULONG pNumb = 0;
-			IMoniker *pMoniker2;
-			while(pIEnumMoniker->Next(1, &pMoniker2, &pNumb) == S_OK)
-			{
-				if (!pMoniker2->IsEqual(pMoniker))
-				{
-TCHAR sz[128];
-sprintf(sz, "%u    %u" , pMoniker , pMoniker2);
-MessageBox(NULL, sz,"test", NULL);
-//					pMoniker2->Release();
-//					pMoniker2 = NULL;
-//					return hr;
-				}
-				pMoniker2->Release();
-				pMoniker2 = NULL;
-			}
-			pIEnumMoniker->Release();
-		}
-*/
         hr = pROT->Register(ROTFLAGS_REGISTRATIONKEEPSALIVE, pUnkGraph, 
                             pMoniker, pdwRegister);
 	}
@@ -1270,6 +1258,56 @@ void CTSFileSourceFilter::set_ROTMode()
 	}
 }
 
+HRESULT CTSFileSourceFilter::GetObjectFromROT(WCHAR* wsFullName, IUnknown **ppUnk)
+{
+	if( *ppUnk )
+		return E_FAIL;
+
+	HRESULT	hr;
+
+	IRunningObjectTablePtr spTable;
+	IEnumMonikerPtr	spEnum = NULL;
+	_bstr_t	bstrtFullName;
+
+	bstrtFullName = wsFullName;
+
+	// Get the IROT interface pointer
+	hr = GetRunningObjectTable( 0, &spTable ); 
+	if (FAILED(hr))
+		return E_FAIL;
+
+	// Get the moniker enumerator
+	hr = spTable->EnumRunning( &spEnum ); 
+	if (SUCCEEDED(hr))
+	{
+		_bstr_t	bstrtCurName; 
+
+		// Loop thru all the interfaces in the enumerator looking for our reqd interface 
+		IMonikerPtr spMoniker = NULL;
+		while (SUCCEEDED(spEnum->Next(1, &spMoniker, NULL)) && (NULL != spMoniker))
+		{
+			// Create a bind context 
+			IBindCtxPtr spContext = NULL;
+			hr = CreateBindCtx(0, &spContext); 
+			if (SUCCEEDED(hr))
+			{
+				// Get the display name
+				WCHAR *wsCurName = NULL;
+				hr = spMoniker->GetDisplayName(spContext, NULL, &wsCurName );
+				bstrtCurName = wsCurName;
+
+				// We have got our required interface pointer //
+				if (SUCCEEDED(hr) && bstrtFullName == bstrtCurName)
+				{ 
+					hr = spTable->GetObject( spMoniker, ppUnk );
+					return hr;
+				}	
+			}
+			spMoniker.Release();
+		}
+	}
+	return E_FAIL;
+}
 //////////////////////////////////////////////////////////////////////////
 // End of interface implementations
 //////////////////////////////////////////////////////////////////////////
