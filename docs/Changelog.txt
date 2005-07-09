@@ -1,0 +1,134 @@
+Version 2.1.0.2
+=================
+Found Graph release problem in CheckConnect Function so Reclock Filter should now work again. 
+Added ROT check to see if Object is already referenced so it will not make a double entry.
+Set Language descriptors to English default in IAMStreamSelect Interface. Also changed IAMStreamSelect Info Function to allow for Null pointers to be supplied.
+Added Filtergraph Reference Clock property Page Setting. This is to allow some DirectSound cards to have the correct reference clock set. Three options are Default, Demux & Render.
+Added ROT enable option to Property Page. The Filter can now register the filtergraph that its in to the Running Object table. Should allow access to the IAMStreamSelect Interface from other applications. 
+Fixed Filter Peers parsing, was only finding one filter chain.
+Fixed Object release problem in checkConnect function.
+Added Reference Clock setting code for testing.
+Added StreamInfo & StreamParser classes and updated code to allow selection of Audio Tracks via the IAMStreamInterface.
+Added IAMStreamSelect Interface to filter. Allows for basic Program switching on applications.
+Fixed a bug in the NID file Parsing code to eliminate false NID's from previous channel.
+Changed the Property page CLSID to eliminate clashing with another filter.
+Rearranged the ITSFileSource Interface methods order to keep consistancy with the earlier official version 2.0.1.7.
+Note: Any programs that have used the above Interface with the earlier test versions will now need to recompile using the new interface method order.
+Fixed a EPG parsing bug that caused corrupt Now & Next information to appear if there was no N&N information in the stream.
+Fixed a divide by zero exception bug in the Buffer module that appeared when you tried to play corrupted files.
+Added checkConnect function on output pin to prevent anything but the MS Demultiplexer from connecting with exception of "*Tee*" & "*Flow*" labeled filter or Filters that have a "*MPEG-2*" labeled input pin. 
+
+
+Version 2.1.0.1
+=================
+Main changes are to do with fixing the object release error, re-jiged the code to try and isolate problem and found that I was not releasing the pGraph pointer after each use. Also added in some filter peer code to allow the filter to only control the demux's in the same filter chain. It means that you can now play two or more TSFileSource filters within the same graph. Not that you would want to anyway.
+
+Version 2.1.0.0
+=================
+General tidy up of the code to remove old unused code.
+
+Version 2.0.1.7.NP7
+====================
+It has some extra changes to allow it to work better with the new FileWriter Filter that DVB Webscheduler is now using.
+Also some bug fixes.
+
+Version 2.0.1.7.NP6
+====================
+It has some changes to allow it to work with the new FileWriter Filter that DVB Webscheduler is going to use. It looks for the "filename.ts.info" file that is created while the new FileWriter is capturing and uses the information contained in this file to work out the file duration which it has not been able to do with any of the previous versions of the filewriter filter.
+
+Version 2.0.1.7.NP5
+====================
+Added pid parsing on the fly to work while recording but getting some weird effects with memory being overwritten.
+Working on normal TS Files OK.
+Removed ITSFileSource interface project, not required anymore.
+
+
+Version 2.0.1.7.NP4
+====================
+Added more bug fixes related to Full TSMux Files.
+
+Version 2.0.1.7.NP3
+====================
+Added ITSFileSource interface project,
+Added Channel Number parsing,
+Added Channel & Network Name parsing,
+Added Program Now & Next Descriptor parsing,
+Added a 0 byte File growing wait,
+Added lots of bug fixes
+
+Version 2.0.1.7.NP2
+====================
+Don't remember whats changed.
+
+Version 2.0.1.7.NP1
+====================
+Changes that allow the filter to work with the NP & TIF in a BDA Graph.I have also added a wait for file growing state in the filter's Run code to allow the filter to Parse the pids before proceeding. This is designed to allow immediate play after the file starts recording. I have also had some joy with DVBT dumping & playing the file back within the same graph with reasonable performance although this is not a requirement.
+Also added a refresh button to the prop page.
+
+Version 2.0.1.7.NP
+====================
+Changes that allow the filter to work with the NP & TIF in a BDA Graph. I have added a new class called TunerEvent that uses the IBroadcast interface to send channel change events back to the filter so that the Demux can be updated.
+Added two more options to the Property page "NP Control" that enables the Source filter to control the NP program selection and "NP Slave" that allows the NP to control the Source filter's program selection. ATM it only works with the DVBT Network Provider and is suggested as a test version only although it should perform as normal for playing files. 
+
+Version 2.0.1.7.z
+====================
+Implemented the registry save feature.
+Added Audio2 Preference support.
+Added a fix for any buggy duration times such as when missing pcr's such as on SBS radio.
+Added in some ATSC AC3/LPCM/DTS Stream detection for as a test. 
+Changed the com interface to allow for User setting of the filter reg settings, programmers can now save & load settings seperate to the "default", these will be saved under "user", default is still loaded & saved from the prop page if "user" was not loaded.
+Implemented a small fix to the PCR parsing code to allow correct durations for ATSC files and quicker loading.
+Slight modifications to load & save the Network ID:TSID's value SID setting in the prop page along with the AC3 & Audio 2 preference settings.
+Altered the Prop Page to include correct NID & TSID values, also installed a "Prev" to the "Next" Button.
+Please note that I have not included any limitations on the registry entry numbers as this is still being looked at. 
+Slight addition to the "ITSFileSource" interface to allow you to open the properties page.
+Addition of ONID as well as NID on the prop page as well as some more bug fixes. 
+
+Version 2.0.1.7
+=================
+Main changes by nate.
+I've included the new duration code, although i havn't looked at it to see how it works. I'm just trusting you bear 
+Improvments to Seeking.
+Duration updates if file is still growing. This makes it possible to seek right to the end of a file that is still growing.
+Stopped the FillBuffer method running during a seek. This reduces the chance of getting wierd PCRs.
+Doesn't stop and start the graph during a seek anymore.
+I moved the Sleeping from FileReader to TSBuffer. I did this because check for EPG reads a long way into the file before it gives up, so if the file was growing and wasn't very big yet then the CheckForEPG function would hang until the file got big enough. This caused the filter creation to hang.
+A a concequence of this change Live Delay mode doesn't work at the moment because I havn't got around to updating the option for it yet.
+The bitrate code is totally untested at the moment, but it's returning a value so it's doing something.
+Keep an eye out for the graph not stopping when it gets to the end of the file. I had it happen a few times, ussually after doing a lot of seeking, but i couldn't reproduce it regularly enough to figure out what was happening. I may have fixed it with other changes i made so i'll be interested to hear if anyone has it happen.
+
+Version 2.0.1.6
+=================
+Here's a summary of the changes nate's made. A lot of them are to do with the structure of the code and don't really effect the end user's experience of the filter, but there are a few things that will be noticed.
+All PID parsing has been moved into classes of it's own
+I created a PidInfo and PidInfoArray class to manage all the pid's more easily and have dynamically sized array of programs.
+I moved all file reading and seeking into it's own class with methods that take __int64 file pointers rather than having to deal with LARGE_INTEGERs each time a seek is done in parsing code.
+I moved all the demux handling code into it's own class.
+I merged the CTSSource and CTSSourceFilter classes into one. There's no point having them separate because CTSSource was only derived from CUnknown and all the other interfaces could just as easily be handled in the CTSSourceFilter class
+I renamed each occurance of a class or variable name from TSSource to TSFileSource to match the filter name.
+For filling media samples i created a CTSBuffer class that encapsulates all file reads. This has a few advantages.
+The amount of data read in each chunk is independant of the size of the samples being sent. This means you can specify a larger file read chunk to cut down on the number of disk reads.
+We can read further into the file than the size of the next sample to look for a PCR and then have that data already buffered and not have to re-read it when it comes time to send it in a sample.
+It's easy to change the size of samples and file reads. See the constructors of CTSBuffer and CTSFileSourcePin. I havn't played around with these too much yet to see what the best values are, but i'm using 188000 for each of them now without any problems.
+I implemented exact PCR calculation for the timing of sending samples to minimise bursting. A PCR value is calculated for the first byte of each sample, even at the start of the file.
+It does this by using the next and last PCR and their byte position, or if there hasn't been a PCR yet it uses the next two PCRs (assuming they are within the next 1Mb of the file), or if there are no more PCRs it uses the last two previously found PCRs if they exist.
+Cleaned up the properties dialog.
+Added GPL headers to the files.
+
+
+ZoomPlayer Customised Settings:
+==================================
+
+Special Purpose:
+MPEG2 Transport :- TS File Filter(AU) (Registered) [that is the TSFileSource]
+
+Audio/Video Splitters:
+MPEG2 Transport :- MPEG-2 Demultiplexer (Registered) 
+
+Default Media Settings for Players
+==================================
+TSFileSource.reg :
+[HKEY_CLASSES_ROOT\Media Type\Extensions\.ts]
+"Source Filter"="{4F8BF30C-3BEB-43A3-8BF2-10096FD28CF2}"
+[HKEY_CLASSES_ROOT\Media Type\Extensions\.tp]
+"Source Filter"="{4F8BF30C-3BEB-43A3-8BF2-10096FD28CF2}" 
