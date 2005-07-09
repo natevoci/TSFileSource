@@ -205,8 +205,8 @@ HRESULT Demux::AOnConnect()
 
 	//This is here to maintain a Graph reference so Reclock can work.
 	//don't know why? but it works.
-	if (!m_Info.pGraph)
-		m_pTSFileSourceFilter->QueryFilterInfo(&m_Info);
+//	if (!m_Info.pGraph)
+//		m_pTSFileSourceFilter->QueryFilterInfo(&m_Info);
 
 	// Parse only the existing Network Provider Filter
 	// in the filter graph, we do this by looking for filters

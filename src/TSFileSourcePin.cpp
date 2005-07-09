@@ -94,7 +94,7 @@ HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 	pmt->InitMediaType();
 	pmt->SetType      (& MEDIATYPE_Stream);
 	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);//MEDIASUBTYPE_MPEG2_PROGRAM); //
-	pmt->SetTemporalCompression(TRUE);
+//	pmt->SetTemporalCompression(TRUE);
 
     return S_OK;
 }
@@ -140,14 +140,13 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 		PIN_INFO pInfo;
 		if (SUCCEEDED(pReceivePin->QueryPinInfo(&pInfo)))
 		{
-			pReceivePin->Release();
-
 			TCHAR name[128];
 			sprintf(name, "%S", pInfo.achName);
 
 			//Test for a filter with "MPEG-2" on input pin label
 			if (strstr(name, "MPEG-2") != NULL)
 			{
+				pInfo.pFilter->Release();
 				return hr;
 			}
 
@@ -155,17 +154,20 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 			IMpeg2Demultiplexer* muxInterface = NULL;
 			if(SUCCEEDED(pInfo.pFilter->QueryInterface (&muxInterface)))
 			{
-				pInfo.pFilter->Release();
 				muxInterface->Release();
+				pInfo.pFilter->Release();
 				return hr;
 			}
+
 
 			FILTER_INFO pFilterInfo;
 			if (SUCCEEDED(pInfo.pFilter->QueryFilterInfo(&pFilterInfo)))
 			{
-				pFilterInfo.pGraph->Release();
 				TCHAR name[128];
 				sprintf(name, "%S", pFilterInfo.achName);
+
+				pFilterInfo.pGraph->Release();
+				pInfo.pFilter->Release();
 
 				//Test for an infinite tee filter
 				if (strstr(name, "Tee") != NULL)
@@ -173,6 +175,7 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 				else if (strstr(name, "Flow") != NULL)
 					return hr;
 			}
+
 		}
 		return E_FAIL;
 	}
@@ -195,8 +198,7 @@ HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
 
 HRESULT CTSFileSourcePin::BreakConnect()
 {
-	HRESULT hr = CBaseOutputPin::BreakConnect();
-	return hr;
+	return CBaseOutputPin::BreakConnect();
 }
 
 HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
