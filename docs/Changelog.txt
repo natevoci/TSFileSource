@@ -1,5 +1,6 @@
 Version 2.1.0.2
 =================
+Just a bit more of a tidy up as well as fixed a Release statment in the CreateAC3Pin function which was left commented out in testing.
 Found Graph release problem in CheckConnect Function so Reclock Filter should now work again. 
 Added ROT check to see if Object is already referenced so it will not make a double entry.
 Set Language descriptors to English default in IAMStreamSelect Interface. Also changed IAMStreamSelect Info Function to allow for Null pointers to be supplied.

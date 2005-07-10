@@ -203,11 +203,6 @@ HRESULT Demux::AOnConnect()
 		m_WasPlaying = TRUE;
 	}
 
-	//This is here to maintain a Graph reference so Reclock can work.
-	//don't know why? but it works.
-//	if (!m_Info.pGraph)
-//		m_pTSFileSourceFilter->QueryFilterInfo(&m_Info);
-
 	// Parse only the existing Network Provider Filter
 	// in the filter graph, we do this by looking for filters
 	// that implement the ITuner interface while
@@ -965,7 +960,7 @@ HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
 		hr = LoadAudioPin(pIPin, (ULONG)pPid);
-//		pIPin->Release();
+		pIPin->Release();
 		hr = S_OK;
 	}
 	return hr;

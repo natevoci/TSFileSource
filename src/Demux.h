@@ -26,6 +26,9 @@
 #ifndef DEMUX_H
 #define DEMUX_H
 
+// Define a typedef for a list of filters.
+typedef CGenericList<IBaseFilter> CFilterList;
+
 #include "PidParser.h"
 #include "Control.h"
 
@@ -33,17 +36,7 @@ class Demux
 {
 public:
 
-//********************************************************************************************
-//Filter Peers Additions
-
-	// Define a typedef for a list of filters.
-typedef CGenericList<IBaseFilter> CFilterList;
-
 	Demux(PidParser *pPidParser, IBaseFilter *pFilter);
-
-//Removed	Demux(PidParser *pPidParser);
-
-//********************************************************************************************
 
 	virtual ~Demux();
 
@@ -106,10 +99,6 @@ protected:
 	HRESULT UpdateNetworkProvider(IBaseFilter* pNetworkProvider);
 	HRESULT CheckTIFPin(IBaseFilter* pDemux);
 	HRESULT GetTIFMedia(AM_MEDIA_TYPE *pintype);
-
-//********************************************************************************************
-//Filter Peers Additions
-
 	HRESULT GetPeerFilters(IBaseFilter *pFilter, PIN_DIRECTION Dir, CFilterList &FilterList);  
 	HRESULT GetNextFilter(IBaseFilter *pFilter, PIN_DIRECTION Dir, IBaseFilter **ppNext);
 	void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
@@ -120,9 +109,6 @@ protected:
 	HRESULT SetReferenceClock(IBaseFilter *pFilter);
 
 	IBaseFilter *m_pTSFileSourceFilter;
-
-//********************************************************************************************
-
 	PidParser *m_pPidParser;
 	FILTER_INFO m_Info;
 

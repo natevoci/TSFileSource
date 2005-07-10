@@ -591,7 +591,6 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 	int addlength, addfield;
 	WORD error, start;
 	DWORD psiID, pesID;
-	//filepos = 0;
 	a = 0;
 	hr = S_OK;
 

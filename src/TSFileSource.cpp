@@ -1193,7 +1193,6 @@ BOOL CTSFileSourceFilter::get_AutoMode()
 	return m_pDemux->get_Auto();
 }
 
-//**********************************************************************************************
 // Adds a DirectShow filter graph to the Running Object Table,
 // allowing GraphEdit to "spy" on a remote filter graph.
 HRESULT CTSFileSourceFilter::AddGraphToRot(

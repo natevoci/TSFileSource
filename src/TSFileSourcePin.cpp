@@ -93,7 +93,7 @@ HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 
 	pmt->InitMediaType();
 	pmt->SetType      (& MEDIATYPE_Stream);
-	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);//MEDIASUBTYPE_MPEG2_PROGRAM); //
+	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);//MEDIASUBTYPE_MPEG2_PROGRAM);//
 //	pmt->SetTemporalCompression(TRUE);
 
     return S_OK;
