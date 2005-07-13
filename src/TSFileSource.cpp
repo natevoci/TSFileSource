@@ -121,7 +121,7 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 	{
 		return m_pPin->NonDelegatingQueryInterface(riid, ppv);
 	}
-	if (riid == IID_IAMStreamSelect)
+	if (riid == IID_IAMStreamSelect && m_pDemux->get_Auto())
 	{
 		return GetInterface((IAMStreamSelect*)this, ppv);
 	}
@@ -178,15 +178,23 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 		*plcid = m_pStreamParser->StreamArray[lIndex].lcid;
 
 	if(ppszName)
-		*ppszName = (WCHAR*)&m_pStreamParser->StreamArray[lIndex].name;
+	{
+		*ppszName = (WCHAR *)m_pStreamParser->StreamArray[lIndex].name;
+/*
+        WCHAR *pwsz = static_cast<WCHAR *>(CoTaskMemAlloc((wcslen(m_pStreamParser->StreamArray[lIndex].name) + 1) * sizeof(WCHAR)));
+        if (!pwsz)
+            return E_OUTOFMEMORY;
 
-return NOERROR;
+	    wcsncpy(pwsz, m_pStreamParser->StreamArray[lIndex].name, wcslen(m_pStreamParser->StreamArray[lIndex].name) + 1);
 
+        *ppszName = pwsz;
+*/
+	}
 	if(ppObject)
-		*ppObject = (IUnknown *)&m_pStreamParser->StreamArray[lIndex].object;
+		*ppObject = (IUnknown *)m_pStreamParser->StreamArray[lIndex].object;
 
 	if(ppUnk)
-		*ppUnk = (IUnknown *)&m_pStreamParser->StreamArray[lIndex].unk;
+		*ppUnk = (IUnknown *)m_pStreamParser->StreamArray[lIndex].unk;
 
 	return NOERROR;
 }
@@ -204,7 +212,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags)
 	m_pDemux->m_StreamAC3 = m_pStreamParser->StreamArray[lIndex].AC3;
 	m_pDemux->m_StreamMP2 = m_pStreamParser->StreamArray[lIndex].Aud;
 	m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
-	SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group);
+	SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
 	m_pStreamParser->SetStreamActive(m_pStreamParser->StreamArray[lIndex].group);
 	m_pDemux->m_StreamAC3 = 0;
 	m_pDemux->m_StreamMP2 = 0;
@@ -299,7 +307,7 @@ HRESULT CTSFileSourceFilter::OnConnect()
 {
 	HRESULT hr = m_pDemux->AOnConnect();
 
-	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber() + 1);
+	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 	return hr;
 }
 

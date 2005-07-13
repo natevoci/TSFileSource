@@ -180,8 +180,6 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 	STDMETHOD (SetROTMode) (THIS_ WORD ROTMode) PURE;
 	STDMETHOD (GetClockMode) (THIS_ WORD *ClockMode) PURE;
 	STDMETHOD (SetClockMode) (THIS_ WORD ClockMode) PURE;
-//	STDMETHOD (NonDelegatingQueryInterface) (THIS_ REFIID riid, void ** ppv) PURE;
-
 };
 
 

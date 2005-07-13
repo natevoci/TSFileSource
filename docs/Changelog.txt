@@ -1,5 +1,6 @@
 Version 2.1.0.2
 =================
+Changed the IAMStreamSelect Interface Group order to zero base as it should have been.
 Just a bit more of a tidy up as well as fixed a Release statment in the CreateAC3Pin function which was left commented out in testing.
 Found Graph release problem in CheckConnect Function so Reclock Filter should now work again. 
 Added ROT check to see if Object is already referenced so it will not make a double entry.

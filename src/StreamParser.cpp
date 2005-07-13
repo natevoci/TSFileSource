@@ -140,7 +140,7 @@ HRESULT StreamParser::ParsePidArray()
 void StreamParser::LoadStreamArray(int cnt)
 {
 		streams.flags = 0; 
-		streams.group = cnt + 1;
+		streams.group = cnt;
 		streams.object = 0;
 		streams.unk = 0;
 }
