@@ -104,7 +104,6 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 	CAutoLock lock(&m_Lock);
 
 	// Do we have this interface
-
 	if (riid == IID_ITSFileSource)
 	{
 		return GetInterface((ITSFileSource*)this, ppv);
@@ -117,10 +116,14 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 	{
 		return GetInterface((ISpecifyPropertyPages*)this, ppv);
 	}
-	if ((riid == IID_IMediaPosition || riid == IID_IMediaSeeking))
+	if (riid == IID_IMediaPosition || riid == IID_IMediaSeeking)
 	{
 		return m_pPin->NonDelegatingQueryInterface(riid, ppv);
 	}
+    if (riid == IID_IAMFilterMiscFlags)
+    {
+		return GetInterface((IAMFilterMiscFlags*)this, ppv);
+    }
 	if (riid == IID_IAMStreamSelect && m_pDemux->get_Auto())
 	{
 		return GetInterface((IAMStreamSelect*)this, ppv);
@@ -130,7 +133,13 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 
 } // NonDelegatingQueryInterface
 
-STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams)
+//IAMFilterMiscFlags
+ULONG STDMETHODCALLTYPE CTSFileSourceFilter::GetMiscFlags(void)
+{
+	return (ULONG)AM_FILTER_MISC_FLAGS_IS_SOURCE; 
+}//IAMFilterMiscFlags
+
+STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams) //IAMStreamSelect
 {
 	if(!pcStreams)
 		return E_INVALIDARG;
@@ -142,7 +151,7 @@ STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams)
 	*pcStreams = m_pStreamParser->StreamArray.Count();
 	
 	return S_OK;
-}
+} //IAMStreamSelect
 
 STDMETHODIMP  CTSFileSourceFilter::Info( 
 						long lIndex,
@@ -152,7 +161,7 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 						DWORD *pdwGroup,
 						WCHAR **ppszName,
 						IUnknown **ppObject,
-						IUnknown **ppUnk)
+						IUnknown **ppUnk) //IAMStreamSelect
 {
 
 	CAutoLock lock(&m_Lock);
@@ -178,18 +187,8 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 		*plcid = m_pStreamParser->StreamArray[lIndex].lcid;
 
 	if(ppszName)
-	{
 		*ppszName = (WCHAR *)m_pStreamParser->StreamArray[lIndex].name;
-/*
-        WCHAR *pwsz = static_cast<WCHAR *>(CoTaskMemAlloc((wcslen(m_pStreamParser->StreamArray[lIndex].name) + 1) * sizeof(WCHAR)));
-        if (!pwsz)
-            return E_OUTOFMEMORY;
 
-	    wcsncpy(pwsz, m_pStreamParser->StreamArray[lIndex].name, wcslen(m_pStreamParser->StreamArray[lIndex].name) + 1);
-
-        *ppszName = pwsz;
-*/
-	}
 	if(ppObject)
 		*ppObject = (IUnknown *)m_pStreamParser->StreamArray[lIndex].object;
 
@@ -197,9 +196,9 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 		*ppUnk = (IUnknown *)m_pStreamParser->StreamArray[lIndex].unk;
 
 	return NOERROR;
-}
+} //IAMStreamSelect
 
-STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags)
+STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStreamSelect
 {
 	//Test if ready
 	if (!m_pStreamParser->StreamArray.Count())
@@ -219,11 +218,12 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags)
 	m_pDemux->m_StreamAud2 = 0;
 	SetRegProgram();
 	return S_OK;
-}
+} //IAMStreamSelect
 
 
 CBasePin * CTSFileSourceFilter::GetPin(int n)
 {
+//	if (n <= 1) {
 	if (n == 0) {
 		return m_pPin;
 	} else {
@@ -233,6 +233,7 @@ CBasePin * CTSFileSourceFilter::GetPin(int n)
 
 int CTSFileSourceFilter::GetPinCount()
 {
+//	return 2;
 	return 1;
 }
 
@@ -387,7 +388,7 @@ HRESULT CTSFileSourceFilter::Refresh()
 	CAutoLock lock(&m_Lock);
 	m_pPidParser->RefreshPids();
 
-	if (m_pPidParser->m_TStreamID && m_pPidParser->pidArray.Count() >= 2)
+	if (m_pPidParser->m_TStreamID) // && m_pPidParser->pidArray.Count() >= 2)
 	{
 		m_pPidParser->set_SIDPid(sid); //Setup for search
 		m_pPidParser->set_ProgramSID(); //set to same sid as before
@@ -396,6 +397,7 @@ HRESULT CTSFileSourceFilter::Refresh()
 	m_pPin->ChangeStart();
 	OnConnect();
 	m_pPin->ChangeStop();
+//	m_pPin->SendEvent(EC_NEED_RESTART);
 	return S_OK;
 }
 
@@ -747,6 +749,7 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
 	m_pPin->ChangeStop();
+//	m_pPin->SendEvent(EC_NEED_RESTART);
 
 	return NOERROR;
 }
@@ -771,6 +774,7 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
 	m_pPin->ChangeStop();
+//	m_pPin->SendEvent(EC_NEED_RESTART);
 
 	return NOERROR;
 }
@@ -795,6 +799,7 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
 	m_pPin->ChangeStop();
+//	m_pPin->SendEvent(EC_NEED_RESTART);
 	return NOERROR;
 }
 
@@ -1316,6 +1321,4 @@ HRESULT CTSFileSourceFilter::GetObjectFromROT(WCHAR* wsFullName, IUnknown **ppUn
 //////////////////////////////////////////////////////////////////////////
 // End of interface implementations
 //////////////////////////////////////////////////////////////////////////
-
-
 

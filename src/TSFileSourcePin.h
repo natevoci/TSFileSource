@@ -73,6 +73,7 @@ public:
 
 	long get_BitRate();
 	void set_BitRate(long rate);
+	void SendEvent(long lEC_Event);
 
 protected:
 
@@ -96,6 +97,7 @@ protected:
 	REFERENCE_TIME m_rtStartTime;
 	REFERENCE_TIME m_rtPrevTime;
 	REFERENCE_TIME m_rtLastSeekStart;
+	REFERENCE_TIME m_rtLastDuration;
 
 	__int64 m_llBasePCR;
 	__int64 m_llNextPCR;

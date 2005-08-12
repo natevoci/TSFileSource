@@ -1,3 +1,7 @@
+Version 2.1.0.3
+=================
+Implemented an "EC_DVB_DURATIONCHANGE" event to occur every second of an increase of stream time duration on live recorded captures.
+
 Version 2.1.0.2
 =================
 Changed the IAMStreamSelect Interface Group order to zero base as it should have been.

@@ -58,6 +58,7 @@ class CTSFileSourceFilter : public CSource,
 							public IFileSourceFilter,
 							public ITSFileSource,
 							public IAMStreamSelect,
+							public IAMFilterMiscFlags,
 							public ISpecifyPropertyPages
 
 {
@@ -101,6 +102,9 @@ public:
 	BOOL get_AutoMode();
 
 protected:
+
+	//IAMFilterMiscFlags
+	virtual ULONG STDMETHODCALLTYPE  GetMiscFlags(void);
 
 	// IAMStreamSelect
 	STDMETHODIMP Count(DWORD *pcStreams);

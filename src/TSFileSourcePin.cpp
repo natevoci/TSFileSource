@@ -30,6 +30,7 @@
 
 #include <streams.h>
 #include "TSFileSource.h"
+#include "TSFileSourceGuids.h"
 
 #define USE_EVENT
 #ifndef USE_EVENT
@@ -44,12 +45,23 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_bRateControl(FALSE),
 	m_pPidParser(pPidParser)
 {
-	m_dwSeekingCaps =	
+	m_dwSeekingCaps =
+		
+    AM_SEEKING_CanSeekAbsolute	|
+	AM_SEEKING_CanSeekForwards	|
+	AM_SEEKING_CanSeekBackwards	|
+	AM_SEEKING_CanGetCurrentPos	|
+	AM_SEEKING_CanGetStopPos	|
+	AM_SEEKING_CanGetDuration	|
+//	AM_SEEKING_CanPlayBackwards	|
+//	AM_SEEKING_CanDoSegments	|
+	AM_SEEKING_Source;
+/*	
 						AM_SEEKING_CanSeekForwards  |
 						AM_SEEKING_CanGetStopPos    |
 						AM_SEEKING_CanGetDuration   |
 						AM_SEEKING_CanSeekAbsolute;
-
+*/
 	m_bSeeking = FALSE;
 
 	m_rtLastSeekStart = 0;
@@ -65,6 +77,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_DataRate = 0;
 	m_DataRateTotal = 0;
 	m_BitRateCycle = 0;
+	m_rtLastDuration = 0;
 
 	m_pTSBuffer = new CTSBuffer(m_pFileReader, &m_pPidParser->pids, &m_pPidParser->pidArray);
 
@@ -82,7 +95,7 @@ STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void **
     {
         return CSourceSeeking::NonDelegatingQueryInterface( riid, ppv );
     }
-    return CSourceStream::NonDelegatingQueryInterface(riid, ppv);
+	return CSourceStream::NonDelegatingQueryInterface(riid, ppv);
 }
 
 HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
@@ -93,8 +106,7 @@ HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 
 	pmt->InitMediaType();
 	pmt->SetType      (& MEDIATYPE_Stream);
-	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);//MEDIASUBTYPE_MPEG2_PROGRAM);//
-//	pmt->SetTemporalCompression(TRUE);
+	pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_TRANSPORT);
 
     return S_OK;
 }
@@ -424,12 +436,20 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 #endif
 	}
 
+#define EC_DVB_DURATIONCHANGE  0x41E
+
 	WORD readonly = 0;
 	m_pFileReader->get_ReadOnly(&readonly);
 	if (readonly)
 	{
 		m_pPidParser->RefreshDuration(TRUE, m_pFileReader);
-		SetDuration(m_pPidParser->pids.dur);
+		if (m_pPidParser->pids.dur > (m_rtLastDuration + 10000000) || (m_pPidParser->pids.dur + 10000000) < m_rtLastDuration )
+		{
+			SetDuration(m_pPidParser->pids.dur);
+			m_rtLastDuration = m_pPidParser->pids.dur;
+			SendEvent(EC_DVB_DURATIONCHANGE);
+		}
+
 	}
 /*
 #if DEBUG
@@ -536,6 +556,7 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 HRESULT CTSFileSourcePin::SetDuration(REFERENCE_TIME duration)
 {
 	CAutoLock lock(&m_SeekLock);
+
 	m_rtDuration = duration;
 	m_rtStop = m_rtDuration;
 
@@ -687,3 +708,28 @@ void CTSFileSourcePin::Debug(LPCTSTR lpOutputString)
 	debugcount++;
 }
 
+void CTSFileSourcePin::SendEvent(long lEC_Event)
+{
+	FILTER_INFO	filterInfo;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&filterInfo)) && filterInfo.pGraph != NULL)
+	{
+		IMediaEventEx *pIMediaEventEx = NULL;
+		if (SUCCEEDED(filterInfo.pGraph->QueryInterface(IID_IMediaEventEx, (void**)&pIMediaEventEx)))
+		{
+			long lplNoNotifyFlags;
+			if (SUCCEEDED(pIMediaEventEx->GetNotifyFlags(&lplNoNotifyFlags)) &&
+				lplNoNotifyFlags != AM_MEDIAEVENT_NONOTIFY)
+			{
+				IMediaEventSink *pIMediaEventSink = NULL;
+				if (SUCCEEDED(filterInfo.pGraph->QueryInterface(IID_IMediaEventSink, (void**)&pIMediaEventSink)))
+				{
+					pIMediaEventSink->Notify(lEC_Event,0,0); 
+					pIMediaEventSink->Release();
+				}
+			}
+			pIMediaEventEx->Release();
+		}
+		filterInfo.pGraph->Release();
+	}
+	return;
+}
