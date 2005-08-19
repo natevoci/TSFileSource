@@ -40,52 +40,6 @@
 #define TSFILESOURCEINTERFACE	L"TS File Filter(AU) Interface"
 
 
-/*
-// Filter setup data
-const AMOVIESETUP_MEDIATYPE sudOpPinTypes =
-{
-	&MEDIATYPE_Video,                  // Major type
-	&MEDIASUBTYPE_MPEG2_TRANSPORT      // Minor type
-};
-
-const AMOVIESETUP_MEDIATYPE
-sudInpPinTypes =   { &MEDIATYPE_NULL                // clsMajorType
-                , &MEDIASUBTYPE_NULL }  ;       // clsMinorType
-
-const AMOVIESETUP_PIN sudTSFileSourcePin[]=
-{
-	{L"Output",		// Obsolete, not used.
-	 FALSE,			// Is this pin rendered?
-	 TRUE,			// Is it an output pin?
-	 FALSE,			// Can the filter create zero instances?
-	 FALSE,			// Does the filter create multiple instances?
-	 &CLSID_NULL,	// Obsolete.
-	 NULL,			// Obsolete.
-	 1,				// Number of media types.
-	 &sudOpPinTypes },// Pointer to media types.
-	{L"Input",            // strName
-     FALSE,               // bRendered
-     FALSE,               // bOutput
-     FALSE,              // bZero
-     FALSE,               // bMany
-     &CLSID_NULL,         // clsConnectsToFilter
-     NULL,           // strConnectsToPin
-     1,                   // nTypes
-     &sudInpPinTypes }      // lpTypes
-	
-};
-
-const AMOVIESETUP_FILTER sudTSFileSourceFilter =
-{
-	&CLSID_TSFileSource,	// Filter CLSID
-	TSFILESOURCENAME,		// String name
-	MERIT_DO_NOT_USE,		// Filter merit
-	2,						// Number pins
-	sudTSFileSourcePin		// Pin details
-};
-
-
-*/
 // Filter setup data
 const AMOVIESETUP_MEDIATYPE sudOpPinTypes =
 {
@@ -95,7 +49,7 @@ const AMOVIESETUP_MEDIATYPE sudOpPinTypes =
 
 const AMOVIESETUP_PIN sudTSFileSourcePin =
 {
-	L"Output",		// Obsolete, not used.
+	L"Out",		    // Obsolete, not used.
 	FALSE,			// Is this pin rendered?
 	TRUE,			// Is it an output pin?
 	FALSE,			// Can the filter create zero instances?

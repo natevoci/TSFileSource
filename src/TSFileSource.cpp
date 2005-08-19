@@ -223,7 +223,6 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 
 CBasePin * CTSFileSourceFilter::GetPin(int n)
 {
-//	if (n <= 1) {
 	if (n == 0) {
 		return m_pPin;
 	} else {
@@ -233,8 +232,21 @@ CBasePin * CTSFileSourceFilter::GetPin(int n)
 
 int CTSFileSourceFilter::GetPinCount()
 {
-//	return 2;
 	return 1;
+}
+
+STDMETHODIMP CTSFileSourceFilter::FindPin(LPCWSTR Id, IPin ** ppPin)
+{
+	if (ppPin == NULL)
+		return E_POINTER;
+
+	CAutoLock lock(&m_Lock);
+	if (!wcscmp(Id, m_pPin->CBasePin::Name())) {
+		*ppPin = m_pPin;
+		return S_OK;
+	}
+
+	return CSource::FindPin(Id, ppPin);
 }
 
 
@@ -248,13 +260,17 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		if (FAILED(hr))
 			return hr;
 
-	REFERENCE_TIME start, stop;
+		REFERENCE_TIME start, stop;
 		m_pPin->GetPositions(&start, &stop);
 
 		if (start > 0)
 		{
-			FileSeek(start);
+//			FileSeek(start);
+			m_pPin->ChangeStart();
 		}
+		else
+			FileSeek((REFERENCE_TIME)(start + 1000000));
+
 	}
 
 	SetTunerEvent();
@@ -270,12 +286,17 @@ HRESULT CTSFileSourceFilter::Pause()
 
 STDMETHODIMP CTSFileSourceFilter::Stop()
 {
-	m_pTunerEvent->UnRegisterForTunerEvents();
-
 	CAutoLock cObjectLock(m_pLock);
 	CAutoLock lock(&m_Lock);
+	HRESULT hr = CSource::Stop();
+
+	m_pPin->ChangeStop();
+	m_pTunerEvent->UnRegisterForTunerEvents();
 	m_pFileReader->CloseFile();
-	return CSource::Stop();
+
+	return hr;
+
+//	return CSource::Stop();
 }
 
 HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
@@ -345,6 +366,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 		return hr;
 	}
 
+	m_pFileReader->SetFilePointer(188000, FILE_BEGIN);
+
 	RefreshPids();
 	LoadPgmReg();
 	RefreshDuration();
@@ -394,10 +417,12 @@ HRESULT CTSFileSourceFilter::Refresh()
 		m_pPidParser->set_ProgramSID(); //set to same sid as before
 		m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
 	}
+
+	m_pStreamParser->ParsePidArray();
+
 	m_pPin->ChangeStart();
 	OnConnect();
 	m_pPin->ChangeStop();
-//	m_pPin->SendEvent(EC_NEED_RESTART);
 	return S_OK;
 }
 
@@ -749,7 +774,6 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
 	m_pPin->ChangeStop();
-//	m_pPin->SendEvent(EC_NEED_RESTART);
 
 	return NOERROR;
 }
@@ -774,7 +798,6 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
 	m_pPin->ChangeStop();
-//	m_pPin->SendEvent(EC_NEED_RESTART);
 
 	return NOERROR;
 }
@@ -799,7 +822,6 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
 	m_pPin->ChangeStop();
-//	m_pPin->SendEvent(EC_NEED_RESTART);
 	return NOERROR;
 }
 

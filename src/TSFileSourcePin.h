@@ -115,6 +115,8 @@ protected:
 	__int64 m_DataRateTotal;
 	__int64 m_BitRateStore[256];
 
+	REFERENCE_TIME m_rtLastCurrentTime;
+
 };
 
 #endif

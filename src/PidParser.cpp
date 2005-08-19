@@ -999,7 +999,7 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 		bool extPacket = false; //Start at first packet
 		int sectLen = 0;
 		m_buflen = 0;
-		ULONG pos = 100000;
+		ULONG pos = 0;
 		int iterations = 0;
 		bool nitfound = false;
 
@@ -1253,7 +1253,7 @@ bool PidParser::CheckForONID(PBYTE pData, int pos, bool *extpacket, int *sectlen
 			*extpacket = false; // set for next packet
 
 			//if no descriptor info
-			if (*sectlen <= 0x10)
+			if (*sectlen <= 0x0F + 8)
 				*sectlen = 0;
 		};
 	}
@@ -1351,6 +1351,12 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 	m_fileStartOffset = 0;
 	m_fileEndOffset = 0;
 
+//***********************************************************************************************
+	int count = 0;
+	__int64 kByteRate = 0;
+	REFERENCE_TIME calcDuration = 0;
+//***********************************************************************************************
+
 	// find first Duration
 	while (m_fileStartOffset < filelength){
 
@@ -1361,9 +1367,38 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 				startPCRSave = pPids->start;
 			//Add the PCR time difference
 			totalduration = totalduration + (__int64)(pPids->end - pPids->start); // add duration to total.
-			//Test if at end of file & return
 
-			if (endFilePos >= (filelength - tolerence)){
+//***********************************************************************************************
+			if (totalduration > 0 && calcDuration == 0) {
+				//Only do this once even if we have a partial duration.
+				kByteRate = (__int64) (endFilePos / totalduration);
+				calcDuration = 	(REFERENCE_TIME)(filelength / kByteRate);
+//				kByteRate = (__int64) ((endFilePos *(__int64)10000) / totalduration);
+//				calcDuration = 	(REFERENCE_TIME)((filelength / kByteRate)*(__int64)10000);
+			}
+
+			WORD readonly = 0;
+			m_pFileReader->get_ReadOnly(&readonly);
+			//If we have a calculated duration.
+			if (calcDuration > 0) {
+				//if we could not get a total file duration.
+				if((endFilePos + tolerence) < filelength) {
+					//If we are live or can't parse after 4 attempts.
+					if(readonly || count > 2) {
+						//Make up our end time from the calculated duration.
+						totalduration = calcDuration;
+						pPids->end = startPCRSave + totalduration;
+						break;
+					}
+				}
+			}
+			else
+				count++;
+
+//***********************************************************************************************
+
+			//Test if at end of file & return
+			if (endFilePos >= (__int64)(filelength - tolerence)){
 
 				REFERENCE_TIME PeriodOfPCR = (REFERENCE_TIME)(((__int64)(pPids->end - pPids->start)/9)*1000); 
 
@@ -1380,8 +1415,17 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			m_fileStartOffset = m_fileStartOffset + 100000;
 
 		//If unable to find any pids dont go again
-		if (pPids->start == 0 || pPids->end == 0)
+		if (pPids->start == 0 || pPids->end == 0){
+//***********************************************************************************************
+
+			//Check if we have a pre-calculated length to use. 
+			if(calcDuration > 0) {
+				totalduration = calcDuration;
+				pPids->end = startPCRSave + totalduration;
+			}
+//***********************************************************************************************
 			break;
+		}
 
 		pPids->start = 0;
 		pPids->end = 0;

@@ -82,6 +82,8 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_pTSBuffer = new CTSBuffer(m_pFileReader, &m_pPidParser->pids, &m_pPidParser->pidArray);
 
 	debugcount = 0;
+
+	m_rtLastCurrentTime = 0;
 }
 
 CTSFileSourcePin::~CTSFileSourcePin()
@@ -216,6 +218,9 @@ HRESULT CTSFileSourcePin::BreakConnect()
 HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 {
 	CheckPointer(pSample, E_POINTER);
+
+	CAutoLock lock(&m_FillLock);
+
 	if (m_pFileReader->IsFileInvalid())
 	{
 		int count = 0;
@@ -238,7 +243,8 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	{
 		return NOERROR;
 	}
-	CAutoLock lock(&m_FillLock);
+
+//	CAutoLock lock(&m_FillLock);
 
 	// Access the sample's data buffer
 	PBYTE pData;
@@ -443,11 +449,38 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	if (readonly)
 	{
 		m_pPidParser->RefreshDuration(TRUE, m_pFileReader);
-		if (m_pPidParser->pids.dur > (m_rtLastDuration + 10000000) || (m_pPidParser->pids.dur + 10000000) < m_rtLastDuration )
+
+		if (m_pPidParser->pids.dur > (REFERENCE_TIME)(m_rtLastDuration + (REFERENCE_TIME)10000000)
+			|| (REFERENCE_TIME)(m_pPidParser->pids.dur + (REFERENCE_TIME)10000000) < m_rtLastDuration)
 		{
 			SetDuration(m_pPidParser->pids.dur);
 			m_rtLastDuration = m_pPidParser->pids.dur;
-			SendEvent(EC_DVB_DURATIONCHANGE);
+			REFERENCE_TIME rtCurrentTime = 0;
+			REFERENCE_TIME rtStop = 0;
+			//Get CSourceSeeking current time.
+			GetPositions(&rtCurrentTime, &rtStop );
+			//Test if we had been seeking recently and wait 2sec if so.
+			if ((REFERENCE_TIME)(m_rtLastSeekStart + (REFERENCE_TIME)20000000) < rtCurrentTime) {
+				//Get the IMediaSeeking Interface.
+				IMediaSeeking *pIMediaSeeking = NULL;
+				if (SUCCEEDED(m_pTSFileSourceFilter->GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void**)&pIMediaSeeking))) {
+					//Get IMediaSeeking current time.
+					pIMediaSeeking->GetCurrentPosition(&rtCurrentTime);
+					//Test if we have a stopped clock.
+					if (m_rtLastCurrentTime == rtCurrentTime) {
+						//Send event to update filtergraph clock.
+						m_rtLastCurrentTime = (REFERENCE_TIME)(rtCurrentTime + (REFERENCE_TIME)10000000);
+						m_rtLastSeekStart = rtCurrentTime;
+						m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
+					}
+					else
+						m_rtLastCurrentTime = rtCurrentTime;
+
+					pIMediaSeeking->Release();
+				}
+			}
+			//Send a Custom Duration update for applications. 
+			m_pTSFileSourceFilter->NotifyEvent(EC_DVB_DURATIONCHANGE, NULL, NULL);
 		}
 
 	}
@@ -490,11 +523,6 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 		}
 	}
 
-	if (m_pPidParser->pidArray.Count() >= 2)
-	{
-//		m_pTSFileSourceFilter->ShowFilterProperties();
-	}
-
 	CAutoLock lock(&m_SeekLock);
 
     DeliverNewSegment(m_rtStart, m_rtStop, 1.0 );
@@ -504,6 +532,8 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 
 HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 {
+	CAutoLock fillLock(&m_FillLock);
+	CAutoLock seekLock(&m_SeekLock);
 	return CBaseOutputPin::Run(tStart);
 }
 
@@ -555,6 +585,7 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 
 HRESULT CTSFileSourcePin::SetDuration(REFERENCE_TIME duration)
 {
+	CAutoLock fillLock(&m_FillLock);
 	CAutoLock lock(&m_SeekLock);
 
 	m_rtDuration = duration;
@@ -720,6 +751,8 @@ void CTSFileSourcePin::SendEvent(long lEC_Event)
 			if (SUCCEEDED(pIMediaEventEx->GetNotifyFlags(&lplNoNotifyFlags)) &&
 				lplNoNotifyFlags != AM_MEDIAEVENT_NONOTIFY)
 			{
+//				pIMediaEventEx->SetNotifyFlags(AM_MEDIAEVENT_NONOTIFY);
+//				pIMediaEventEx->SetNotifyFlags(NULL);
 				IMediaEventSink *pIMediaEventSink = NULL;
 				if (SUCCEEDED(filterInfo.pGraph->QueryInterface(IID_IMediaEventSink, (void**)&pIMediaEventSink)))
 				{

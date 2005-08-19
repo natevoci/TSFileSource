@@ -83,6 +83,7 @@ public:
 	// Pin enumeration
 	CBasePin * GetPin(int n);
 	int GetPinCount();
+	STDMETHODIMP FindPin(LPCWSTR Id, IPin ** ppPin);
 
 	STDMETHODIMP Run(REFERENCE_TIME tStart);
 	STDMETHODIMP Pause();

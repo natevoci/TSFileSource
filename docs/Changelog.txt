@@ -1,6 +1,10 @@
 Version 2.1.0.3
 =================
-Implemented an "EC_DVB_DURATIONCHANGE" event to occur every second of an increase of stream time duration on live recorded captures.
+Implemented an "EC_DVB_DURATIONCHANGE" & "EC_LENGTH_CHANGED" events to occur every second of an increase of stream time duration on live recorded captures.
+Added IBaseFilter:QueryId() function to return the Pin from the displayed Pin Label.
+Added IAMStreamSelect Refresh when refreshing the Pids from the property page button.
+Improvements to Parser code so it will correctly parse Full TS Files with corrupted head.
+Improvments to the GetDuration code to decrease load time on PCR problem files.
 
 Version 2.1.0.2
 =================
