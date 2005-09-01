@@ -40,6 +40,7 @@
 #include "TSFileSourceGuids.h"
 #include "TunerEvent.h"
 
+
 CUnknown * WINAPI CTSFileSourceFilter::CreateInstance(LPUNKNOWN punk, HRESULT *phr)
 {
 	ASSERT(phr);
@@ -79,6 +80,12 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 
 	// Load Registry Settings data
 	GetRegStore("default");
+
+	CMediaType cmt;
+	cmt.InitMediaType();
+	cmt.SetType(&MEDIATYPE_Stream);
+	cmt.SetSubtype(& MEDIASUBTYPE_MPEG2_TRANSPORT);
+	m_pPin->SetMediaType(&cmt);
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
@@ -260,17 +267,20 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		if (FAILED(hr))
 			return hr;
 
+		//Set our StreamTime Reference to zero
+		m_tStart = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+
 		REFERENCE_TIME start, stop;
-		m_pPin->GetPositions(&start, &stop);
+		m_pPin->GetCurrentPosition(&start);
 
-		if (start > 0)
-		{
+//		if (start > 0)
 //			FileSeek(start);
-			m_pPin->ChangeStart();
-		}
-		else
-			FileSeek((REFERENCE_TIME)(start + 1000000));
 
+		//Start at least 100ms into file to skip header
+		if (start == 0)
+			start += 1000000;
+
+		m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning | AM_SEEKING_NoFlush, &stop, AM_SEEKING_NoPositioning);
 	}
 
 	SetTunerEvent();
@@ -290,7 +300,10 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 	CAutoLock lock(&m_Lock);
 	HRESULT hr = CSource::Stop();
 
-	m_pPin->ChangeStop();
+//	m_pPin->ChangeStop();
+//	REFERENCE_TIME stop, start = 1000000;
+//	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, &stop, AM_SEEKING_NoPositioning);
+
 	m_pTunerEvent->UnRegisterForTunerEvents();
 	m_pFileReader->CloseFile();
 
@@ -319,7 +332,7 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 		// shifting right by 14 rounds the seek and duration time down to the
 		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
 		__int64 nFileIndex;
-		nFileIndex = filelength * (seektime>>14) / (m_pPidParser->pids.dur>>14);
+		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pPidParser->pids.dur>>14);
 		m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
 	}
 	return S_OK;
@@ -366,7 +379,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 		return hr;
 	}
 
-	m_pFileReader->SetFilePointer(188000, FILE_BEGIN);
+	m_pFileReader->SetFilePointer(300000, FILE_BEGIN);
 
 	RefreshPids();
 	LoadPgmReg();
@@ -420,9 +433,8 @@ HRESULT CTSFileSourceFilter::Refresh()
 
 	m_pStreamParser->ParsePidArray();
 
-	m_pPin->ChangeStart();
 	OnConnect();
-	m_pPin->ChangeStop();
+
 	return S_OK;
 }
 
@@ -759,6 +771,9 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	if (m_pPidParser->pidArray.Count() < 1)
 		return NOERROR;
 
+	REFERENCE_TIME start;
+	m_pPin->GetCurrentPosition(&start);
+
 	int PgmNumber = PgmNumb;
 	PgmNumber --;
 	if (PgmNumber >= m_pPidParser->pidArray.Count())
@@ -769,11 +784,11 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	{
 		PgmNumber = 0;
 	}
-	m_pPin->ChangeStart();
+
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
-	m_pPin->ChangeStop();
+	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, &start, AM_SEEKING_NoPositioning);
 
 	return NOERROR;
 }
@@ -786,6 +801,9 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	if (m_pPidParser->pidArray.Count() < 2)
 		return NOERROR;
 
+	REFERENCE_TIME start;
+	m_pPin->GetCurrentPosition(&start);
+
 	WORD PgmNumb = m_pPidParser->get_ProgramNumber();
 	PgmNumb++;
 	if (PgmNumb >= m_pPidParser->pidArray.Count())
@@ -793,11 +811,10 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 		PgmNumb = 0;
 	}
 
-	m_pPin->ChangeStart();
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
-	m_pPin->ChangeStop();
+	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, &start, AM_SEEKING_NoPositioning);
 
 	return NOERROR;
 }
@@ -810,6 +827,9 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	if (m_pPidParser->pidArray.Count() < 2)
 		return NOERROR;
 
+	REFERENCE_TIME start;
+	m_pPin->GetCurrentPosition(&start);
+
 	int PgmNumb = m_pPidParser->get_ProgramNumber();
 	PgmNumb--;
 	if (PgmNumb < 0)
@@ -817,11 +837,11 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 		PgmNumb = m_pPidParser->pidArray.Count() - 1;
 	}
 
-	m_pPin->ChangeStart();
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
-	m_pPin->ChangeStop();
+	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, &start, AM_SEEKING_NoPositioning);
+
 	return NOERROR;
 }
 

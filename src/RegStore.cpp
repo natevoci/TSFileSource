@@ -108,7 +108,7 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		}
 		setStore->setAutoModeReg(regAuto);
 
-		BOOL regNPControl(TRUE);
+		BOOL regNPControl(FALSE);
 		datalen = 1;
 		type = 0;
 
@@ -120,7 +120,7 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		}
 		setStore->setNPControlReg(regNPControl);
 
-		BOOL regNPSlave(TRUE);
+		BOOL regNPSlave(FALSE);
 		datalen = 1;
 		type = 0;
 

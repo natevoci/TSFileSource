@@ -52,6 +52,8 @@ public:
 
 	//CSourceStream
 	HRESULT GetMediaType(CMediaType *pMediaType);
+	HRESULT GetMediaType(int iPosition, CMediaType *pMediaType);
+	HRESULT CheckMediaType(const CMediaType* pType);
 	HRESULT DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROPERTIES *pRequest);
 	HRESULT CheckConnect(IPin *pReceivePin);
 	HRESULT CompleteConnect(IPin *pReceivePin);
@@ -61,10 +63,15 @@ public:
 	HRESULT Run(REFERENCE_TIME tStart);
 
 	// CSourceSeeking
+	STDMETHODIMP GetCurrentPosition(LONGLONG *pCurrent);
+	STDMETHODIMP GetPositions(LONGLONG *pCurrent, LONGLONG *pStop);
+	STDMETHODIMP SetPositions(LONGLONG *pCurrent, DWORD CurrentFlags
+			     , LONGLONG *pStop, DWORD StopFlags);
 	HRESULT ChangeStart();
 	HRESULT ChangeStop();
 	HRESULT ChangeRate();
 	void UpdateFromSeek(BOOL updateStartPosition = FALSE);
+	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
 
 	HRESULT SetDuration(REFERENCE_TIME duration);
 
@@ -73,7 +80,6 @@ public:
 
 	long get_BitRate();
 	void set_BitRate(long rate);
-	void SendEvent(long lEC_Event);
 
 protected:
 
@@ -83,6 +89,7 @@ protected:
 	__int64 ConvertPCRtoRT(REFERENCE_TIME pcrtime);
 	void AddBitRateForAverage(__int64 bitratesample);
 	void Debug(LPCTSTR lpOutputString);
+	void PrintTime(const char* lstring, __int64 value, __int64 divider);
 
 protected:
 	CTSFileSourceFilter * const m_pTSFileSourceFilter;
@@ -97,7 +104,6 @@ protected:
 	REFERENCE_TIME m_rtStartTime;
 	REFERENCE_TIME m_rtPrevTime;
 	REFERENCE_TIME m_rtLastSeekStart;
-	REFERENCE_TIME m_rtLastDuration;
 
 	__int64 m_llBasePCR;
 	__int64 m_llNextPCR;
@@ -116,7 +122,7 @@ protected:
 	__int64 m_BitRateStore[256];
 
 	REFERENCE_TIME m_rtLastCurrentTime;
-
+	__int64 m_LastFileSize;
 };
 
 #endif

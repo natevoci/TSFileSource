@@ -191,40 +191,45 @@ BOOL FileReader::IsFileInvalid()
 
 HRESULT FileReader::GetFileSize(__int64 *lpllsize)
 {
-	if (m_hInfoFile != INVALID_HANDLE_VALUE)
-	{
-		__int64 length = -1;
-		DWORD read = 0;
-		LARGE_INTEGER li;
-		li.QuadPart = 0;
-		::SetFilePointer(m_hInfoFile, li.LowPart, &li.HighPart, FILE_BEGIN);
-		ReadFile(m_hInfoFile, (PVOID)&length, (DWORD)sizeof(__int64), &read, NULL);
-
-		if(length > -1)
+	//Do not get file size if static file or first time 
+	if (m_bReadOnly || !m_fileSize) {
+		
+		if (m_hInfoFile != INVALID_HANDLE_VALUE)
 		{
-			m_fileSize = length;
-			*lpllsize = length;
-			return S_OK;
+			__int64 length = -1;
+			DWORD read = 0;
+			LARGE_INTEGER li;
+			li.QuadPart = 0;
+			::SetFilePointer(m_hInfoFile, li.LowPart, &li.HighPart, FILE_BEGIN);
+			ReadFile(m_hInfoFile, (PVOID)&length, (DWORD)sizeof(__int64), &read, NULL);
+
+			if(length > -1)
+			{
+				m_fileSize = length;
+				*lpllsize = length;
+				return S_OK;
+			}
 		}
+
+
+		DWORD dwSizeLow;
+		DWORD dwSizeHigh;
+
+		dwSizeLow = ::GetFileSize(m_hFile, &dwSizeHigh);
+		if ((dwSizeLow == 0xFFFFFFFF) && (GetLastError() != NO_ERROR ))
+		{
+			return E_FAIL;
+		}
+
+		LARGE_INTEGER li;
+		li.LowPart = dwSizeLow;
+		li.HighPart = dwSizeHigh;
+		m_fileSize = li.QuadPart;
+
+//		*lpllsize = li.QuadPart;
 	}
-
-
-	DWORD dwSizeLow;
-	DWORD dwSizeHigh;
-
-	dwSizeLow = ::GetFileSize(m_hFile, &dwSizeHigh);
-	if ((dwSizeLow == 0xFFFFFFFF) && (GetLastError() != NO_ERROR ))
-	{
-		return E_FAIL;
-	}
-
-	LARGE_INTEGER li;
-	li.LowPart = dwSizeLow;
-	li.HighPart = dwSizeHigh;
-	m_fileSize = li.QuadPart;
-
-	*lpllsize = li.QuadPart;
-	return S_OK;
+		*lpllsize = m_fileSize;
+		return S_OK;
 }
 
 __int64 FileReader::get_FileSize(void)

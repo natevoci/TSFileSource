@@ -41,7 +41,7 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_bAuto(TRUE),
 	m_bMPEG2AudioMediaType(TRUE),
 	m_bMPEG2Audio2Mode(FALSE),
-	m_bNPControl(TRUE),
+	m_bNPControl(FALSE),
 	m_bNPSlave(FALSE),
 	m_bConnectBusyFlag(false),
 	m_WasPlaying(FALSE),

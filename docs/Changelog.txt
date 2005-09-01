@@ -1,3 +1,19 @@
+Version 2.1.0.4
+=================
+
+Addded some CBasePin Media Type check functions that may be of some use to earlier connection methods.
+
+Added code to set the CBasePin media type incase it was needed.
+ 
+Added changes to the filter to try and improve the loading times of problem captures. eg. It will now only try and parse the file duration using the PCR's four times before it gives up and calculates the file duration from any pre-defined PCRs that it has already parsed. If its a readonly file it will only try and pcr parse once before it calculates from prior PCR's.  This seems to now improve the loading time of bad captures down to about 5seconds.
+
+Changed the duration refresh method of the Fillbuffer function for read only files from a PCR duration refresh to a calculated refresh based on the bitrate. I did this as I was getting stalling of the playback of the HD with Full TS files. If the bitrate is not a valid value then it will revert to the PCR duration refresh method.
+
+Changed the load function to parse for the pids 300kB into the file to skip corrupted data at the head of the file.
+Fixed a problem with the pid refresh feature when playing live recordings. 
+
+Added Absolute Seek Function.
+
 Version 2.1.0.3
 =================
 Implemented an "EC_DVB_DURATIONCHANGE" & "EC_LENGTH_CHANGED" events to occur every second of an increase of stream time duration on live recorded captures.

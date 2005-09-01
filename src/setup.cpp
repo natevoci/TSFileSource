@@ -49,7 +49,7 @@ const AMOVIESETUP_MEDIATYPE sudOpPinTypes =
 
 const AMOVIESETUP_PIN sudTSFileSourcePin =
 {
-	L"Out",		    // Obsolete, not used.
+	L"Output",		    // Obsolete, not used.
 	FALSE,			// Is this pin rendered?
 	TRUE,			// Is it an output pin?
 	FALSE,			// Can the filter create zero instances?

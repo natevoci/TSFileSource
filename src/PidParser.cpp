@@ -361,8 +361,14 @@ HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 	//pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
 	pids.dur = GetFileDuration(&pids, pFileReader);
 
+	//Refresh all the sub program durations in the pid array
 	if (bStoreInArray)
-		SetPidArray(m_pgmnumb);
+		for (int i = 0; i < pidArray.Count(); i++)
+		{
+			pidArray[i].dur = pids.dur;
+		}
+
+//		SetPidArray(m_pgmnumb);
 
 	//Restore original file pointer
 	pFileReader->SetFilePointer(originalFilePointer, FILE_BEGIN);
@@ -1339,7 +1345,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 	__int64 tolerence = 100000UL;
 
 
-	__int64 startFilePos = 0;
+	__int64 startFilePos = 0; 
 	long lDataLength = 2000000;
 	PBYTE pData = new BYTE[lDataLength];
 
@@ -1348,7 +1354,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 	filelength = filelength;
 	__int64 endFilePos = filelength;
 	m_fileLenOffset = filelength;
-	m_fileStartOffset = 0;
+	m_fileStartOffset = 300000;// skip faulty header 
 	m_fileEndOffset = 0;
 
 //***********************************************************************************************
@@ -1432,10 +1438,15 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 		m_fileLenOffset = filelength - m_fileStartOffset;
 		endFilePos = m_fileLenOffset;
 		m_fileEndOffset = 0;
-	}
+	};
 
 	if (startPCRSave != 0){
+
 		pPids->start = startPCRSave; //Restore to first PCR
+
+		if (pPids->end == 0)
+			pPids->end = startPCRSave + totalduration; //Set the end pcr if not set.
+
 		delete[] pData;
 		return (REFERENCE_TIME)((totalduration)/9) * 1000;
 	}
