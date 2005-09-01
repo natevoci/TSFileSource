@@ -596,27 +596,35 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 
 STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
 {
-	CAutoLock fillLock(&m_FillLock);
-	CAutoLock seekLock(&m_SeekLock);
-	CRefTime cTime;
-	m_pTSFileSourceFilter->StreamTime(cTime);
-	*pCurrent = (REFERENCE_TIME)(m_rtLastSeekStart + REFERENCE_TIME(cTime));
-//PrintTime("GetCurrentPosition", (__int64)*pCurrent, 10000);
-	return S_OK;
-}
-
-STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
-{
-	WORD readonly = 0;
-	m_pFileReader->get_ReadOnly(&readonly);
-	if (readonly) {
+	if (pCurrent)
+	{
 		CAutoLock fillLock(&m_FillLock);
 		CAutoLock seekLock(&m_SeekLock);
 		CRefTime cTime;
 		m_pTSFileSourceFilter->StreamTime(cTime);
 		*pCurrent = (REFERENCE_TIME)(m_rtLastSeekStart + REFERENCE_TIME(cTime));
+//PrintTime("GetCurrentPosition", (__int64)*pCurrent, 10000);
+		return S_OK;
+	}
+	return CSourceSeeking::GetCurrentPosition(pCurrent);
+}
+
+STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
+{
+	if (pCurrent)
+	{
+///		WORD readonly = 0;
+//		m_pFileReader->get_ReadOnly(&readonly);
+//		if (readonly) {
+			CAutoLock fillLock(&m_FillLock);
+			CAutoLock seekLock(&m_SeekLock);
+			CRefTime cTime;
+			m_pTSFileSourceFilter->StreamTime(cTime);
+			*pCurrent = (REFERENCE_TIME)(m_rtLastSeekStart + REFERENCE_TIME(cTime));
+			REFERENCE_TIME current;
 //PrintTime("GetCurrentPosition", (__int64)REFERENCE_TIME(cTime), 10000);
-		return CSourceSeeking::GetPositions(NULL, pStop);
+			return CSourceSeeking::GetPositions(&current, pStop);
+//		}
 	}
 	return CSourceSeeking::GetPositions(pCurrent, pStop);
 }
@@ -624,37 +632,43 @@ STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags)
 {
-	WORD readonly = 0;
-	m_pFileReader->get_ReadOnly(&readonly);
-	if (readonly) {
-		//wait for the Length Changed Event to complete
-		REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-		while ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)2000000) > rtCurrentTime) {
-			rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-		}
+	if (pCurrent)
+	{
+		WORD readonly = 0;
+		m_pFileReader->get_ReadOnly(&readonly);
+		if (readonly) {
+			//wait for the Length Changed Event to complete
+			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+			while ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)2000000) > rtCurrentTime) {
+				rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+			}
 
-		if (CurrentFlags & AM_SEEKING_AbsolutePositioning)
-		{
-			CAutoLock lock(&m_SeekLock);
-			m_rtStart = *pCurrent;
+			REFERENCE_TIME rtCurrent = *pCurrent;
+			if (CurrentFlags & AM_SEEKING_RelativePositioning)
+			{
+				CAutoLock lock(&m_SeekLock);
+				rtCurrent += m_rtStart;
+			}
+
+			if (!(CurrentFlags & AM_SEEKING_NoFlush) && (CurrentFlags & AM_SEEKING_PositioningBitsMask))
+			{
+				DeliverBeginFlush();
+				CSourceStream::Stop();
+				m_llPrevPCR = -1;
+				m_pTSBuffer->Clear();
+				SetAccuratePos(rtCurrent);
+				if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
+				{
+					CAutoLock lock(&m_SeekLock);
+					m_rtStart = rtCurrent;
+				}
+				m_rtLastSeekStart = rtCurrent;
+				CSourceStream::Run();
+				DeliverEndFlush();
+			}
+
+			m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
 		}
-		if (CurrentFlags & AM_SEEKING_RelativePositioning)
-		{
-			CAutoLock lock(&m_SeekLock);
-			m_rtStart = REFERENCE_TIME(m_rtStart) + *pCurrent;
-		}
-		if (!(CurrentFlags & AM_SEEKING_NoFlush) && (CurrentFlags & AM_SEEKING_PositioningBitsMask))
-		{
-			DeliverBeginFlush();
-			CSourceStream::Stop();
-			m_llPrevPCR = -1;
-			m_pTSBuffer->Clear();
-			SetAccuratePos(REFERENCE_TIME(m_rtStart));
-			m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
-			DeliverEndFlush();
-			CSourceStream::Run();
-		}
-		return CSourceSeeking::SetPositions(pCurrent, CurrentFlags, pStop, StopFlags);
 	}
 	return CSourceSeeking::SetPositions(pCurrent, CurrentFlags, pStop, StopFlags);
 }

@@ -267,7 +267,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		if (FAILED(hr))
 			return hr;
 
-		//Set our StreamTime Reference to zero
+		//Set our StreamTime Reference offset to zero
 		m_tStart = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
 		REFERENCE_TIME start, stop;
@@ -280,7 +280,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		if (start == 0)
 			start += 1000000;
 
-		m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning | AM_SEEKING_NoFlush, &stop, AM_SEEKING_NoPositioning);
+		m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 	}
 
 	SetTunerEvent();
@@ -788,7 +788,7 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
-	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, &start, AM_SEEKING_NoPositioning);
+	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
 	return NOERROR;
 }
@@ -814,7 +814,7 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
-	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, &start, AM_SEEKING_NoPositioning);
+	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
 	return NOERROR;
 }
@@ -840,7 +840,7 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
-	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, &start, AM_SEEKING_NoPositioning);
+	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
 	return NOERROR;
 }
