@@ -1,6 +1,6 @@
 Version 2.1.0.4
 =================
-
+Added some Query interfaces to the CBaseOutput Pin.
 Addded some CBasePin Media Type check functions that may be of some use to earlier connection methods.
 
 Added code to set the CBasePin media type incase it was needed.

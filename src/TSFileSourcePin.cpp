@@ -50,7 +50,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
     AM_SEEKING_CanSeekAbsolute	|
 	AM_SEEKING_CanSeekForwards	|
 	AM_SEEKING_CanSeekBackwards	|
-//	AM_SEEKING_CanGetCurrentPos	|
+	AM_SEEKING_CanGetCurrentPos	|
 	AM_SEEKING_CanGetStopPos	|
 	AM_SEEKING_CanGetDuration	|
 //	AM_SEEKING_CanPlayBackwards	|
@@ -94,6 +94,22 @@ CTSFileSourcePin::~CTSFileSourcePin()
 
 STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void ** ppv )
 {
+	if (riid == IID_ITSFileSource)
+	{
+		return GetInterface((ITSFileSource*)m_pTSFileSourceFilter, ppv);
+	}
+	if (riid == IID_IFileSourceFilter)
+	{
+		return GetInterface((IFileSourceFilter*)m_pTSFileSourceFilter, ppv);
+	}
+    if (riid == IID_IAMFilterMiscFlags)
+    {
+		return GetInterface((IAMFilterMiscFlags*)m_pTSFileSourceFilter, ppv);
+    }
+	if (riid == IID_IAMStreamSelect)
+	{
+		return GetInterface((IAMStreamSelect*)m_pTSFileSourceFilter, ppv);
+	}
     if (riid == IID_IMediaSeeking)
     {
         return CSourceSeeking::NonDelegatingQueryInterface( riid, ppv );
@@ -527,6 +543,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 				//Test if we had been seeking recently and wait 2sec if so.
 				if ((REFERENCE_TIME)(m_rtLastSeekStart + (REFERENCE_TIME)20000000) < rtCurrentTime) {
 					//Send event to update filtergraph clock.
+					CAutoLock lock(&m_SeekLock);
 					m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
 					m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 				}
@@ -554,6 +571,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 */
 	//Set sample time
 	//pSample->SetTime(&rtStart, &rtStart);
+//PrintTime("FillBuffer", (__int64)m_rtLastCurrentTime, 10000);
 
 	return NOERROR;
 }
@@ -589,8 +607,11 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 {
 	CAutoLock fillLock(&m_FillLock);
 	CAutoLock seekLock(&m_SeekLock);
+	CBasePin::m_tStart = tStart;
 	m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+//DeliverBeginFlush();
+//DeliverEndFlush();
 	return CBaseOutputPin::Run(tStart);
 }
 
@@ -613,9 +634,6 @@ STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 {
 	if (pCurrent)
 	{
-///		WORD readonly = 0;
-//		m_pFileReader->get_ReadOnly(&readonly);
-//		if (readonly) {
 			CAutoLock fillLock(&m_FillLock);
 			CAutoLock seekLock(&m_SeekLock);
 			CRefTime cTime;
@@ -624,7 +642,6 @@ STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 			REFERENCE_TIME current;
 //PrintTime("GetCurrentPosition", (__int64)REFERENCE_TIME(cTime), 10000);
 			return CSourceSeeking::GetPositions(&current, pStop);
-//		}
 	}
 	return CSourceSeeking::GetPositions(pCurrent, pStop);
 }
@@ -634,41 +651,39 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 {
 	if (pCurrent)
 	{
-		WORD readonly = 0;
-		m_pFileReader->get_ReadOnly(&readonly);
-		if (readonly) {
-			//wait for the Length Changed Event to complete
-			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-			while ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)2000000) > rtCurrentTime) {
-				rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-			}
+		//wait for the Length Changed Event to complete
+		REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+		while ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)2000000) > rtCurrentTime) {
+			rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+		}
 
-			REFERENCE_TIME rtCurrent = *pCurrent;
-			if (CurrentFlags & AM_SEEKING_RelativePositioning)
+		REFERENCE_TIME rtCurrent = *pCurrent;
+		if (CurrentFlags & AM_SEEKING_RelativePositioning)
+		{
+			CAutoLock lock(&m_SeekLock);
+			rtCurrent += m_rtStart;
+		}
+
+		if (!(CurrentFlags & AM_SEEKING_NoFlush) && (CurrentFlags & AM_SEEKING_PositioningBitsMask))
+		{
+			DeliverBeginFlush();
+			CSourceStream::Stop();
+			m_llPrevPCR = -1;
+			m_pTSBuffer->Clear();
+			SetAccuratePos(rtCurrent);
+			if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
 			{
 				CAutoLock lock(&m_SeekLock);
-				rtCurrent += m_rtStart;
+				m_rtStart = rtCurrent;
 			}
-
-			if (!(CurrentFlags & AM_SEEKING_NoFlush) && (CurrentFlags & AM_SEEKING_PositioningBitsMask))
-			{
-				DeliverBeginFlush();
-				CSourceStream::Stop();
-				m_llPrevPCR = -1;
-				m_pTSBuffer->Clear();
-				SetAccuratePos(rtCurrent);
-				if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
-				{
-					CAutoLock lock(&m_SeekLock);
-					m_rtStart = rtCurrent;
-				}
-				m_rtLastSeekStart = rtCurrent;
-				CSourceStream::Run();
-				DeliverEndFlush();
-			}
-
-			m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
+			m_rtLastSeekStart = rtCurrent;
+			CSourceStream::Run();
+			DeliverEndFlush();
 		}
+		WORD readonly = 0;
+		m_pFileReader->get_ReadOnly(&readonly);
+		if (readonly) 
+			m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
 	}
 	return CSourceSeeking::SetPositions(pCurrent, CurrentFlags, pStop, StopFlags);
 }

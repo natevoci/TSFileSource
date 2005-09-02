@@ -268,7 +268,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 			return hr;
 
 		//Set our StreamTime Reference offset to zero
-		m_tStart = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+		m_tStart = tStart;
 
 		REFERENCE_TIME start, stop;
 		m_pPin->GetCurrentPosition(&start);
@@ -302,7 +302,7 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 
 //	m_pPin->ChangeStop();
 //	REFERENCE_TIME stop, start = 1000000;
-//	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, &stop, AM_SEEKING_NoPositioning);
+//	m_pPin->SetPositions(&start, AM_SEEKING_NoPositioning, &stop, AM_SEEKING_NoPositioning);
 
 	m_pTunerEvent->UnRegisterForTunerEvents();
 	m_pFileReader->CloseFile();
