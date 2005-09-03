@@ -1,3 +1,8 @@
+Version 2.1.0.5
+=================
+
+Some bug fixes in the Update Duration FillBuffer function.
+
 Version 2.1.0.4
 =================
 Added some Query interfaces to the CBaseOutput Pin.

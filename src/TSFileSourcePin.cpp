@@ -512,13 +512,15 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 			if(m_LastFileSize + (__int64)(m_DataRate / (__int64)8) < fileSize) {
 
 				m_LastFileSize = fileSize;
-				 __int64 calcDuration= (REFERENCE_TIME)(fileSize / (__int64)(m_DataRate / (__int64)8000));
-				m_pPidParser->pids.dur = (REFERENCE_TIME)(calcDuration * (__int64)10000);
-				m_pPidParser->pids.end = m_pPidParser->pids.start + (__int64)((__int64)((__int64)m_pPidParser->pids.dur * (__int64)9) / (__int64)1000);;
+				 __int64 calcDuration = (REFERENCE_TIME)(fileSize / (__int64)(m_DataRate / (__int64)8000));
+				calcDuration = (REFERENCE_TIME)(calcDuration * (__int64)10000);
+				 __int64 deltaDuration = calcDuration - m_pPidParser->pids.dur;
+				m_pPidParser->pids.dur = calcDuration;
+				m_pPidParser->pids.end += (__int64)((__int64)((__int64)deltaDuration * (__int64)9) / (__int64)1000);
 				for (int i = 0; i < m_pPidParser->pidArray.Count(); i++)
 				{
 					m_pPidParser->pidArray[i].dur = m_pPidParser->pids.dur;
-					m_pPidParser->pidArray[i].end = m_pPidParser->pidArray[i].start + (__int64)((__int64)((__int64)m_pPidParser->pidArray[i].dur * (__int64)9) / (__int64)1000);;
+					m_pPidParser->pidArray[i].end += (__int64)((__int64)((__int64)deltaDuration * (__int64)9) / (__int64)1000);;;
 				}
 				secondDelay = true;
 			}
@@ -549,7 +551,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 				}
 			}
 			//Send a Custom Duration update for applications. 
-			m_pTSFileSourceFilter->NotifyEvent(EC_DVB_DURATIONCHANGE, NULL, NULL);
+//			m_pTSFileSourceFilter->NotifyEvent(EC_DVB_DURATIONCHANGE, NULL, NULL);
 		}
 
 	}
@@ -610,8 +612,6 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 	CBasePin::m_tStart = tStart;
 	m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-//DeliverBeginFlush();
-//DeliverEndFlush();
 	return CBaseOutputPin::Run(tStart);
 }
 
@@ -651,10 +651,14 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 {
 	if (pCurrent)
 	{
-		//wait for the Length Changed Event to complete
-		REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-		while ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)2000000) > rtCurrentTime) {
-			rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+		WORD readonly = 0;
+		m_pFileReader->get_ReadOnly(&readonly);
+		if (readonly) {
+			//wait for the Length Changed Event to complete
+			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+			while ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)2000000) > rtCurrentTime) {
+				rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+			}
 		}
 
 		REFERENCE_TIME rtCurrent = *pCurrent;
@@ -680,8 +684,6 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 			CSourceStream::Run();
 			DeliverEndFlush();
 		}
-		WORD readonly = 0;
-		m_pFileReader->get_ReadOnly(&readonly);
 		if (readonly) 
 			m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
 	}
@@ -715,6 +717,7 @@ HRESULT CTSFileSourcePin::ChangeRate()
 
 void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 {
+	return;
 	if (ThreadExists() && !m_bSeeking)
 	{	
 		m_bSeeking = TRUE;
@@ -739,7 +742,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 {
 
 //PrintTime("seekin", (__int64) seektime, 10000);
-//	CAutoLock fillLock(&m_FillLock);
+	CAutoLock fillLock(&m_FillLock);
 //	CAutoLock lock(&m_SeekLock);
 
 	HRESULT hr;
@@ -771,7 +774,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 
 	//Test if we have a pcr or if the pcr is less than rollover time
 	if (FAILED(hr) || pcrSeekTime < 0) {
-//PrintTime("get lastpcr failed now using first pcr", (__int64) pcrEndPos, 90);
+//PrintTime("get lastpcr failed now using first pcr", (__int64)m_pPidParser->pids.start, 90);
 	
 		//Set seektime to position relative to first pcr
 		pcrSeekTime = m_pPidParser->pids.start + pcrDeltaSeekTime;

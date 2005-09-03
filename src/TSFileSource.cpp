@@ -813,6 +813,7 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
+	Sleep(200);
 	OnConnect();
 	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
@@ -839,6 +840,7 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
+	Sleep(200);
 	OnConnect();
 	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
