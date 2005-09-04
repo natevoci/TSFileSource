@@ -284,7 +284,6 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 	}
 
 	SetTunerEvent();
-
 	return CSource::Run(tStart);
 }
 

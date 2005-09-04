@@ -67,12 +67,15 @@ public:
 	STDMETHODIMP GetPositions(LONGLONG *pCurrent, LONGLONG *pStop);
 	STDMETHODIMP SetPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags);
+
+	// CSourcePosition
+	STDMETHODIMP get_CurrentPosition(REFTIME * pllTime);
 	HRESULT ChangeStart();
 	HRESULT ChangeStop();
 	HRESULT ChangeRate();
 	void UpdateFromSeek(BOOL updateStartPosition = FALSE);
-	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
 
+	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
 	HRESULT SetDuration(REFERENCE_TIME duration);
 
 	BOOL get_RateControl();

@@ -2,6 +2,7 @@ Version 2.1.0.5
 =================
 
 Some bug fixes in the Update Duration FillBuffer function.
+Added a fix for the Play/Pause/Seek/Play problem where it would not begin play imediately.
 
 Version 2.1.0.4
 =================

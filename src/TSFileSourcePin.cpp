@@ -613,6 +613,22 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 	m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 	return CBaseOutputPin::Run(tStart);
+
+}
+
+STDMETHODIMP CTSFileSourcePin::get_CurrentPosition(REFTIME * pllTime)
+{
+	if (pllTime)
+	{
+		CAutoLock fillLock(&m_FillLock);
+		CAutoLock seekLock(&m_SeekLock);
+		CRefTime cTime;
+		m_pTSFileSourceFilter->StreamTime(cTime);
+		*pllTime = (REFERENCE_TIME)(m_rtLastSeekStart + REFERENCE_TIME(cTime));
+//PrintTime("get_CurrentPosition", (__int64)*pllTime, 10000);
+		return S_OK;
+	}
+    return E_NOTIMPL;
 }
 
 STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
@@ -683,22 +699,26 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 			m_rtLastSeekStart = rtCurrent;
 			CSourceStream::Run();
 			DeliverEndFlush();
+			PIN_INFO info;
+			CBasePin::m_Connected->QueryPinInfo(&info);
+			info.pFilter->SetSyncSource(NULL);
 		}
 		if (readonly) 
 			m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
 	}
+
 	return CSourceSeeking::SetPositions(pCurrent, CurrentFlags, pStop, StopFlags);
 }
 
 HRESULT CTSFileSourcePin::ChangeStart()
 {
-	UpdateFromSeek(TRUE);
+//	UpdateFromSeek(TRUE);
     return S_OK;
 }
 
 HRESULT CTSFileSourcePin::ChangeStop()
 {
-    UpdateFromSeek();
+//  UpdateFromSeek();
     return S_OK;
 }
 
@@ -717,8 +737,7 @@ HRESULT CTSFileSourcePin::ChangeRate()
 
 void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 {
-	return;
-	if (ThreadExists() && !m_bSeeking)
+	if (ThreadExists())
 	{	
 		m_bSeeking = TRUE;
 		CAutoLock fillLock(&m_FillLock);
@@ -728,8 +747,7 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 		if (updateStartPosition == TRUE)
 		{
 			m_pTSBuffer->Clear();
-//			m_pTSFileSourceFilter->FileSeek(m_rtStart);
-			SetAccuratePos(REFERENCE_TIME(m_rtStart));
+			m_pTSFileSourceFilter->FileSeek(m_rtStart);
 			m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
 		}
 		DeliverEndFlush();
