@@ -1,8 +1,16 @@
+Version 2.1.0.6
+=================
+Fixed a potential memory leak in the Seek Absolute Function.
+Fixed a problem in the Data rate Average Function.
+Renamed the Property Page Label.
+Fixed the playback delay Problem after a re-seek.
+
+
 Version 2.1.0.5
 =================
 
 Some bug fixes in the Update Duration FillBuffer function.
-Added a fix for the Play/Pause/Seek/Play problem where it would not begin play imediately.
+Added a fix for the Play/Pause/Seek/Play problem where it would not begin play imediately after a paused re-seek.
 
 Version 2.1.0.4
 =================

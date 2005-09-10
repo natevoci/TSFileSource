@@ -31,6 +31,9 @@
 #ifndef TSFILESOURCEPIN_H
 #define TSFILESOURCEPIN_H
 
+// Define a typedef for a list of filters.
+typedef CGenericList<IBaseFilter> CFilterList;
+
 #include "TSFileSource.h"
 #include "PidParser.h"
 #include "TSBuffer.h"
@@ -77,6 +80,17 @@ public:
 
 	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
 	HRESULT SetDuration(REFERENCE_TIME duration);
+
+	HRESULT SetDemuxClock(IReferenceClock *pClock);
+	HRESULT GetPeerFilters(
+		IBaseFilter *pFilter, // Pointer to the starting filter
+		PIN_DIRECTION Dir,    // Direction to search (upstream or downstream)
+		CFilterList &FilterList);  // Collect the results in this list.
+	void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
+	HRESULT GetNextFilter(
+		IBaseFilter *pFilter, // Pointer to the starting filter
+		PIN_DIRECTION Dir,    // Direction to search (upstream or downstream)
+		IBaseFilter **ppNext); // Receives a pointer to the next filter.
 
 	BOOL get_RateControl();
 	void set_RateControl(BOOL bRateControl);
@@ -126,6 +140,7 @@ protected:
 
 	REFERENCE_TIME m_rtLastCurrentTime;
 	__int64 m_LastFileSize;
+
 };
 
 #endif

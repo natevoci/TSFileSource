@@ -43,7 +43,8 @@
 // Filter setup data
 const AMOVIESETUP_MEDIATYPE sudOpPinTypes =
 {
-	&MEDIATYPE_Video,                  // Major type
+//	&MEDIATYPE_Video,                  // Major type
+	&MEDIATYPE_Stream,    // clsMajorType
 	&MEDIASUBTYPE_MPEG2_TRANSPORT      // Minor type
 };
 

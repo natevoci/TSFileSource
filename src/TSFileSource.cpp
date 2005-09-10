@@ -66,8 +66,8 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
-	m_pPin = new CTSFileSourcePin(GetOwner(), this, m_pFileReader, m_pPidParser, phr);
 
+	m_pPin = new CTSFileSourcePin(GetOwner(), this, m_pFileReader, m_pPidParser, phr);
 	if (m_pPin == NULL) {
 		if (phr)
 			*phr = E_OUTOFMEMORY;
@@ -84,7 +84,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	CMediaType cmt;
 	cmt.InitMediaType();
 	cmt.SetType(&MEDIATYPE_Stream);
-	cmt.SetSubtype(& MEDIASUBTYPE_MPEG2_TRANSPORT);
+	cmt.SetSubtype(&MEDIASUBTYPE_MPEG2_TRANSPORT);
 	m_pPin->SetMediaType(&cmt);
 }
 
@@ -135,7 +135,6 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 	{
 		return GetInterface((IAMStreamSelect*)this, ppv);
 	}
-
 	return CSource::NonDelegatingQueryInterface(riid, ppv);
 
 } // NonDelegatingQueryInterface
@@ -266,22 +265,19 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		HRESULT hr = m_pFileReader->OpenFile();
 		if (FAILED(hr))
 			return hr;
-
-		//Set our StreamTime Reference offset to zero
-		m_tStart = tStart;
-
-		REFERENCE_TIME start, stop;
-		m_pPin->GetCurrentPosition(&start);
-
-//		if (start > 0)
-//			FileSeek(start);
-
-		//Start at least 100ms into file to skip header
-		if (start == 0)
-			start += 1000000;
-
-		m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 	}
+
+	//Set our StreamTime Reference offset to zero
+	m_tStart = tStart;
+
+	REFERENCE_TIME start, stop;
+	m_pPin->GetCurrentPosition(&start);
+
+	//Start at least 100ms into file to skip header
+	if (start == 0)
+		start += 1000000;
+
+	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 
 	SetTunerEvent();
 	return CSource::Run(tStart);
@@ -299,16 +295,9 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 	CAutoLock lock(&m_Lock);
 	HRESULT hr = CSource::Stop();
 
-//	m_pPin->ChangeStop();
-//	REFERENCE_TIME stop, start = 1000000;
-//	m_pPin->SetPositions(&start, AM_SEEKING_NoPositioning, &stop, AM_SEEKING_NoPositioning);
-
 	m_pTunerEvent->UnRegisterForTunerEvents();
 	m_pFileReader->CloseFile();
-
 	return hr;
-
-//	return CSource::Stop();
 }
 
 HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
