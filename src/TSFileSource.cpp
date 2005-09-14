@@ -459,9 +459,13 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 HRESULT CTSFileSourceFilter::OnConnect()
 {
+	CAMThread::CallWorker(CMD_STOP);
+
 	HRESULT hr = m_pDemux->AOnConnect();
 
 	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+
+	CAMThread::CallWorker(CMD_RUN);
 	return hr;
 }
 
@@ -907,12 +911,15 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 		PgmNumber = 0;
 	}
 	
+	CAMThread::CallWorker(CMD_STOP);
 	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
+	Sleep(200);
 	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, NULL, NULL);
 	m_pPin->m_DemuxLock = FALSE;
+	CAMThread::CallWorker(CMD_RUN);
 
 	return NOERROR;
 }
@@ -934,12 +941,16 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	{
 		PgmNumb = 0;
 	}
+
+	CAMThread::CallWorker(CMD_STOP);
 	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
+	Sleep(200);
 	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 	m_pPin->m_DemuxLock = FALSE;
+	CAMThread::CallWorker(CMD_RUN);
 
 	return NOERROR;
 }
@@ -962,12 +973,15 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 		PgmNumb = m_pPidParser->pidArray.Count() - 1;
 	}
 
+	CAMThread::CallWorker(CMD_STOP);
 	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
+	Sleep(200);
 	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 	m_pPin->m_DemuxLock = FALSE;
+	CAMThread::CallWorker(CMD_RUN);
 
 	return NOERROR;
 }

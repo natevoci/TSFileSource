@@ -1,3 +1,7 @@
+Version 2.1.0.8
+=================
+Fixed a problem with changing streams while seeking or paused.
+
 Version 2.1.0.7
 =================
 Implemented a seperate thread for the duration updating.

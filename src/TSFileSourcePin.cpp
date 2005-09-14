@@ -628,6 +628,7 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 				m_bSeeking = TRUE;
 				if(m_pTSFileSourceFilter->IsActive() && !m_DemuxLock)
 					SetDemuxClock(NULL);
+
 				DeliverBeginFlush();
 				CSourceStream::Stop();
 				m_DataRate = m_pPidParser->pids.bitrate;
@@ -642,8 +643,8 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 				m_rtLastSeekStart = rtCurrent;
 				CSourceStream::Run();
 				DeliverEndFlush();
-				HRESULT hr = CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
-				return hr;
+				CAutoLock lock(&m_SeekLock);
+				return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
 			}
 		}
 		return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);

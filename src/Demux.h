@@ -121,6 +121,7 @@ protected:
 	BOOL m_bMPEG2AudioMediaType;
 	BOOL m_bMPEG2Audio2Mode;
 	BOOL m_WasPlaying;
+	BOOL m_WasPaused;
 	int  m_ClockMode;
 	LONG m_TimeOut[2];
 

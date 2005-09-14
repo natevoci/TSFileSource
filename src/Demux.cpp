@@ -45,6 +45,7 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_bNPSlave(FALSE),
 	m_bConnectBusyFlag(false),
 	m_WasPlaying(FALSE),
+	m_WasPaused(FALSE),
 	m_bAC3Mode(TRUE),
 	m_StreamAC3(FALSE),
 	m_StreamMP2(FALSE),
@@ -195,9 +196,17 @@ HRESULT Demux::AOnConnect()
 
 	m_bConnectBusyFlag = true;
 	m_WasPlaying = FALSE;
+	m_WasPaused = FALSE;
 	m_TimeOut[0] = 0;
 	m_TimeOut[1] = 0;
-	if (IsPlaying() == S_OK)
+
+	if (IsPaused() != S_FALSE)
+	{
+		m_TimeOut[0] = 10000;
+		if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+		m_WasPaused = TRUE;
+	}
+	else if (IsPlaying() == S_OK)
 	{
 		m_TimeOut[0] = 10000;
 		m_WasPlaying = TRUE;
@@ -262,19 +271,15 @@ HRESULT Demux::AOnConnect()
 	//Set the reference clock type
 	SetRefClock();
 
-	if (m_WasPlaying && IsPlaying() == S_FALSE)
+	if (IsPlaying() == S_FALSE)
 	{
 		//Re Start the Graph if was running and was stopped.
-		if (DoStart() == S_OK)
-		{
-			while(IsPlaying() == S_FALSE)
-			{
-				if (Sleeps(100,m_TimeOut) != S_OK)
-				{
-					break;
-				}
-			}
-		}
+		if (m_WasPlaying || m_WasPaused)
+			if (DoStart() == S_OK){while(IsPlaying() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+
+		//Pause the Graph if was Paused and was stopped.
+		if (m_WasPaused && !m_WasPlaying)
+			if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 	}
 
 	m_bConnectBusyFlag = false;
@@ -1152,8 +1157,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 							pinInfo.pFilter->Release();
 							pInpPin->Release();
 
-							if (m_WasPlaying){
-
+							if (m_WasPlaying) {
 								if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 								if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 							}
@@ -1216,8 +1220,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 							pinInfo.pFilter->Release();
 							pInpPin->Release();
 
-							if (m_WasPlaying){
-
+							if (m_WasPlaying) {
 								if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 								if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 							}
@@ -1272,11 +1275,10 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 								pinInfo.pFilter->Release();
 								pInpPin->Release();
 
-								if (m_WasPlaying){
-
-									if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
-									if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
-								}
+							if (m_WasPlaying) {
+								if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+								if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+							}
 
 								if (SUCCEEDED(pIPin->Disconnect())){
 
@@ -1334,8 +1336,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 					pinInfo.pFilter->Release();
 					pInpPin->Release();
 
-					if (m_WasPlaying){
-
+					if (m_WasPlaying) {
 						if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 						if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 					}
@@ -1369,8 +1370,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 					pinInfo.pFilter->Release();
 					pInpPin->Release();
 
-					if (m_WasPlaying){
-
+					if (m_WasPlaying) {
 						if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 						if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 					}
@@ -1406,8 +1406,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 					pinInfo.pFilter->Release();
 					pInpPin->Release();
 
-					if (m_WasPlaying){
-
+					if (m_WasPlaying) {
 						if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 						if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 					}
