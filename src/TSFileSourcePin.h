@@ -79,6 +79,7 @@ public:
 	void UpdateFromSeek(BOOL updateStartPosition = FALSE);
 
 	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
+	HRESULT UpdateDuration(FileReader *pFileReader);
 	HRESULT SetDuration(REFERENCE_TIME duration);
 
 	HRESULT SetDemuxClock(IReferenceClock *pClock);
@@ -140,6 +141,9 @@ protected:
 
 	REFERENCE_TIME m_rtLastCurrentTime;
 	__int64 m_LastFileSize;
+
+public:
+	BOOL	m_DemuxLock;
 
 };
 

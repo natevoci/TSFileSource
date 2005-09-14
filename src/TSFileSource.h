@@ -59,8 +59,8 @@ class CTSFileSourceFilter : public CSource,
 							public ITSFileSource,
 							public IAMStreamSelect,
 							public IAMFilterMiscFlags,
+							protected CAMThread,
 							public ISpecifyPropertyPages
-
 {
 	//friend class CTSFileSourcePin;
 public:
@@ -200,6 +200,13 @@ protected:
 	CCritSec m_Lock;                // Main renderer critical section
     //registration number for the RunningObjectTable
     DWORD m_dwGraphRegister;
+
+	FileReader *m_pFileDuration;
+    enum Command {CMD_INIT, CMD_PAUSE, CMD_RUN, CMD_STOP, CMD_EXIT};
+    DWORD ThreadProc();
+	HRESULT DoProcessingLoop(void);
+    Command GetRequest(void) { return (Command) CAMThread::GetRequest(); }
+    BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
 };
 
 #endif

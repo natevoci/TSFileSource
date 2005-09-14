@@ -58,6 +58,7 @@ void PidInfo::Clear()
 	start = 0;
 	end   = 0;
 	dur   = 0;
+	bitrate = 10000000; //Set reasonable value
 	for (int i = 0 ; i < 16 ; i++ )
 	{
 		TsArray[i] = 0;
@@ -86,6 +87,7 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 	start = pidInfo->start;
 	end   = pidInfo->end;
 	dur   = pidInfo->dur;
+	bitrate = pidInfo->bitrate; 
 	for (int i = 0 ; i < 16 ; i++ )
 	{
 		TsArray[i] = pidInfo->TsArray[i];

@@ -244,7 +244,7 @@ BOOL CTSFileSourceProp::PopulateDialog()
 
 
 
-
+	m_pProgram->GetReadOnly(&PidNr);
 	if (PidNr)
 		m_pProgram->GetDelayMode(&PidNr);
 	else

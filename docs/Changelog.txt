@@ -1,3 +1,9 @@
+Version 2.1.0.7
+=================
+Implemented a seperate thread for the duration updating.
+Fixed a locking problem in the seek mode.
+Improved the fix for delayed play problem.
+
 Version 2.1.0.6
 =================
 Fixed a potential memory leak in the Seek Absolute Function.

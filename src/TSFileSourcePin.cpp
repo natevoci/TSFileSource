@@ -74,7 +74,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 
 	m_lTSPacketDeliverySize = 188*1000;
 
-	m_DataRate = 0;
+	m_DataRate = 10000000;
 	m_DataRateTotal = 0;
 	m_BitRateCycle = 0;
 	for (int i = 0; i < 256; i++) { 
@@ -87,6 +87,9 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 
 	m_rtLastCurrentTime = 0;
 	m_LastFileSize = 0;
+
+	m_DemuxLock = FALSE;
+
 }
 
 CTSFileSourcePin::~CTSFileSourcePin()
@@ -198,7 +201,7 @@ HRESULT CTSFileSourcePin::DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROP
 HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 {
 	HRESULT hr = CBaseOutputPin::CheckConnect(pReceivePin);
-	if (SUCCEEDED(hr) && m_pTSFileSourceFilter->get_AutoMode() && m_pPidParser->m_TStreamID)
+	if (SUCCEEDED(hr) && m_pTSFileSourceFilter->get_AutoMode())// && m_pPidParser->m_TStreamID)
 	{
 		PIN_INFO pInfo;
 		if (SUCCEEDED(pReceivePin->QueryPinInfo(&pInfo)))
@@ -268,7 +271,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 {
 	CheckPointer(pSample, E_POINTER);
 
-	CAutoLock lock(&m_FillLock);
+//	CAutoLock lock(&m_FillLock);
 
 	if (m_pFileReader->IsFileInvalid())
 	{
@@ -293,7 +296,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		return NOERROR;
 	}
 
-//	CAutoLock lock(&m_FillLock);
+	CAutoLock lock(&m_FillLock);
 
 	// Access the sample's data buffer
 	PBYTE pData;
@@ -493,67 +496,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 #endif
 	}
 
-#define EC_DVB_DURATIONCHANGE  0x41E
-
-	WORD readonly = 0;
-	m_pFileReader->get_ReadOnly(&readonly);
-	if (readonly)
-	{
-		REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-		REFERENCE_TIME rtStop = 0;
-
-		bool secondDelay = false;
-		if (m_DataRate > 0) {
-
-			__int64	fileSize = 0;
-			m_pFileReader->GetFileSize(&fileSize);
-			//check for duration every second of size change
-			if((m_LastFileSize + (__int64)((__int64)m_DataRate / (__int64)8)) < fileSize) {
-
-				m_LastFileSize = fileSize;
-				 __int64 calcDuration = (REFERENCE_TIME)(fileSize / (__int64)((__int64)m_DataRate / (__int64)8000));
-				calcDuration = (REFERENCE_TIME)(calcDuration * (__int64)10000);
-				 __int64 deltaDuration = calcDuration - m_pPidParser->pids.dur;
-				m_pPidParser->pids.dur = calcDuration;
-				m_pPidParser->pids.end += (__int64)((__int64)((__int64)deltaDuration * (__int64)9) / (__int64)1000);
-				for (int i = 0; i < m_pPidParser->pidArray.Count(); i++)
-				{
-					m_pPidParser->pidArray[i].dur = m_pPidParser->pids.dur;
-					m_pPidParser->pidArray[i].end += (__int64)((__int64)((__int64)deltaDuration * (__int64)9) / (__int64)1000);;;
-				}
-				secondDelay = true;
-			}
-		}
-		else if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime)
-		{
-			m_pPidParser->RefreshDuration(TRUE, m_pFileReader);
-			secondDelay = true;
-		}
-
-		if (secondDelay)
-		{
-			{
-				CAutoLock lock(&m_SeekLock);
-				m_rtDuration = m_pPidParser->pids.dur;
-				m_rtStop = m_pPidParser->pids.dur;
-			}
-
-			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime) {
-				//Get CSourceSeeking current time.
-				GetPositions(&rtCurrentTime, &rtStop);
-				//Test if we had been seeking recently and wait 2sec if so.
-				if ((REFERENCE_TIME)(m_rtLastSeekStart + (REFERENCE_TIME)20000000) < rtCurrentTime) {
-					//Send event to update filtergraph clock.
-					m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
-					CAutoLock lock(&m_SeekLock);
-					m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-				}
-			}
-			//Send a Custom Duration update for applications. 
-			m_pTSFileSourceFilter->NotifyEvent(EC_DVB_DURATIONCHANGE, NULL, NULL);
-		}
-
-	}
 /*
 #if DEBUG
 	{
@@ -609,15 +551,18 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 {
 	CAutoLock fillLock(&m_FillLock);
 	CAutoLock seekLock(&m_SeekLock);
+
 	CBasePin::m_tStart = tStart;
 	m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
-	CRefTime cTime;
-	m_pTSFileSourceFilter->StreamTime(cTime);
-	IReferenceClock *pClock = NULL;
-	GetReferenceClock(&pClock);
-	SetDemuxClock(pClock);
+	if (!m_bSeeking && !m_DemuxLock)
+	{	
+		IReferenceClock *pClock = NULL;
+		GetReferenceClock(&pClock);
+		SetDemuxClock(pClock);
+		m_pTSFileSourceFilter->NotifyEvent(EC_CLOCK_UNSET, NULL, NULL);
+	}
 
 	return CBaseOutputPin::Run(tStart);
 
@@ -635,15 +580,13 @@ STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
 
 STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 {
-	if (!pCurrent)
+	if (pCurrent)
 	{
-		CAutoLock fillLock(&m_FillLock);
 		CAutoLock seekLock(&m_SeekLock);
 		CRefTime cTime;
 		m_pTSFileSourceFilter->StreamTime(cTime);
 		*pCurrent = (REFERENCE_TIME)(m_rtLastSeekStart + REFERENCE_TIME(cTime));
 		REFERENCE_TIME current;
-//PrintTime("GetCurrentPosition", (__int64)REFERENCE_TIME(cTime), 10000);
 		return CSourceSeeking::GetPositions(&current, pStop);
 	}
 	return CSourceSeeking::GetPositions(pCurrent, pStop);
@@ -669,31 +612,41 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 		{
 			CAutoLock lock(&m_SeekLock);
 			rtCurrent += m_rtStart;
+			CurrentFlags -= AM_SEEKING_RelativePositioning;
+		}
+
+		if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
+		{
+			CAutoLock lock(&m_SeekLock);
+			m_rtStart = rtCurrent;
 		}
 
 		if (!(CurrentFlags & AM_SEEKING_NoFlush) && (CurrentFlags & AM_SEEKING_PositioningBitsMask))
 		{
-			SetDemuxClock(NULL);
-			DeliverBeginFlush();
-			CSourceStream::Stop();
-			m_DataRate = m_pPidParser->pids.bitrate;
-			m_llPrevPCR = -1;
-			m_pTSBuffer->Clear();
-			SetAccuratePos(rtCurrent);
-			if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
-			{
-				CAutoLock lock(&m_SeekLock);
-				m_rtStart = rtCurrent;
+			if (ThreadExists())
+			{	
+				m_bSeeking = TRUE;
+				if(m_pTSFileSourceFilter->IsActive() && !m_DemuxLock)
+					SetDemuxClock(NULL);
+				DeliverBeginFlush();
+				CSourceStream::Stop();
+				m_DataRate = m_pPidParser->pids.bitrate;
+				m_llPrevPCR = -1;
+				m_pTSBuffer->Clear();
+				SetAccuratePos(rtCurrent);
+				if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
+				{
+					CAutoLock lock(&m_SeekLock);
+					m_rtStart = rtCurrent;
+				}
+				m_rtLastSeekStart = rtCurrent;
+				CSourceStream::Run();
+				DeliverEndFlush();
+				HRESULT hr = CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
+				return hr;
 			}
-			m_rtLastSeekStart = rtCurrent;
-			CSourceStream::Run();
-			DeliverEndFlush();
-//PrintTime("GetCurrentPosition", (__int64)m_rtLastSeekStart, 10000);
 		}
-		if (readonly) 
-			m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
-
-		CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
+		return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
 	}
 
 	return CSourceSeeking::SetPositions(pCurrent, CurrentFlags, pStop, StopFlags);
@@ -702,12 +655,14 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 HRESULT CTSFileSourcePin::ChangeStart()
 {
 //	UpdateFromSeek(TRUE);
+	m_bSeeking = FALSE;
     return S_OK;
 }
 
 HRESULT CTSFileSourcePin::ChangeStop()
 {
 //	UpdateFromSeek();
+	m_bSeeking = FALSE;
     return S_OK;
 }
 
@@ -731,6 +686,7 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 		m_bSeeking = TRUE;
 		CAutoLock fillLock(&m_FillLock);
 		CAutoLock seekLock(&m_SeekLock);
+		SetDemuxClock(NULL);
 		DeliverBeginFlush();
 		m_llPrevPCR = -1;
 		if (updateStartPosition == TRUE)
@@ -749,8 +705,6 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 {
 
 //PrintTime("seekin", (__int64) seektime, 10000);
-	CAutoLock fillLock(&m_FillLock);
-//	CAutoLock lock(&m_SeekLock);
 
 	HRESULT hr;
 	ULONG pos;
@@ -926,7 +880,89 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	
 }
 
+HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
+{
+	HRESULT hr = E_FAIL;
 
+#define EC_DVB_DURATIONCHANGE  0x41E
+
+	WORD readonly = 0;
+	pFileReader->get_ReadOnly(&readonly);
+	if (readonly)
+	{
+		hr = S_FALSE;
+
+		if (m_bSeeking)
+			return hr;
+
+		REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+		REFERENCE_TIME rtStop = 0;
+
+		bool secondDelay = false;
+		//Do a quick parse of duration if seeking
+		if (m_DataRate > 0) {
+
+			__int64	fileSize = 0;
+			pFileReader->GetFileSize(&fileSize);
+			//check for duration every second of size change
+			if((m_LastFileSize + (__int64)((__int64)m_DataRate / (__int64)8)) < fileSize) {
+
+				m_LastFileSize = fileSize;
+				 __int64 calcDuration = (REFERENCE_TIME)(fileSize / (__int64)((__int64)m_DataRate / (__int64)8000));
+				calcDuration = (REFERENCE_TIME)(calcDuration * (__int64)10000);
+				 __int64 deltaDuration = calcDuration - m_pPidParser->pids.dur;
+				m_pPidParser->pids.dur = calcDuration;
+				m_pPidParser->pids.end += (__int64)((__int64)((__int64)deltaDuration * (__int64)9) / (__int64)1000);
+				for (int i = 0; i < m_pPidParser->pidArray.Count(); i++)
+				{
+					m_pPidParser->pidArray[i].dur = m_pPidParser->pids.dur;
+					m_pPidParser->pidArray[i].end += (__int64)((__int64)((__int64)deltaDuration * (__int64)9) / (__int64)1000);;;
+				}
+				secondDelay = true;
+			}
+		}
+		else if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime)
+		{
+			if (!m_bSeeking)
+				m_pPidParser->RefreshDuration(TRUE, pFileReader);
+
+			secondDelay = true;
+		}
+
+		if (secondDelay)
+		{
+			if (!m_bSeeking)
+			{
+				m_rtDuration = m_pPidParser->pids.dur;
+				m_rtStop = m_pPidParser->pids.dur;
+			}
+
+			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime) {
+				//Get CSourceSeeking current time.
+				CSourceSeeking::GetPositions(&rtCurrentTime, &rtStop);
+				//Test if we had been seeking recently and wait 2sec if so.
+				if ((REFERENCE_TIME)(m_rtLastSeekStart + (REFERENCE_TIME)20000000) < rtCurrentTime) {
+
+					//Send event to update filtergraph clock.
+					if (!m_bSeeking)
+					{
+						m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+						m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
+						hr = S_OK;
+					}
+				}
+			}
+			//Send a Custom Duration update for applications. 
+			if (!m_bSeeking)
+				m_pTSFileSourceFilter->NotifyEvent(EC_DVB_DURATIONCHANGE, NULL, NULL);
+		}
+
+	}
+	else
+		return S_FALSE;
+
+	return S_OK;
+}
 
 HRESULT CTSFileSourcePin::SetDuration(REFERENCE_TIME duration)
 {

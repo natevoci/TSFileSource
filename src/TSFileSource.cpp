@@ -86,10 +86,18 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	cmt.SetType(&MEDIATYPE_Stream);
 	cmt.SetSubtype(&MEDIASUBTYPE_MPEG2_TRANSPORT);
 	m_pPin->SetMediaType(&cmt);
+
+	//Get Live File Duration Thread
+	m_pFileDuration = new FileReader();
+	CAMThread::Create();
+
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
 {
+	CAMThread::CallWorker(CMD_EXIT);
+	CAMThread::Close();
+
     if (m_dwGraphRegister)
     {
         RemoveGraphFromRot(m_dwGraphRegister);
@@ -103,7 +111,118 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	delete	m_pFileReader;
 	delete	m_pPidParser;
 	delete	m_pPin;
+	delete  m_pFileDuration;
 }
+
+DWORD CTSFileSourceFilter::ThreadProc(void)
+{
+    HRESULT hr;  // the return code from calls
+    Command com;
+
+    do
+    {
+        com = GetRequest();
+        if(com != CMD_INIT)
+        {
+            DbgLog((LOG_ERROR, 1, TEXT("Thread expected init command")));
+            Reply((DWORD) E_UNEXPECTED);
+        }
+
+    } while(com != CMD_INIT);
+
+    DbgLog((LOG_TRACE, 1, TEXT("Worker thread initializing")));
+
+	LPOLESTR fileName;
+	m_pFileReader->GetFileName(&fileName);
+	m_pFileDuration->SetFileName(fileName);
+	hr = m_pFileDuration->OpenFile();
+    if(FAILED(hr))
+    {
+        DbgLog((LOG_ERROR, 1, TEXT("ThreadCreate failed. Aborting thread.")));
+
+		hr = m_pFileDuration->CloseFile();
+        Reply(hr);  // send failed return code from ThreadCreate
+        return 1;
+    }
+
+    // Initialisation suceeded
+    Reply(NOERROR);
+
+    Command cmd;
+    do
+    {
+        cmd = GetRequest();
+
+        switch(cmd)
+        {
+            case CMD_EXIT:
+                Reply(NOERROR);
+                break;
+
+            case CMD_RUN:
+                DbgLog((LOG_ERROR, 1, TEXT("CMD_RUN received before a CMD_PAUSE???")));
+                // !!! fall through
+
+            case CMD_PAUSE:
+				m_pFileDuration->OpenFile();
+                Reply(NOERROR);
+                DoProcessingLoop();
+                break;
+
+            case CMD_STOP:
+				m_pFileDuration->CloseFile();
+                Reply(NOERROR);
+                break;
+
+            default:
+                DbgLog((LOG_ERROR, 1, TEXT("Unknown command %d received!"), cmd));
+                Reply((DWORD) E_NOTIMPL);
+                break;
+        }
+
+    } while(cmd != CMD_EXIT);
+
+	m_pFileDuration->CloseFile();
+    DbgLog((LOG_TRACE, 1, TEXT("Worker thread exiting")));
+    return 0;
+}
+
+//
+// DoProcessingLoop
+//
+HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
+{
+    Command com;
+
+    do
+    {
+        while(!CheckRequest(&com))
+        {
+            // if an error occurs.
+            HRESULT hr = S_OK;
+			hr = m_pPin->UpdateDuration(m_pFileDuration);
+			if (hr == E_FAIL)
+				return hr;
+
+			Sleep(100);
+        }
+
+        // For all commands sent to us there must be a Reply call!
+        if(com == CMD_RUN || com == CMD_PAUSE)
+        {
+            Reply(NOERROR);
+        }
+        else if(com != CMD_STOP)
+        {
+            Reply((DWORD) E_UNEXPECTED);
+            DbgLog((LOG_ERROR, 1, TEXT("Unexpected command!!!")));
+        }
+    } while(com != CMD_STOP);
+
+    return S_FALSE;
+}
+
+
 
 STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void ** ppv)
 {
@@ -277,10 +396,19 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 	if (start == 0)
 		start += 1000000;
 
-	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+	if(!IsActive())
+	{
+		m_pPin->m_DemuxLock = TRUE;
+		m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+		m_pPin->m_DemuxLock = FALSE;
+	}
 
 	SetTunerEvent();
+
+	CAMThread::CallWorker(CMD_RUN);
+
 	return CSource::Run(tStart);
+
 }
 
 HRESULT CTSFileSourceFilter::Pause()
@@ -293,6 +421,9 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 {
 	CAutoLock cObjectLock(m_pLock);
 	CAutoLock lock(&m_Lock);
+
+	CAMThread::CallWorker(CMD_STOP);
+
 	HRESULT hr = CSource::Stop();
 
 	m_pTunerEvent->UnRegisterForTunerEvents();
@@ -372,6 +503,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	RefreshPids();
 	LoadPgmReg();
 	RefreshDuration();
+
+	CAMThread::CallWorker(CMD_INIT); //Initalize our GetDuration thread
 
 	CAutoLock lock(&m_Lock);
 	m_pFileReader->CloseFile();
@@ -466,7 +599,8 @@ STDMETHODIMP CTSFileSourceFilter::GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TY
 	if(pmt)
 	{
 		ZeroMemory(pmt, sizeof(*pmt));
-		pmt->majortype = MEDIATYPE_Video;
+		pmt->majortype = MEDIATYPE_Stream;
+//		pmt->majortype = MEDIATYPE_Video;
 		pmt->subtype = MEDIASUBTYPE_MPEG2_TRANSPORT;
 	}
 
@@ -772,11 +906,13 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	{
 		PgmNumber = 0;
 	}
-
+	
+	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	OnConnect();
 	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, NULL, NULL);
+	m_pPin->m_DemuxLock = FALSE;
 
 	return NOERROR;
 }
@@ -798,12 +934,12 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	{
 		PgmNumb = 0;
 	}
-
+	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
-	Sleep(200);
 	OnConnect();
 	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
+	m_pPin->m_DemuxLock = FALSE;
 
 	return NOERROR;
 }
@@ -826,11 +962,12 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 		PgmNumb = m_pPidParser->pidArray.Count() - 1;
 	}
 
+	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
-	Sleep(200);
 	OnConnect();
 	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
+	m_pPin->m_DemuxLock = FALSE;
 
 	return NOERROR;
 }
