@@ -45,17 +45,16 @@ BEGIN
     EDITTEXT        IDC_CNT,97,177,16,12,ES_CENTER | ES_AUTOHSCROLL | 
                     ES_READONLY
     GROUPBOX        "Pids",IDC_STATIC,123,7,80,102
-    LTEXT           "Video",IDC_STATIC,129,17,25,8
+    LTEXT           "Video",IDC_STATIC,129,16,25,8
     EDITTEXT        IDC_VIDEO,159,14,40,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Audio",IDC_STATIC,129,34,25,8
-    EDITTEXT        IDC_AUDIO,159,30,40,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Audio-2",IDC_STATIC,129,49,25,8
-    EDITTEXT        IDC_AUDIO2,159,46,40,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "AC3",IDC_STATIC,129,65,27,8
+    LTEXT           "Audio",IDC_STATIC,129,48,25,8
+    EDITTEXT        IDC_AUDIO,159,46,20,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_AUDIO2,179,46,20,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "AC3",IDC_STATIC,129,64,27,8
     EDITTEXT        IDC_AC3,159,62,40,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "SID",IDC_STATIC,67,66,17,8
     EDITTEXT        IDC_SID,86,64,27,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Teletext",IDC_STATIC,127,96,27,8
+    LTEXT           "Teletext",IDC_STATIC,129,96,27,8
     EDITTEXT        IDC_TXT,159,94,40,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "File Status",IDC_STATIC,123,113,35,8
     EDITTEXT        IDC_FILEMODE,160,111,39,12,ES_AUTOHSCROLL | ES_READONLY
@@ -107,6 +106,8 @@ BEGIN
                     WS_GROUP,216,161,65,8
     CONTROL         "Render Clock",IDC_RENCLOCK,"Button",BS_AUTORADIOBUTTON | 
                     WS_GROUP,216,174,65,8
+    EDITTEXT        IDC_VIDEOTYPE,159,30,40,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Vid Type",IDC_STATIC,129,32,28,8
 END
 
 
@@ -161,8 +162,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,1,0,8
- PRODUCTVERSION 2,1,0,8
+ FILEVERSION 2,1,0,9
+ PRODUCTVERSION 2,1,0,9
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -180,14 +181,14 @@ BEGIN
             VALUE "Comments", "Push Source filter for MPEG-2 Transport Stream Files.(BDA Compatable)\0"
             VALUE "CompanyName", "\0"
             VALUE "FileDescription", "TS File Source(AU)\0"
-            VALUE "FileVersion", "2, 1, 0, 8\0"
+            VALUE "FileVersion", "2, 1, 0, 9\0"
             VALUE "InternalName", "TS File Source(AU)\0"
             VALUE "LegalCopyright", "This filter is published under Gnu Public Licence © 2003. Written by DH & bear@forums.dvbowners.com & nate@forums.dvbowners.com.\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "TSFileSource.ax\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "TS File Source(AU)\0"
-            VALUE "ProductVersion", "2, 1, 0, 8\0"
+            VALUE "ProductVersion", "2, 1, 0, 9\0"
             VALUE "SpecialBuild", "\0"
         END
     END

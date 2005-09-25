@@ -39,6 +39,7 @@ PidInfo::~PidInfo()
 void PidInfo::Clear()
 {
 	vid   = 0;
+	h264  = 0;
 	aud   = 0;
 	aud2  = 0;
 	ac3   = 0;
@@ -68,6 +69,7 @@ void PidInfo::Clear()
 void PidInfo::CopyFrom(PidInfo *pidInfo)
 {
 	vid   = pidInfo->vid;
+	h264  = pidInfo->h264;
 	aud   = pidInfo->aud;
 	aud2  = pidInfo->aud2;
 	ac3   = pidInfo->ac3;

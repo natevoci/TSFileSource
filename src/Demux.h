@@ -67,6 +67,7 @@ public:
 	HRESULT	GetMP2Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetMP1Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetVideoMedia(AM_MEDIA_TYPE *pintype);
+	HRESULT GetH264Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetTelexMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetTSMedia(AM_MEDIA_TYPE *pintype);
 

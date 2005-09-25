@@ -47,6 +47,7 @@
 #define IDC_CHID                        1034
 #define IDC_NETID                       1035
 #define IDC_ROTMODE                     1036
+#define IDC_VIDEOTYPE                   1037
 #define IDC_DEFCLOCK                    1040
 #define IDC_DEMCLOCK                    1041
 #define IDC_RENCLOCK                    1042

@@ -87,6 +87,11 @@ HRESULT StreamParser::ParsePidArray()
 			StreamArray[index].Vid = true;
 			m_pDemux->GetVideoMedia(&StreamArray[index].media);
 		}
+		else if (m_pPidParser->pidArray[count].h264)
+		{
+			StreamArray[index].Vid = true;
+			m_pDemux->GetH264Media(&StreamArray[index].media);
+		}
 		index++;
 
 		//Setup Audio Tracks

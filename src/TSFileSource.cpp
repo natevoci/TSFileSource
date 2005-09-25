@@ -617,7 +617,29 @@ STDMETHODIMP CTSFileSourceFilter::GetVideoPid(WORD *pVPid)
 		return E_INVALIDARG;
 
 	CAutoLock lock(&m_Lock);
-	*pVPid = m_pPidParser->pids.vid;
+	if (m_pPidParser->pids.vid)
+		*pVPid = m_pPidParser->pids.vid;
+	else if (m_pPidParser->pids.h264)
+		*pVPid = m_pPidParser->pids.h264;
+	else
+		*pVPid = 0;
+
+	return NOERROR;
+}
+
+
+STDMETHODIMP CTSFileSourceFilter::GetVideoPidType(BYTE *pointer)
+{
+	if (!pointer)
+		  return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	if (m_pPidParser->pids.vid)
+		sprintf((char *)pointer, "MPEG 2");
+	else if (m_pPidParser->pids.h264)
+		sprintf((char *)pointer, "H.264");
+	else
+		sprintf((char *)pointer, "None");
 
 	return NOERROR;
 }

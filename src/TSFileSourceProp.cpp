@@ -116,50 +116,69 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	m_pProgram->GetVideoPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_VIDEO), sz);
+
+	unsigned char videoPidType[128];
+	m_pProgram->GetVideoPidType((unsigned char*)&videoPidType);
+	wsprintf(sz, TEXT("%s"), videoPidType);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_VIDEOTYPE), sz);
+	
 	m_pProgram->GetAudioPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AUDIO), sz);
+
 	m_pProgram->GetAudio2Pid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AUDIO2), sz);
+
 	m_pProgram->GetAC3Pid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AC3), sz);
+
 	m_pProgram->GetAC3_2Pid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AC3_2), sz);
+
 	m_pProgram->GetNIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_NID), sz);
+
 	unsigned char netname[128];
 	m_pProgram->GetNetworkName((unsigned char*)&netname);
 	sprintf(sz, "%s",netname);
 	SetWindowText(GetDlgItem(m_hwnd, IDC_NETID), sz);
+
 	unsigned char chnumb[128];
 	m_pProgram->GetChannelNumber((unsigned char*)&chnumb);
 	m_pProgram->GetONIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_ONID), sz);
+
 	unsigned char onetname[128];
 	unsigned char chname[128];
 	m_pProgram->GetONetworkName((unsigned char*)&onetname);
 	m_pProgram->GetChannelName((unsigned char*)&chname);
 	sprintf(sz, "%s",onetname);
 	SetWindowText(GetDlgItem(m_hwnd, IDC_ONETID), sz);
+
 	sprintf(sz, "Ch %s :- %s",chnumb, chname);
 	SetWindowText(GetDlgItem(m_hwnd, IDC_CHID), sz);
+
 	m_pProgram->GetTSIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_TSID), sz);
+
 	m_pProgram->GetPMTPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_PMT), sz);
+
 	m_pProgram->GetSIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_SID), sz);
+
 	m_pProgram->GetPCRPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_PCR), sz);
+
 	m_pProgram->GetDuration(&dur);
 	LONG ms = (LONG)(dur/(LONGLONG)10000);
 	LONG secs = ms / 1000;

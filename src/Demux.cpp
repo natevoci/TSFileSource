@@ -766,6 +766,18 @@ HRESULT Demux::CheckVideoPin(IBaseFilter* pDemux)
 			return S_OK;
 		}
 	}
+
+	GetH264Media(&pintype);
+	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
+
+		USHORT pPid;
+		pPid = m_pPidParser->pids.h264;
+		if SUCCEEDED(LoadVideoPin(pIPin, pPid)){
+			pIPin->Release();
+			return S_OK;
+		}
+	}
+	
 	return hr;
 }
 
@@ -897,7 +909,19 @@ HRESULT Demux::NewTsPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 HRESULT Demux::NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 {
 	USHORT pPid;
-	pPid = m_pPidParser->pids.vid;
+	AM_MEDIA_TYPE type;
+	ZeroMemory(&type, sizeof(AM_MEDIA_TYPE));
+
+	if (m_pPidParser->pids.vid)
+	{
+		GetVideoMedia(&type);
+		pPid = m_pPidParser->pids.vid;
+	}
+	else
+	{
+		GetH264Media(&type);
+		pPid = m_pPidParser->pids.h264;
+	}
 
 	HRESULT hr = E_INVALIDARG;
 	//Test if no interface 
@@ -905,10 +929,6 @@ HRESULT Demux::NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 		return hr;
 
 	// Create out new pin 
-	AM_MEDIA_TYPE type;
-	ZeroMemory(&type, sizeof(AM_MEDIA_TYPE));
-	GetVideoMedia(&type);
-
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
@@ -1460,8 +1480,8 @@ HRESULT Demux::GetMP2Media(AM_MEDIA_TYPE *pintype)
 	pintype->majortype = MEDIATYPE_Audio;
 	pintype->subtype = MEDIASUBTYPE_MPEG2_AUDIO; 
 	pintype->formattype = FORMAT_WaveFormatEx; 
-	pintype->cbFormat = sizeof(g_MPEG1AudioFormat);
-	pintype->pbFormat = g_MPEG1AudioFormat; 
+	pintype->cbFormat = sizeof(MPEG2AudioFormat);
+	pintype->pbFormat = MPEG2AudioFormat; 
 	pintype->bFixedSizeSamples = TRUE;
 	pintype->bTemporalCompression = 0;
 	pintype->lSampleSize = 1;
@@ -1504,12 +1524,35 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 	pintype->majortype = KSDATAFORMAT_TYPE_VIDEO;
 	pintype->subtype = MEDIASUBTYPE_MPEG2_VIDEO;
 	pintype->bFixedSizeSamples = TRUE;
-	pintype->bTemporalCompression = 0;
+	pintype->bTemporalCompression = FALSE;
 	pintype->lSampleSize = 1;
 	pintype->formattype = FORMAT_MPEG2Video;
 	pintype->pUnk = NULL;
 	pintype->cbFormat = sizeof(Mpeg2ProgramVideo);
 	pintype->pbFormat = Mpeg2ProgramVideo;
+
+	return S_OK;
+}
+
+HRESULT Demux::GetH264Media(AM_MEDIA_TYPE *pintype)
+
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pintype == NULL)
+		return hr;
+
+	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
+	pintype->majortype = MEDIATYPE_Video;
+	pintype->subtype = FOURCCMap(MAKEFOURCC('h','2','6','4'));
+	pintype->bFixedSizeSamples = FALSE;
+	pintype->bTemporalCompression = TRUE;
+	pintype->lSampleSize = 1;
+
+	pintype->formattype = FORMAT_VideoInfo;
+	pintype->pUnk = NULL;
+	pintype->cbFormat = sizeof(H264VideoFormat);
+	pintype->pbFormat = H264VideoFormat;
 
 	return S_OK;
 }

@@ -116,5 +116,10 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 	STDMETHOD (SetROTMode) (THIS_ WORD ROTMode) PURE;
 	STDMETHOD (GetClockMode) (THIS_ WORD *ClockMode) PURE;
 	STDMETHOD (SetClockMode) (THIS_ WORD ClockMode) PURE;
+
+//New method added after 2.0.1.8
+	STDMETHOD(GetVideoPidType) (THIS_ BYTE * pointer) PURE;
+
+
 };
 

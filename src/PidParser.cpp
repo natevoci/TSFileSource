@@ -244,6 +244,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				USHORT pcrsave = pids.pcr;
 				if (pids.vid && !pids.pcr)
 					pids.pcr = pids.vid;
+				else if (pids.h264 && !pids.pcr)
+					pids.pcr = pids.h264;
 				else if (pids.aud && !pids.pcr)
 					pids.pcr = pids.aud;
 				RefreshDuration(FALSE, pFileReader);
@@ -289,7 +291,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		pids.Clear();
 		pids.CopyFrom(&pidArray[m_pgmnumb]);
 
-		if (pids.vid != 0 || pids.aud != 0 || pids.ac3 != 0 || pids.txt != 0)
+		if (pids.vid != 0 || pids.h264 != 0 || pids.aud != 0 || pids.ac3 != 0 || pids.txt != 0)
 		{
 			hr = S_OK;
 		}
@@ -476,7 +478,14 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 				StreamType = (0xFF&pData[b]);
 
 				if (StreamType == 0x02)
+				{
 					pids.vid = pid;
+				}
+
+				if (StreamType == 0x1b)
+				{
+					pids.h264 = pid;
+				}
 
 				if ((StreamType == 0x03) || (StreamType == 0x04))
 				{
@@ -589,7 +598,7 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 	HRESULT hr = S_FALSE;
 
 	//exit if no a/v pids to find
-	if (pids.aud + pids.vid + pids.ac3 + pids.txt == 0)
+	if (pids.aud + pids.vid + pids.h264 + pids.ac3 + pids.txt == 0)
 		return hr;
 
 	ULONG a, b;
@@ -617,7 +626,7 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 				addlength = 0;
 			}
 
-				if (start == 0x40) {
+			if (start == 0x40) {
 				pesID = ( (255&pData[b+4+addlength])<<24
 						| (255&pData[b+5+addlength])<<16
 						| (255&pData[b+6+addlength])<<8
@@ -625,23 +634,22 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 				psiID = pesID>>16;
 
 				pid = ((0x1F & pData[b+1])<<8 | (0xFF & pData[b+2]));
-				if (((0xFF0&pesID)  == 0x1e0) && (pids.vid == pid) && pids.vid) {
-					return S_OK;
-				};
 
-				if (((0xFF0&pesID) == 0x1c0) && (pids.aud == pid) && pids.aud) {
-					return S_OK;
-				};
+				if (pid && ((pid == pids.vid) || (pid == pids.h264)))
+				{
+					//if ((0xFF0 & pesID) == 0x1e0)		// I'm not sure that is is necessary. H264 streams don't adhere to this
+					{
+						return S_OK;
+					}
+				}
 
-
-				if (((0xFF0&pesID) == 0x1c0) && (pids.ac3 == pid) && pids.ac3) {
-					return S_OK;
-				};
-
-				if (((0xFF0&pesID) == 0x1c0) && (pids.txt == pid) && pids.txt) {
-					return S_OK;
-				};
-
+				if (pid && ((pid == pids.aud) || (pid == pids.ac3) || (pid == pids.txt)))
+				{
+					//if ((0xFF0 & pesID) == 0x1c0)
+					{
+						return S_OK;
+					}
+				}
 			}
 			a += 188;
 		}
@@ -1559,6 +1567,7 @@ void PidParser::SetPidArray(int n)
 	pidInfo->TsArray[0] = 0;
 	AddTsPid(pidInfo, pids.pmt);	AddTsPid(pidInfo, pids.pcr);
 	AddTsPid(pidInfo, pids.vid);	AddTsPid(pidInfo, pids.aud);
+	AddTsPid(pidInfo, pids.h264);
 	AddTsPid(pidInfo, pids.txt);	AddTsPid(pidInfo, pids.ac3);
 	AddTsPid(pidInfo, 0x00);			AddTsPid(pidInfo, 0x10);
 	AddTsPid(pidInfo, 0x11);			AddTsPid(pidInfo, 0x12);

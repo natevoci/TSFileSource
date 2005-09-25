@@ -186,6 +186,8 @@ protected:
 	STDMETHODIMP GetClockMode(WORD *ClockMode);
 	STDMETHODIMP SetClockMode(WORD ClockMode);
 
+	STDMETHODIMP GetVideoPidType(BYTE * POINTER);
+
 protected:
 
 	CTSFileSourcePin *m_pPin;          // A simple rendered input pin

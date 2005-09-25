@@ -40,6 +40,7 @@ public:
 	void CopyTo(PidInfo *pidInfo);
 
 	int vid;
+	int h264;
 	int aud;
 	int aud2;
 	int ac3;
