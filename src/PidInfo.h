@@ -41,8 +41,11 @@ public:
 
 	int vid;
 	int h264;
+	int mpeg4;
 	int aud;
 	int aud2;
+	int aac;
+	int aac2;
 	int ac3;
 	int ac3_2;
 	int chnumb;
@@ -50,6 +53,7 @@ public:
 	int sid;
 	int pmt;
 	int pcr;
+	int opcr;
 	long bitrate;
 	__int64 start;
 	__int64 end;

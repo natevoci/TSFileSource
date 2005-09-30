@@ -47,9 +47,13 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_WasPlaying(FALSE),
 	m_WasPaused(FALSE),
 	m_bAC3Mode(TRUE),
+	m_StreamH264(FALSE),
+	m_StreamMpeg4(FALSE),
+	m_StreamVid(FALSE),
 	m_StreamAC3(FALSE),
 	m_StreamMP2(FALSE),
 	m_StreamAud2(FALSE),
+	m_StreamAAC(FALSE),
 	m_ClockMode(0),
 	m_bCreateTSPinOnDemux(FALSE)
 {
@@ -311,9 +315,23 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 			hr = NewVideoPin(muxInterface, L"Video");
 		}
 
+		if (!(m_StreamAC3 | m_StreamMP2)) {
+
+			USHORT pPid;
+			pPid = get_AAC_AudioPid();
+			// If we do have an AAC audio pid
+			if (m_StreamAAC || pPid) {
+				// Update AAC Pin
+				if (FAILED(CheckAACPin(pDemux))){
+					// If no AAC Pin was found
+					hr = NewAACPin(muxInterface, L"AAC");
+				}
+			}
+		}
+
 		// If we have AC3 preference and we are not forcing MP2 Stream
 		// or we are forcing an AC3 Stream
-		if (m_StreamAC3 || (m_bAC3Mode && !m_StreamMP2)){
+		if ((m_StreamAC3 && !m_StreamAAC) || (m_bAC3Mode && !m_StreamMP2 && !m_StreamAAC)){
 			// Update AC3 Pin
 			if (FAILED(CheckAC3Pin(pDemux))){
 				// If no AC3 Pin found
@@ -330,7 +348,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 					pPid = get_MP2AudioPid();
 					if (!pPid || m_StreamAC3){
 						// If we don't have a mp1/2 audio pid or we are forcing an AC3 Stream
-						pPid = get_AC3_2AudioPid();
+						pPid = get_AC3_AudioPid();
 						if (pPid && FAILED(CheckAC3Pin(pDemux))){
 							// change pin type if we do have a AC3 pid & can don't already have an AC3 pin
 							LPWSTR PinName = L"Audio";
@@ -357,7 +375,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 			else{
 				// If we already have a AC3 Pin
 				USHORT pPid;
-				pPid = get_AC3_2AudioPid();
+				pPid = get_AC3_AudioPid();
 				if (!pPid){
 					// If we don't have a AC3 Pid
 					pPid = get_MP2AudioPid();
@@ -397,7 +415,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 			else{
 				// If we already have a AC3 Pin
 				USHORT pPid;
-				pPid = get_AC3_2AudioPid();
+				pPid = get_AC3_AudioPid();
 				if (!pPid || m_StreamMP2){
 					// If we don't have a AC3 Pid or we are forcing an MP2 Stream
 					pPid = get_MP2AudioPid();
@@ -430,7 +448,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 				pPid = get_MP2AudioPid();
 				if (!pPid){
 					// If we don't have a mp1/2 Pid
-					pPid = get_AC3_2AudioPid();
+					pPid = get_AC3_AudioPid();
 					if (pPid && FAILED(CheckAC3Pin(pDemux))){
 						// change pin type if we do have a AC3 pid & can don't already have an AC3 pin
 						LPWSTR PinName = L"Audio";
@@ -754,9 +772,9 @@ HRESULT Demux::CheckVideoPin(IBaseFilter* pDemux)
 		return hr;
 
 	AM_MEDIA_TYPE pintype;
-	GetVideoMedia(&pintype);
-
 	IPin* pIPin = NULL;
+
+	GetVideoMedia(&pintype);
 	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
 		USHORT pPid;
@@ -777,7 +795,18 @@ HRESULT Demux::CheckVideoPin(IBaseFilter* pDemux)
 			return S_OK;
 		}
 	}
-	
+
+	GetMpeg4Media(&pintype);
+	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
+
+		USHORT pPid;
+		pPid = m_pPidParser->pids.mpeg4;
+		if SUCCEEDED(LoadVideoPin(pIPin, pPid)){
+			pIPin->Release();
+			return S_OK;
+		}
+	}
+
 	return hr;
 }
 
@@ -801,20 +830,43 @@ HRESULT Demux::CheckAudioPin(IBaseFilter* pDemux)
 			return S_OK;
 		};
 	}
-	else{
+	else
+	{
+		GetMP2Media(&pintype);
+		if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
-			GetMP2Media(&pintype);
-			if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
-
-				USHORT pPid;
-				pPid = get_MP2AudioPid();
-				if (SUCCEEDED(LoadAudioPin(pIPin, pPid))){
-					pIPin->Release();
-					return S_OK;
-				};
+			USHORT pPid;
+			pPid = get_MP2AudioPid();
+			if (SUCCEEDED(LoadAudioPin(pIPin, pPid))){
+				pIPin->Release();
+				return S_OK;
 			};
 		};
+	};
+	return hr;
+}
+
+HRESULT Demux::CheckAACPin(IBaseFilter* pDemux)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pDemux == NULL)
 		return hr;
+
+	AM_MEDIA_TYPE pintype;
+	GetAACMedia(&pintype);
+
+	IPin* pIPin = NULL;
+	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
+
+		USHORT pPid;
+		pPid = get_AAC_AudioPid();
+		if (SUCCEEDED(LoadAudioPin(pIPin, pPid))){
+			pIPin->Release();
+			return S_OK;
+		};
+	}
+	return hr;
 }
 
 HRESULT Demux::CheckAC3Pin(IBaseFilter* pDemux)
@@ -831,7 +883,7 @@ HRESULT Demux::CheckAC3Pin(IBaseFilter* pDemux)
 	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
 		USHORT pPid;
-		pPid = get_AC3_2AudioPid();
+		pPid = get_AC3_AudioPid();
 		if (SUCCEEDED(LoadAudioPin(pIPin, pPid))){
 			pIPin->Release();
 			return S_OK;
@@ -912,15 +964,20 @@ HRESULT Demux::NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	AM_MEDIA_TYPE type;
 	ZeroMemory(&type, sizeof(AM_MEDIA_TYPE));
 
-	if (m_pPidParser->pids.vid)
+	if (m_pPidParser->pids.mpeg4)
 	{
-		GetVideoMedia(&type);
-		pPid = m_pPidParser->pids.vid;
+		GetMpeg4Media(&type);
+		pPid = m_pPidParser->pids.mpeg4;
 	}
-	else
+	else if (m_pPidParser->pids.h264)
 	{
 		GetH264Media(&type);
 		pPid = m_pPidParser->pids.h264;
+	}
+	else
+	{
+		GetVideoMedia(&type);
+		pPid = m_pPidParser->pids.vid;
 	}
 
 	HRESULT hr = E_INVALIDARG;
@@ -970,7 +1027,7 @@ HRESULT Demux::NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 {
 	USHORT pPid;
-	pPid = get_AC3_2AudioPid();
+	pPid = get_AC3_AudioPid();
 
 	HRESULT hr = E_INVALIDARG;
 
@@ -980,6 +1037,30 @@ HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	// Create out new pin 
 	AM_MEDIA_TYPE type;
 	GetAC3Media(&type);
+
+	IPin* pIPin = NULL;
+	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
+	{
+		hr = LoadAudioPin(pIPin, (ULONG)pPid);
+		pIPin->Release();
+		hr = S_OK;
+	}
+	return hr;
+}
+
+HRESULT Demux::NewAACPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
+{
+	USHORT pPid;
+	pPid = get_AAC_AudioPid();
+
+	HRESULT hr = E_INVALIDARG;
+
+	if(muxInterface == NULL || pPid == 0)
+		return hr;
+
+	// Create out new pin 
+	AM_MEDIA_TYPE type;
+	GetAACMedia(&type);
 
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
@@ -1275,7 +1356,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 						}
 
 						USHORT pPid;
-						pPid = get_AC3_2AudioPid();
+						pPid = get_AC3_AudioPid();
 						LoadAudioPin(pIPin, pPid);
 						pIPin->Release();
 						hr = S_OK;
@@ -1330,7 +1411,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 							}
 
 							USHORT pPid;
-							pPid = get_AC3_2AudioPid();
+							pPid = get_AC3_AudioPid();
 							LoadAudioPin(pIPin, pPid);
 							pIPin->Release();
 							hr = S_OK;
@@ -1469,7 +1550,6 @@ HRESULT Demux::GetAC3Media(AM_MEDIA_TYPE *pintype)
 }
 
 HRESULT Demux::GetMP2Media(AM_MEDIA_TYPE *pintype)
-
 {
 	HRESULT hr = E_INVALIDARG;
 
@@ -1491,7 +1571,6 @@ HRESULT Demux::GetMP2Media(AM_MEDIA_TYPE *pintype)
 }
 
 HRESULT Demux::GetMP1Media(AM_MEDIA_TYPE *pintype)
-
 {
 	HRESULT hr = E_INVALIDARG;
 
@@ -1512,8 +1591,31 @@ HRESULT Demux::GetMP1Media(AM_MEDIA_TYPE *pintype)
 	return S_OK;
 }
 
-HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
+// {000000FF-0000-0010-8000-00AA00389B71}
+const GUID MEDIASUBTYPE_AAC = {0x00000FF, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71};
 
+HRESULT Demux::GetAACMedia(AM_MEDIA_TYPE *pintype)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pintype == NULL)
+		return hr;
+
+	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
+	pintype->majortype = MEDIATYPE_Audio;
+	pintype->subtype = MEDIASUBTYPE_AAC;
+	pintype->formattype = FORMAT_WaveFormatEx; 
+	pintype->cbFormat = sizeof(AACAudioFormat);
+	pintype->pbFormat = AACAudioFormat;
+	pintype->bFixedSizeSamples = TRUE;
+	pintype->bTemporalCompression = 0;
+	pintype->lSampleSize = 1;
+	pintype->pUnk = NULL;
+
+	return S_OK;
+}
+
+HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
@@ -1536,6 +1638,28 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 
 HRESULT Demux::GetH264Media(AM_MEDIA_TYPE *pintype)
 
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pintype == NULL)
+		return hr;
+
+	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
+	pintype->majortype = MEDIATYPE_Video;
+	pintype->subtype = FOURCCMap(MAKEFOURCC('h','2','6','4'));
+	pintype->bFixedSizeSamples = FALSE;
+	pintype->bTemporalCompression = TRUE;
+	pintype->lSampleSize = 1;
+
+	pintype->formattype = FORMAT_VideoInfo;
+	pintype->pUnk = NULL;
+	pintype->cbFormat = sizeof(H264VideoFormat);
+	pintype->pbFormat = H264VideoFormat;
+
+	return S_OK;
+}
+
+HRESULT Demux::GetMpeg4Media(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
@@ -1842,7 +1966,15 @@ int Demux::get_MP2AudioPid()
 		return m_pPidParser->pids.aud;
 }
 
-int Demux::get_AC3_2AudioPid()
+int Demux::get_AAC_AudioPid()
+{
+	if ((m_bMPEG2Audio2Mode && m_pPidParser->pids.aac2) || (m_StreamAud2 && m_pPidParser->pids.aac2))
+		return m_pPidParser->pids.aac2;
+	else
+		return m_pPidParser->pids.aac;
+}
+
+int Demux::get_AC3_AudioPid()
 {
 	if ((m_bMPEG2Audio2Mode && m_pPidParser->pids.ac3_2) || (m_StreamAud2 && m_pPidParser->pids.ac3_2))
 		return m_pPidParser->pids.ac3_2;

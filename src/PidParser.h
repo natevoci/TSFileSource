@@ -50,6 +50,7 @@ PidParser(FileReader *pFileReader);
 	static HRESULT FindFirstPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
 	static HRESULT FindLastPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
 	static HRESULT FindNextPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
+	static HRESULT FindNextOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
 	void get_ChannelNumber(BYTE *pointer);
 	void get_NetworkName(BYTE *pointer);
 	void get_ONetworkName(BYTE *pointer);
@@ -94,6 +95,7 @@ protected:
 		FileReader *pFileReader);
 
 	static HRESULT CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
+	static HRESULT CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
 
 	void AddPidArray();
 	void SetPidArray(int n);

@@ -142,6 +142,8 @@ protected:
 	REFERENCE_TIME m_rtLastCurrentTime;
 	__int64 m_LastFileSize;
 
+	__int64 m_IntLastStreamTime;
+
 public:
 	BOOL	m_DemuxLock;
 

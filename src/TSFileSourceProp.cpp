@@ -130,6 +130,14 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AUDIO2), sz);
 
+	m_pProgram->GetAACPid(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_AAC), sz);
+
+	m_pProgram->GetAAC2Pid(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_AAC2), sz);
+
 	m_pProgram->GetAC3Pid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AC3), sz);
@@ -410,45 +418,8 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 				case IDC_EPGINFO:
 				{
-					if (m_pProgram->GetEPGFromFile() == S_OK)
-					{
-						unsigned char netname[128];
-						unsigned char onetname[128];
-						unsigned char chname[128];
-						unsigned char chnumb[128];
-						unsigned char shortdescripor[128];
-						unsigned char Extendeddescripor[600];
-						unsigned char shortnextdescripor[128];
-						unsigned char Extendednextdescripor[600];
-						m_pProgram->GetNetworkName((unsigned char*)&netname);
-						m_pProgram->GetONetworkName((unsigned char*)&onetname);
-						m_pProgram->GetChannelName((unsigned char*)&chname);
-						m_pProgram->GetChannelNumber((unsigned char*)&chnumb);
-						m_pProgram->GetShortDescr((unsigned char*)&shortdescripor);
-						m_pProgram->GetExtendedDescr((unsigned char*)&Extendeddescripor);
-						m_pProgram->GetShortNextDescr((unsigned char*)&shortnextdescripor);
-						m_pProgram->GetExtendedNextDescr((unsigned char*)&Extendednextdescripor);
-						TCHAR szBuffer[(6*128)+ (2*600)];
-						sprintf(szBuffer, "Network Name:- %s\n"
-								"ONetwork Name:- %s\n"
-								"Channel Number:- %s\n"
-								"Channel Name:- %s\n\n"
-								"Program Name: - %s\n"
-								"Program Description:- %s\n\n"
-								"Next Program Name: - %s\n"
-								"Next Program Description:- %s\n"
-								,netname,
-								onetname,
-								chnumb,
-								chname,
-								shortdescripor,
-								Extendeddescripor,
-								shortnextdescripor,
-								Extendednextdescripor
-								);
-						MessageBox(NULL, szBuffer, TEXT("Program Infomation"), MB_OK);
-					}
-					OnRefreshProgram () ;
+					if (m_pProgram->ShowEPGInfo() == S_OK)
+						OnRefreshProgram () ;
 					break;
 				}
 

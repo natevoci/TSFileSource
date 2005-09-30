@@ -39,31 +39,37 @@ StreamInfo::~StreamInfo()
 void StreamInfo::Clear()
 {
 	Vid   = false;
+	H264  = false;
+	Mpeg4 = false;
 	Aud   = false;
 	Aud2  = false;
 	AC3   = false;
-	Pid  = 0;
-	ZeroMemory(&media, sizeof(media));
-	flags   = 0;
+	AAC   = false;
+	Pid   = 0;
+	ZeroMemory(&media, sizeof(AM_MEDIA_TYPE));
+	flags = 0;
 	lcid  = 0;
-	group   = 0;
-	ZeroMemory(name, 256);
-	object	= 0;
+	group = 0;
+	ZeroMemory(name, sizeof(name));
+	object = 0;
 	unk   = 0;
 }
 
 void StreamInfo::CopyFrom(StreamInfo *StreamInfo)
 {
 	Vid   = StreamInfo->Vid;
+	H264  = StreamInfo->H264;
+	Mpeg4   = StreamInfo->Mpeg4;
 	Aud   = StreamInfo->Aud;
 	Aud2  = StreamInfo->Aud2;
 	AC3   = StreamInfo->AC3;
+	AAC   = StreamInfo->AAC;
 	Pid   = StreamInfo->Pid;
-	memcpy(&media, &StreamInfo->media, sizeof(media));
+	memcpy(&media, &StreamInfo->media, sizeof(AM_MEDIA_TYPE));
 	flags   = StreamInfo->flags;
 	lcid  = StreamInfo->lcid;
 	group   = StreamInfo->group;
-	memcpy(name, StreamInfo->name, 256);
+	memcpy(name, StreamInfo->name, sizeof(StreamInfo->name));
 	object	= StreamInfo->object;
 	unk   = StreamInfo->unk;
 }

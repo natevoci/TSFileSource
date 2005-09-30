@@ -51,7 +51,7 @@ BEGIN
     EDITTEXT        IDC_AUDIO,159,46,20,12,ES_AUTOHSCROLL | ES_READONLY
     EDITTEXT        IDC_AUDIO2,179,46,20,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "AC3",IDC_STATIC,129,64,27,8
-    EDITTEXT        IDC_AC3,159,62,40,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_AC3,159,62,20,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "SID",IDC_STATIC,67,66,17,8
     EDITTEXT        IDC_SID,86,64,27,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Teletext",IDC_STATIC,129,96,27,8
@@ -79,8 +79,8 @@ BEGIN
     LTEXT           "Count",IDC_STATIC,74,180,20,8
     EDITTEXT        IDC_NID,34,64,27,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "NID",IDC_STATIC,15,66,15,8
-    EDITTEXT        IDC_AC3_2,159,78,40,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "AC3-2",IDC_STATIC,129,80,27,8
+    EDITTEXT        IDC_AC3_2,179,62,20,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "AAC",IDC_STATIC,129,80,27,8
     PUSHBUTTON      "&Next",IDC_NEXT,44,177,27,13,WS_GROUP
     EDITTEXT        IDC_ONID,34,78,27,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "ONID",IDC_STATIC,13,80,17,8
@@ -107,7 +107,9 @@ BEGIN
     CONTROL         "Render Clock",IDC_RENCLOCK,"Button",BS_AUTORADIOBUTTON | 
                     WS_GROUP,216,174,65,8
     EDITTEXT        IDC_VIDEOTYPE,159,30,40,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Vid Type",IDC_STATIC,129,32,28,8
+    LTEXT           "Vid Typ",IDC_STATIC,129,32,28,8
+    EDITTEXT        IDC_AAC,159,78,20,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_AAC2,179,78,20,12,ES_AUTOHSCROLL | ES_READONLY
 END
 
 
@@ -162,8 +164,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,1,0,9
- PRODUCTVERSION 2,1,0,9
+ FILEVERSION 2,1,1,0
+ PRODUCTVERSION 2,1,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -181,14 +183,14 @@ BEGIN
             VALUE "Comments", "Push Source filter for MPEG-2 Transport Stream Files.(BDA Compatable)\0"
             VALUE "CompanyName", "\0"
             VALUE "FileDescription", "TS File Source(AU)\0"
-            VALUE "FileVersion", "2, 1, 0, 9\0"
+            VALUE "FileVersion", "2, 1, 1, 0\0"
             VALUE "InternalName", "TS File Source(AU)\0"
             VALUE "LegalCopyright", "This filter is published under Gnu Public Licence © 2003. Written by DH & bear@forums.dvbowners.com & nate@forums.dvbowners.com.\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "TSFileSource.ax\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "TS File Source(AU)\0"
-            VALUE "ProductVersion", "2, 1, 0, 9\0"
+            VALUE "ProductVersion", "2, 1, 1, 0\0"
             VALUE "SpecialBuild", "\0"
         END
     END

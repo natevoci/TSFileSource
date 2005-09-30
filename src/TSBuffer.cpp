@@ -79,8 +79,11 @@ HRESULT CTSBuffer::Require(long nBytes)
 
 		__int64 currPosition = m_pFileReader->GetFilePointer();
 		HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulBytesRead);
-		if (FAILED(hr))
+		if (FAILED(hr)){
+
+			delete[] newItem;
 			return hr;
+		}
 
 		if (ulBytesRead < m_lTSBufferItemSize) 
 		{
@@ -103,17 +106,24 @@ HRESULT CTSBuffer::Require(long nBytes)
 					ULONG ulNextBytesRead = 0;				
 					m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
 					HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulNextBytesRead);
-					if (FAILED(hr))
-						return hr;
+					if (FAILED(hr)){
 
-					if ((ulNextBytesRead == 0) || (ulNextBytesRead == ulBytesRead))
+						delete[] newItem;
+						return hr;
+					}
+
+					if ((ulNextBytesRead == 0) || (ulNextBytesRead == ulBytesRead)){
+
+						delete[] newItem;
 						return E_FAIL;
+					}
 
 					ulBytesRead = ulNextBytesRead;
 				}
 			}
 			else
 			{
+				delete[] newItem;
 				return E_FAIL;
 			}
 		}

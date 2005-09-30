@@ -299,8 +299,14 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 	if(lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return S_FALSE;
 
-	if(ppmt)
-		*ppmt = &m_pStreamParser->StreamArray[lIndex].media;
+	if(ppmt) {
+
+        *ppmt = (AM_MEDIA_TYPE *)CoTaskMemAlloc(sizeof(AM_MEDIA_TYPE));
+        if (*ppmt == NULL)
+            return E_OUTOFMEMORY;
+
+        **ppmt = (AM_MEDIA_TYPE)m_pStreamParser->StreamArray[lIndex].media;
+	};
 
 	if(pdwGroup)
 		*pdwGroup = m_pStreamParser->StreamArray[lIndex].group;
@@ -311,8 +317,15 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 	if(plcid)
 		*plcid = m_pStreamParser->StreamArray[lIndex].lcid;
 
-	if(ppszName)
-		*ppszName = (WCHAR *)m_pStreamParser->StreamArray[lIndex].name;
+	if(ppszName) {
+
+        *ppszName = (WCHAR *)CoTaskMemAlloc(sizeof(m_pStreamParser->StreamArray[lIndex].name));
+        if (*ppszName == NULL)
+            return E_OUTOFMEMORY;
+
+		ZeroMemory(*ppszName, sizeof(m_pStreamParser->StreamArray[lIndex].name));
+		wcscpy(*ppszName, m_pStreamParser->StreamArray[lIndex].name);
+	}
 
 	if(ppObject)
 		*ppObject = (IUnknown *)m_pStreamParser->StreamArray[lIndex].object;
@@ -333,16 +346,30 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 	if (lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return E_INVALIDARG;
 
-	m_pDemux->m_StreamAC3 = m_pStreamParser->StreamArray[lIndex].AC3;
-	m_pDemux->m_StreamMP2 = m_pStreamParser->StreamArray[lIndex].Aud;
-	m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
-	SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
-	m_pStreamParser->SetStreamActive(m_pStreamParser->StreamArray[lIndex].group);
-	m_pDemux->m_StreamAC3 = 0;
-	m_pDemux->m_StreamMP2 = 0;
-	m_pDemux->m_StreamAud2 = 0;
-	SetRegProgram();
+	if (lIndex) {
+
+		m_pDemux->m_StreamVid = m_pStreamParser->StreamArray[lIndex].Vid;
+		m_pDemux->m_StreamH264 = m_pStreamParser->StreamArray[lIndex].H264;
+		m_pDemux->m_StreamMpeg4 = m_pStreamParser->StreamArray[lIndex].Mpeg4;
+		m_pDemux->m_StreamAC3 = m_pStreamParser->StreamArray[lIndex].AC3;
+		m_pDemux->m_StreamMP2 = m_pStreamParser->StreamArray[lIndex].Aud;
+		m_pDemux->m_StreamAAC = m_pStreamParser->StreamArray[lIndex].AAC;
+		m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
+		SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
+		m_pStreamParser->SetStreamActive(m_pStreamParser->StreamArray[lIndex].group);
+		m_pDemux->m_StreamVid = 0;
+		m_pDemux->m_StreamH264 = 0;
+		m_pDemux->m_StreamAC3 = 0;
+		m_pDemux->m_StreamMP2 = 0;
+		m_pDemux->m_StreamAud2 = 0;
+		m_pDemux->m_StreamAAC = 0;
+		SetRegProgram();
+	}
+	else
+		ShowEPGInfo();
+
 	return S_OK;
+
 } //IAMStreamSelect
 
 
@@ -396,6 +423,10 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 	if (start == 0)
 		start += 1000000;
 
+//***********************************************************************************************
+//Old Capture format Additions
+	if (m_pPidParser->pids.pcr) 
+//***********************************************************************************************
 	if(!IsActive())
 	{
 		m_pPin->m_DemuxLock = TRUE;
@@ -638,6 +669,8 @@ STDMETHODIMP CTSFileSourceFilter::GetVideoPidType(BYTE *pointer)
 		sprintf((char *)pointer, "MPEG 2");
 	else if (m_pPidParser->pids.h264)
 		sprintf((char *)pointer, "H.264");
+	else if (m_pPidParser->pids.mpeg4)
+		sprintf((char *)pointer, "MPEG 4");
 	else
 		sprintf((char *)pointer, "None");
 
@@ -664,6 +697,30 @@ STDMETHODIMP CTSFileSourceFilter::GetAudio2Pid(WORD *pA2Pid)
 
 	CAutoLock lock(&m_Lock);
 	*pA2Pid = m_pPidParser->pids.aud2;
+
+	return NOERROR;
+
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetAACPid(WORD *pAacPid)
+{
+	if(!pAacPid)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pAacPid = m_pPidParser->pids.aac;
+
+	return NOERROR;
+
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetAAC2Pid(WORD *pAac2Pid)
+{
+	if(!pAac2Pid)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pAac2Pid = m_pPidParser->pids.aac2;
 
 	return NOERROR;
 
@@ -940,7 +997,9 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	OnConnect();
 	Sleep(200);
 	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, NULL, NULL);
+
 	m_pPin->m_DemuxLock = FALSE;
+
 	CAMThread::CallWorker(CMD_RUN);
 
 	return NOERROR;
@@ -971,7 +1030,9 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	OnConnect();
 	Sleep(200);
 	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
+
 	m_pPin->m_DemuxLock = FALSE;
+
 	CAMThread::CallWorker(CMD_RUN);
 
 	return NOERROR;
@@ -1002,7 +1063,9 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	OnConnect();
 	Sleep(200);
 	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
+
 	m_pPin->m_DemuxLock = FALSE;
+
 	CAMThread::CallWorker(CMD_RUN);
 
 	return NOERROR;
@@ -1523,6 +1586,53 @@ HRESULT CTSFileSourceFilter::GetObjectFromROT(WCHAR* wsFullName, IUnknown **ppUn
 	}
 	return E_FAIL;
 }
+
+HRESULT CTSFileSourceFilter::ShowEPGInfo()
+{
+	HRESULT hr = GetEPGFromFile();
+
+	if (hr == S_OK)
+	{
+		unsigned char netname[128];
+		unsigned char onetname[128];
+		unsigned char chname[128];
+		unsigned char chnumb[128];
+		unsigned char shortdescripor[128];
+		unsigned char Extendeddescripor[600];
+		unsigned char shortnextdescripor[128];
+		unsigned char Extendednextdescripor[600];
+		GetNetworkName((unsigned char*)&netname);
+		GetONetworkName((unsigned char*)&onetname);
+		GetChannelName((unsigned char*)&chname);
+		GetChannelNumber((unsigned char*)&chnumb);
+		GetShortDescr((unsigned char*)&shortdescripor);
+		GetExtendedDescr((unsigned char*)&Extendeddescripor);
+		GetShortNextDescr((unsigned char*)&shortnextdescripor);
+		GetExtendedNextDescr((unsigned char*)&Extendednextdescripor);
+		TCHAR szBuffer[(6*128)+ (2*600)];
+		sprintf(szBuffer, "Network Name:- %s\n"
+		"ONetwork Name:- %s\n"
+		"Channel Number:- %s\n"
+		"Channel Name:- %s\n\n"
+		"Program Name: - %s\n"
+		"Program Description:- %s\n\n"
+		"Next Program Name: - %s\n"
+		"Next Program Description:- %s\n"
+			,netname,
+			onetname,
+			chnumb,
+			chname,
+			shortdescripor,
+			Extendeddescripor,
+			shortnextdescripor,
+			Extendednextdescripor
+			);
+			MessageBox(NULL, szBuffer, TEXT("Program Infomation"), MB_OK);
+	}
+	return hr;
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 // End of interface implementations
 //////////////////////////////////////////////////////////////////////////

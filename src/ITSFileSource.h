@@ -119,7 +119,8 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 
 //New method added after 2.0.1.8
 	STDMETHOD(GetVideoPidType) (THIS_ BYTE * pointer) PURE;
-
-
+	STDMETHOD (ShowEPGInfo)(void) PURE;
+	STDMETHOD(GetAACPid) (THIS_ WORD * pAacPid) PURE;
+	STDMETHOD(GetAAC2Pid) (THIS_ WORD * pAac2Pid) PURE;
 };
 

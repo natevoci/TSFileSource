@@ -31,6 +31,7 @@
 #include <streams.h>
 #include "TSFileSource.h"
 #include "TSFileSourceGuids.h"
+#include "DvbFormats.h"
 
 #define USE_EVENT
 #ifndef USE_EVENT
@@ -89,7 +90,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_LastFileSize = 0;
 
 	m_DemuxLock = FALSE;
-
+	m_IntLastStreamTime = 0;
 }
 
 CTSFileSourcePin::~CTSFileSourcePin()
@@ -271,8 +272,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 {
 	CheckPointer(pSample, E_POINTER);
 
-//	CAutoLock lock(&m_FillLock);
-
 	if (m_pFileReader->IsFileInvalid())
 	{
 		int count = 0;
@@ -313,6 +312,56 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	{
 		return S_FALSE;
 	}
+
+
+//*************************************************************************************************
+//Old Capture format Additions
+
+	__int64 firstPass = m_llPrevPCR;
+
+	if (!m_pPidParser->pids.pcr) {
+
+		__int64 intTimeDelta = 0;
+		CRefTime cTime;
+		m_pTSFileSourceFilter->StreamTime(cTime);
+		if (m_IntLastStreamTime > 20000000) {
+
+			intTimeDelta = (__int64)(REFERENCE_TIME(cTime) - m_IntLastStreamTime);
+			__int64 bitrate = ((__int64)lDataLength * (__int64)80000000) / intTimeDelta;
+			AddBitRateForAverage(bitrate);
+			m_pPidParser->pids.bitrate = m_DataRate;
+		}
+
+		{
+			CAutoLock lock(&m_SeekLock);
+			m_rtStart = REFERENCE_TIME(cTime) + m_rtLastSeekStart + intTimeDelta;
+		}
+
+		//Read from buffer
+		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
+
+		if (!m_IntLastStreamTime)
+		{
+			ULONG pos = 0;
+			LoadPATPacket(pData+pos, m_pPidParser->m_TStreamID, m_pPidParser->pids.sid, m_pPidParser->pids.pmt);
+			pos += 188;
+
+			if (!m_pPidParser->pids.pmt) 
+				LoadPMTPacket(pData+pos,
+							  m_pPidParser->pids.pcr,
+							  m_pPidParser->pids.vid,
+							  m_pPidParser->pids.aud,
+							  m_pPidParser->pids.aud2,
+							  m_pPidParser->pids.ac3,
+							  m_pPidParser->pids.ac3_2,
+							  m_pPidParser->pids.txt);
+		}
+
+
+		m_IntLastStreamTime = REFERENCE_TIME(cTime);
+		return NOERROR;
+	}
+//*************************************************************************************************
 
 	if (m_llPrevPCR == -1)
 	{
@@ -516,6 +565,63 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	//pSample->SetTime(&rtStart, &rtStart);
 //PrintTime("FillBuffer", (__int64)m_rtLastCurrentTime, 10000);
 
+//*************************************************************************************************
+//Old Capture format Additions
+
+	//If no TSID then we won't have a PAT so create one
+	if (!m_pPidParser->m_TStreamID && firstPass == -1)
+	{
+		ULONG pos = 0;
+		REFERENCE_TIME pcrPos = -1;
+
+		//Get the first occurance of a timing packet
+		hr = S_OK;
+		hr = m_pPidParser->FindNextPCR(pData, lDataLength, &m_pPidParser->pids, &pcrPos, &pos, 1); //Get the PCR
+		//If we have one then check if we can have room to insert a few packets	
+		if(pcrPos && (pos + 188*11) < lDataLength) {
+			//Insert a number of times
+			for (int i = 0; i < 5; i++)
+			{
+				pos+= 188; //shift to after last packet
+				LoadPATPacket(pData + pos, m_pPidParser->m_TStreamID, m_pPidParser->pids.sid, m_pPidParser->pids.pmt);
+
+				//Also insert a pmt if we don't have one already
+				if (!m_pPidParser->pids.pmt){ 
+					pos+= 188;	//shift to after last packet
+					LoadPMTPacket(pData + pos,
+						  m_pPidParser->pids.pcr,
+						  m_pPidParser->pids.vid,
+						  m_pPidParser->pids.aud,
+						  m_pPidParser->pids.aud2,
+						  m_pPidParser->pids.ac3,
+						  m_pPidParser->pids.ac3_2,
+						  m_pPidParser->pids.txt);
+				}
+			}
+		}
+	}
+	//If we need to insert a new PCR packet
+	if (m_pPidParser->pids.opcr) {
+
+		ULONG pos = 0;
+		REFERENCE_TIME pcrPos = -1;
+		hr = S_OK;
+		while (hr == S_OK) {
+			//Look for a timing packet
+			hr = m_pPidParser->FindNextOPCR(pData, lDataLength, &m_pPidParser->pids, &pcrPos, &pos, 1); //Get the PCR
+			if (pcrPos) {
+				//Insert our new PCR Packet
+//					LoadPCRPacket(pData + pos, 0, 0);
+//					LoadPCRPacket(pData + pos, 0, pcrPos);
+//PrintTime("Insert PCR packet", (__int64) pcrPos, 90);
+				break;
+			}
+			pos += 188;
+		};
+	}
+
+//*************************************************************************************************
+
 	return NOERROR;
 }
 
@@ -612,7 +718,8 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 		{
 			CAutoLock lock(&m_SeekLock);
 			rtCurrent += m_rtStart;
-			CurrentFlags -= AM_SEEKING_RelativePositioning;
+			CurrentFlags -= AM_SEEKING_RelativePositioning; //Remove relative flag
+			CurrentFlags += AM_SEEKING_AbsolutePositioning; //Replace with absoulute flag
 		}
 
 		if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
@@ -629,6 +736,7 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 				if(m_pTSFileSourceFilter->IsActive() && !m_DemuxLock)
 					SetDemuxClock(NULL);
 
+				CAutoLock fillLock(&m_FillLock);
 				DeliverBeginFlush();
 				CSourceStream::Stop();
 				m_DataRate = m_pPidParser->pids.bitrate;
@@ -641,8 +749,8 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 					m_rtStart = rtCurrent;
 				}
 				m_rtLastSeekStart = rtCurrent;
-				CSourceStream::Run();
 				DeliverEndFlush();
+				CSourceStream::Run();
 				CAutoLock lock(&m_SeekLock);
 				return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
 			}
@@ -705,6 +813,24 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 {
 
+//***********************************************************************************************
+//Old Capture format Additions
+
+	if (!m_pPidParser->pids.pcr) {
+			// Revert to old method
+			// shifting right by 14 rounds the seek and duration time down to the
+			// nearest multiple 16.384 ms. More than accurate enough for our seeks.
+		__int64 filelength = 0;
+		m_pFileReader->GetFileSize(&filelength);
+		__int64 nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pPidParser->pids.dur>>14);
+
+		if (nFileIndex < 300000)
+			nFileIndex = 300000; //Skip head of file
+		m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
+		return S_OK;
+	}
+//***********************************************************************************************
+
 //PrintTime("seekin", (__int64) seektime, 10000);
 
 	HRESULT hr;
@@ -730,7 +856,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 //This is where we create a pcr time relative to the current stream position
 //
 	//Set Pointer to end of file to get end pcr
-	m_pFileReader->SetFilePointer((__int64) - 1000000, FILE_END);
+	m_pFileReader->SetFilePointer((__int64) - lDataLength, FILE_END);
 	m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
 	pos = ulBytesRead - 188;
 	hr = S_OK;
@@ -768,8 +894,8 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	nFileIndex = (pcrDeltaSeekTime / (__int64)1000) * pcrByteRate;
 
 	// set back so we can get last batch of data if at end of file
-	if ((__int64)(nFileIndex + (__int64)1000000) > filelength)
-		nFileIndex = (__int64)(filelength - (__int64)1000000);
+	if ((__int64)(nFileIndex + (__int64)lDataLength) > filelength)
+		nFileIndex = (__int64)(filelength - (__int64)lDataLength);
 
 	if (nFileIndex < 0)
 		nFileIndex = 0;
@@ -794,12 +920,14 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 //PrintTime("seek+++++++++++++", (__int64) pcrPos, 90);
 	}
 
+	lDataLength = 4000000;
+
 	//Now we are close so setup the a +/- 2meg buffer
-	nFileIndex -= (__int64)2000000; //Centre buffer
+	nFileIndex -= (__int64)(lDataLength / 2); //Centre buffer
 
 	// set buffer start back from EOF so we can get last batch of data
-	if ((nFileIndex + 4000000) > filelength)
-		nFileIndex = (__int64)(filelength - (__int64)4000000);
+	if ((nFileIndex + lDataLength) > filelength)
+		nFileIndex = (__int64)(filelength - (__int64)lDataLength);
 
 	//shift buffer start to beginning of file if needed
 	if (nFileIndex < 0)
@@ -807,7 +935,6 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 
 	m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
 	ulBytesRead = 0;
-	lDataLength = 4000000;
 	m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
 
 	pcrPos = 0;
@@ -886,6 +1013,64 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 	HRESULT hr = E_FAIL;
 
 #define EC_DVB_DURATIONCHANGE  0x41E
+
+
+//***********************************************************************************************
+//Old Capture format Additions
+
+	if(!m_pPidParser->pids.pcr)
+	{
+		hr = S_FALSE;
+
+		if (m_bSeeking)
+			return hr;
+
+		REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+		REFERENCE_TIME rtStop = 0;
+
+		__int64	fileSize = 0;
+		pFileReader->GetFileSize(&fileSize);
+		 __int64 calcDuration = (__int64)(fileSize / (__int64)((__int64)m_DataRate / (__int64)8000));
+		calcDuration = (__int64)(calcDuration * (__int64)10000);
+		if ((__int64)m_pPidParser->pids.dur < calcDuration && m_BitRateCycle < 50)
+		{
+			if (!m_bSeeking)
+			{
+				m_pPidParser->pids.dur = (REFERENCE_TIME)calcDuration;
+				for (int i = 0; i < m_pPidParser->pidArray.Count(); i++)
+				{
+					m_pPidParser->pidArray[i].dur = m_pPidParser->pids.dur;
+				}
+				m_rtDuration = m_pPidParser->pids.dur;
+				m_rtStop = m_pPidParser->pids.dur;
+			}
+
+			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime) {
+				//Get CSourceSeeking current time.
+				CSourceSeeking::GetPositions(&rtCurrentTime, &rtStop);
+				//Test if we had been seeking recently and wait 2sec if so.
+				if ((REFERENCE_TIME)(m_rtLastSeekStart + (REFERENCE_TIME)20000000) < rtCurrentTime) {
+
+					//Send event to update filtergraph clock.
+					if (!m_bSeeking)
+					{
+						m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+						m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
+						hr = S_OK;
+					}
+				}
+			}
+			//Send a Custom Duration update for applications. 
+			if (!m_bSeeking)
+				m_pTSFileSourceFilter->NotifyEvent(EC_DVB_DURATIONCHANGE, NULL, NULL);
+
+			Sleep(1000);
+		}
+		return hr;
+	}
+
+//***********************************************************************************************
+
 
 	WORD readonly = 0;
 	pFileReader->get_ReadOnly(&readonly);
@@ -1165,7 +1350,11 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 				IMpeg2Demultiplexer* muxInterface = NULL;
 				if(SUCCEEDED(pFilter->QueryInterface (&muxInterface)))
 				{
-					pFilter->SetSyncSource(pClock);
+//***********************************************************************************************
+//Old Capture format Additions
+					if (m_pPidParser->pids.pcr) // && !m_pPidParser->pids.opcr) 
+//***********************************************************************************************
+						pFilter->SetSyncSource(pClock);
 					muxInterface->Release();
 				}
 				pFilter->Release();
@@ -1299,10 +1488,5 @@ HRESULT CTSFileSourcePin::GetNextFilter(
     // Did not find a matching filter.
     return E_FAIL;
 }
-
-
-
-
-
 
 

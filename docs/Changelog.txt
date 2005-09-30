@@ -1,6 +1,20 @@
+Version 2.1.1.0
+=================
+Fixed a divide by zero issue in the pidparser::Getduration that occured on low bitrate files.
+Added AAC audio support.
+Fixed a problem with the IAMStreamSelect::Info function, returns the Mediatype correctly as well as the Name.
+Fixed a few issues with the new h264 video additions.
+Fixed some more potential memory leaks in some of the various Get PCR Functions.
+Made the Stream Select Function display the EPG info when the first Stream position is selected.
+Made some improvments to the Stream Select Display format.
+Added some data packet injection code to allow viewing of the older capture formats, will only work with the
+Longhorn Demux though for some Network capture formats.(i.e missing pcr's)
+Removed the Random Access flag from the file reader, re WS File Writer problem fix.
+Added a ShowEPGInfo function to the ITSFileSource interface.
+
 Version 2.1.0.9
 =================
-Added support for h264 video streams.
+Added support for h264 video streams.(nate)
 
 Version 2.1.0.8
 =================

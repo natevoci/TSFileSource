@@ -242,25 +242,63 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 			{
 				//Set the pcr to video or audio incase its included in packet
 				USHORT pcrsave = pids.pcr;
-				if (pids.vid && !pids.pcr)
-					pids.pcr = pids.vid;
-				else if (pids.h264 && !pids.pcr)
-					pids.pcr = pids.h264;
-				else if (pids.aud && !pids.pcr)
-					pids.pcr = pids.aud;
-				RefreshDuration(FALSE, pFileReader);
-				//pids.start = GetPCRFromFile(1);
-				//pids.end = GetPCRFromFile(-1);
-				//pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
 
+				if (!pids.dur && pids.pcr) {
+					RefreshDuration(FALSE, pFileReader);
+				}
+
+				if (!pids.dur && pids.vid) {
+					pids.pcr = pids.vid;
+					RefreshDuration(FALSE, pFileReader);
+				}
+
+				if (!pids.dur && pids.h264) {
+					pids.pcr = pids.h264;
+					RefreshDuration(FALSE, pFileReader);
+				}
+					
+				if (!pids.dur && pids.aud) {
+					pids.pcr = pids.aud;
+					RefreshDuration(FALSE, pFileReader);
+				}
+						
+				if (!pids.dur && pids.aud2) {
+					pids.pcr = pids.aud;
+					RefreshDuration(FALSE, pFileReader);
+				}
+				
+				if (!pids.dur && pids.ac3) {
+					pids.pcr = pids.aud;
+					RefreshDuration(FALSE, pFileReader);
+				}
+
+				if (!pids.dur && pids.ac3_2) {
+					pids.pcr = pids.aud;
+					RefreshDuration(FALSE, pFileReader);
+				}
+
+				if (!pids.dur && pids.txt) {
+					pids.pcr = pids.aud;
+					RefreshDuration(FALSE, pFileReader);
+				}
+
+				if (!pids.dur && pids.vid) {
+					pids.pcr = pids.vid;
+					pids.opcr = pids.pcr;
+					RefreshDuration(FALSE, pFileReader);
+				}
 				// restore pcr pid if no matches with A/V pids
-				if (!pids.dur)
+				if (!pids.dur) {
+					//set fake duration if needed
 					pids.pcr = pcrsave;
+					RefreshDuration(FALSE, pFileReader);
+				}
 
 				AddPidArray();
 			}
 		}
-		
+
+
 		//Scan for missing durations & Fix
 		for (int n = 0; n < pidArray.Count(); n++){
 			//Search Duration Array for the first duration
@@ -356,6 +394,29 @@ HRESULT PidParser::RefreshPids()
 
 HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 {
+//*********************************************************************************************
+//Old Capture format Additions
+
+	if (!pids.pcr) {
+		//Set our fake duration
+		__int64 filelength;
+		pFileReader->GetFileSize(&filelength);
+
+		__int64 calcDuration = (REFERENCE_TIME)(filelength / (__int64)((__int64)pids.bitrate / (__int64)8000));
+		pids.dur = (REFERENCE_TIME)(calcDuration * (__int64)10000);
+		
+		//Refresh all the sub program durations in the pid array
+		if (bStoreInArray) {
+			for (int i = 0; i < pidArray.Count(); i++)
+			{
+				pidArray[i].dur = pids.dur;
+			}
+		}
+		return S_OK;
+	}
+//*********************************************************************************************
+
+
 	__int64 originalFilePointer = pFileReader->GetFilePointer();
 
 	//pids.start = GetPCRFromFile(1);
@@ -487,6 +548,11 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 					pids.h264 = pid;
 				}
 
+				if (StreamType == 0x10)
+				{
+					pids.mpeg4 = pid;
+				}
+
 				if ((StreamType == 0x03) || (StreamType == 0x04))
 				{
 					if (pids.aud != 0)
@@ -520,7 +586,7 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 					}
 				}
 
-				if (StreamType == 0x81 || StreamType == 0x83 || StreamType == 0x85)
+				if (StreamType == 0x81 || StreamType == 0x83 || StreamType == 0x85 || StreamType == 0x8a)
 				{
 					if (pids.ac3 == 0)
 						pids.ac3 = pid;
@@ -531,6 +597,12 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 				if (StreamType == 0x0b)
 					if (pids.txt == 0)
 						pids.txt = pid;
+
+				if (StreamType == 0x0f) // AAC
+					if (pids.aac == 0)
+						pids.aac = pid;
+					else
+						pids.aac2 = pid;
 
 				b+=EsDescLen;
 			}
@@ -561,11 +633,130 @@ HRESULT PidParser::CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, 
 							((REFERENCE_TIME)(0xFF & pData[pos+9])<<1)  |
 							((REFERENCE_TIME)(0x80 & pData[pos+10])>>7);
 
+				//A true PCR has been found so drop the other OPCR search
+				pPids->opcr = 0;
+
 				return S_OK;
 		};
 	}
-		return S_FALSE;
+
+//*********************************************************************************************
+//Old Capture format Additions
+
+
+	if ((WORD)((0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2])) == pPids->opcr &&
+		(WORD)(pData[pos+1]&0xF0) == 0x40)
+	{
+		if (((pData[pos+3] & 0x10) == 0x10)
+			&& ((pData[pos+4]) == 0x00)
+			&& ((pData[pos+5]) == 0x00)
+			&& ((pData[pos+6]) == 0x01)
+			&& ((pData[pos+7]) == 0xEA)
+			&& ((pData[pos+8] | pData[pos+9]) == 0x00)
+			&& ((pData[pos+10] & 0xC0) == 0x80)
+			&& ((pData[pos+11] & 0xC0) == 0x80 || (pData[pos+11] & 0xC0) == 0xC0)
+			&& (pData[pos+12] >= 0x05)
+			)
+		{
+			// Get PTS
+			if((0xF0 & pData[pos+13]) == 0x10 || (0xF0 & pData[pos+13]) == 0x30) {
+
+				*pcrtime =	((REFERENCE_TIME)(0x0C & pData[pos+13])<<29) |
+							((REFERENCE_TIME)(0xFF & pData[pos+14])<<22) |
+							((REFERENCE_TIME)(0xFE & pData[pos+15])<<14) |
+							((REFERENCE_TIME)(0xFF & pData[pos+16])<<7)  |
+							((REFERENCE_TIME)(0xFE & pData[pos+17])>>1);
+				return S_OK;
+			}
+			// Get DTS
+			if((0xF0 & pData[pos+18]) == 0x10) {
+
+				*pcrtime =	((REFERENCE_TIME)(0x0C & pData[pos+18])<<29) |
+							((REFERENCE_TIME)(0xFF & pData[pos+19])<<22) |
+							((REFERENCE_TIME)(0xFE & pData[pos+20])<<14) |
+							((REFERENCE_TIME)(0xFF & pData[pos+21])<<7)  |
+							((REFERENCE_TIME)(0xFE & pData[pos+22])>>1);
+				return S_OK;
+			}
+		};
+	}
+
+//*********************************************************************************************
+
+	return S_FALSE;
 }
+
+//*********************************************************************************************
+//Old Capture format Additions
+
+HRESULT PidParser::CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime)
+{
+	if ((WORD)((0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2])) == pPids->opcr &&
+		(WORD)(pData[pos+1]&0xF0) == 0x40)
+	{
+//		if (((pData[pos+3] & 0x1F) == 0x10)
+		if (((pData[pos+3] & 0x10) == 0x10)
+			&& ((pData[pos+4]) == 0x00)
+			&& ((pData[pos+5]) == 0x00)
+			&& ((pData[pos+6]) == 0x01)
+			&& ((pData[pos+7]) == 0xEA)
+			&& ((pData[pos+8] | pData[pos+9]) == 0x00)
+			&& ((pData[pos+10] & 0xC0) == 0x80)
+			&& ((pData[pos+11] & 0xC0) == 0x80 || (pData[pos+11] & 0xC0) == 0xC0)
+			&& (pData[pos+12] >= 0x05)
+			)
+		{
+			// Get PTS
+			if((0xF0 & pData[pos+13]) == 0x10 || (0xF0 & pData[pos+13]) == 0x30) {
+
+				*pcrtime =	((REFERENCE_TIME)(0x0C & pData[pos+13])<<29) |
+							((REFERENCE_TIME)(0xFF & pData[pos+14])<<22) |
+							((REFERENCE_TIME)(0xFE & pData[pos+15])<<14) |
+							((REFERENCE_TIME)(0xFF & pData[pos+16])<<7)  |
+							((REFERENCE_TIME)(0xFE & pData[pos+17])>>1);
+				return S_OK;
+			}
+			// Get DTS
+			if((0xF0 & pData[pos+18]) == 0x10) {
+
+
+				*pcrtime =	((REFERENCE_TIME)(0x0C & pData[pos+18])<<29) |
+							((REFERENCE_TIME)(0xFF & pData[pos+19])<<22) |
+							((REFERENCE_TIME)(0xFE & pData[pos+20])<<14) |
+							((REFERENCE_TIME)(0xFF & pData[pos+21])<<7)  |
+							((REFERENCE_TIME)(0xFE & pData[pos+22])>>1);
+				return S_OK;
+			}
+		};
+	}
+	return S_FALSE;
+}
+
+HRESULT PidParser::FindNextOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step)
+{
+	HRESULT hr = S_OK;
+
+	*pcrtime = 0;
+
+	while( *pcrtime == 0 && hr == S_OK)
+	{
+		hr = FindSyncByte(pData, ulDataLength, pulPos, step);
+		if (FAILED(hr))
+			return hr;
+
+		if (S_FALSE == CheckForOPCR(pData, ulDataLength, pPids, *pulPos, pcrtime))
+		{
+			*pulPos = *pulPos + (step * 188);
+		}
+		else
+		{
+			return S_OK;
+		}
+	}
+	return E_FAIL;
+}
+
+//*********************************************************************************************
 
 BOOL PidParser::CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos, int lastpos)
 {
@@ -650,6 +841,15 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 						return S_OK;
 					}
 				}
+
+				if (((0xFF0&pesID) == 0x1b0) && (pids.ac3 == pid) && pids.ac3) {
+					return S_OK;
+				};
+
+				if (((0xFF0&pesID) == 0x1b0) && (pids.txt == pid) && pids.txt) {
+					return S_OK;
+				};
+
 			}
 			a += 188;
 		}
@@ -705,8 +905,11 @@ REFERENCE_TIME PidParser::GetPCRFromFile(int step)
 	ULONG lDataRead = 0;
 
 	m_pFileReader->Read(pData, lDataLength, &lDataRead, 0, (step > 0) ? FILE_BEGIN : FILE_END);
-	if (lDataRead <= 188)
+	if (lDataRead <= 188){
+
+		delete[] pData;
 		return 0;
+	}
 	
 	ULONG a = (step > 0) ? 0 : lDataRead-188;
 
@@ -763,12 +966,23 @@ HRESULT PidParser::ACheckVAPids(PBYTE pData, ULONG ulDataLength)
 					pids.vid = pid;
 
 				};
+
 				if ((0xFF0&pesID) == 0x1c0) {
 					if (pids.aud == 0) {
 						pids.aud = pid;
 					} else {
 						if (pids.aud != pid) {
 							pids.aud2 = pid;
+						}
+					}
+				};
+
+				if ((0xFF0&pesID) == 0x1b0) {
+					if (pids.ac3 == 0) {
+						pids.ac3 = pid;
+					} else {
+						if (pids.ac3 != pid) {
+							pids.ac3_2 = pid;
 						}
 					}
 				};
@@ -792,8 +1006,11 @@ HRESULT PidParser::CheckEPGFromFile()
 		pFileReader->SetFileName(fileName);
 
 		hr = pFileReader->OpenFile();
-		if (FAILED(hr))
+		if (FAILED(hr)) {
+
+			delete pFileReader;
 			return VFW_E_INVALIDMEDIATYPE;
+		}
 
 		int Event = 0; //Start with NOW event
 		bool extPacket = false; //Start at first packet
@@ -1385,8 +1602,8 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 //***********************************************************************************************
 			if (totalduration > 0 && calcDuration == 0) {
 				//Only do this once even if we have a partial duration.
-				kByteRate = (__int64) (endFilePos / totalduration);
-				calcDuration = 	(REFERENCE_TIME)(filelength / kByteRate);
+				kByteRate = (__int64) ((endFilePos*(__int64)100) / totalduration);
+				calcDuration = 	(REFERENCE_TIME)((filelength / kByteRate)/100);
 //				kByteRate = (__int64) ((endFilePos *(__int64)10000) / totalduration);
 //				calcDuration = 	(REFERENCE_TIME)((filelength / kByteRate)*(__int64)10000);
 			}

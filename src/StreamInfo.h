@@ -41,9 +41,12 @@ public:
 	void CopyTo(StreamInfo *StreamInfo);
 
 	bool Vid;
+	bool H264;
+	bool Mpeg4;
 	bool Aud;
 	bool Aud2;
 	bool AC3;
+	bool AAC;
 	int  Pid;
 	AM_MEDIA_TYPE media;
 	DWORD flags;

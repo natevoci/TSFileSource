@@ -61,9 +61,13 @@ HRESULT StreamParser::ParsePidArray()
 	streams.Clear();
 	LoadStreamArray(0);
 	AddStreamArray();
-	TCHAR szBuffer[128];
-	sprintf(szBuffer,"  >>>> %s <<<<", m_pPidParser->m_NetworkName);
-	mbstowcs(StreamArray[index].name, (const char*)&szBuffer, 128);
+	TCHAR szBuffer[256];
+	if (m_pPidParser->m_NetworkName[0] == 0)
+		sprintf(szBuffer,"  Program Info Unavailable", m_pPidParser->m_NetworkName);
+	else
+		sprintf(szBuffer,"  %s Program Information", m_pPidParser->m_NetworkName);
+
+	mbstowcs(StreamArray[index].name, (const char*)&szBuffer, 256);
 	ZeroMemory(szBuffer, sizeof(szBuffer));
 	m_pDemux->GetVideoMedia(&StreamArray[index].media);
 	index++;
@@ -76,21 +80,52 @@ HRESULT StreamParser::ParsePidArray()
 		//Setup Video Track
 		AddStreamArray();
 		TCHAR szBuffer[400];
-		sprintf(szBuffer,"  %s - %i : %s", m_pPidParser->pidArray[count].onetname,
-										m_pPidParser->pidArray[count].chnumb,
-										m_pPidParser->pidArray[count].chname);
-		mbstowcs(StreamArray[index].name, (const char*)&szBuffer, 256);
-		StreamArray[index].Pid = m_pPidParser->pidArray[count].vid;
+		if (m_pPidParser->pidArray[count].chnumb == 0)
+			sprintf(szBuffer,"   ");
+		else
+			sprintf(szBuffer,"   %i : ", m_pPidParser->pidArray[count].chnumb);
+
+		if (m_pPidParser->pidArray[count].chname[0] == 0) {
+
+			strcat(szBuffer,"Program ");
+			TCHAR sz[32];
+			sprintf(sz, "%i", count + 1);
+			strcat(szBuffer, sz);
+		}
+		else
+			strcat(szBuffer, (const char *)&m_pPidParser->pidArray[count].chname);
+
+
+		if (m_pPidParser->pidArray[count].onetname[0] == 0)
+			strcat(szBuffer," [Network Unknown]");
+		else {
+
+			strcat(szBuffer," [");
+			strcat(szBuffer, (const char *)&m_pPidParser->pidArray[count].onetname);
+			strcat(szBuffer,"]");
+		}
+			
+		mbstowcs(StreamArray[index].name, (const char*)&szBuffer, sizeof(szBuffer));
 		StreamArray[index].lcid = 0;
-		if (m_pPidParser->pidArray[count].vid)
+		m_pDemux->GetVideoMedia(&StreamArray[index].media);
+
+		if (m_pPidParser->pidArray[count].h264)
 		{
+			StreamArray[index].Pid = m_pPidParser->pidArray[count].h264;
+			StreamArray[index].H264 = true;
+			m_pDemux->GetH264Media(&StreamArray[index].media);
+		}
+		else if (m_pPidParser->pidArray[count].mpeg4)
+		{
+			StreamArray[index].Pid = m_pPidParser->pidArray[count].mpeg4;
+			StreamArray[index].Mpeg4 = true;
+			m_pDemux->GetMpeg4Media(&StreamArray[index].media);
+		}
+		else if (m_pPidParser->pidArray[count].vid)
+		{
+			StreamArray[index].Pid = m_pPidParser->pidArray[count].vid;
 			StreamArray[index].Vid = true;
 			m_pDemux->GetVideoMedia(&StreamArray[index].media);
-		}
-		else if (m_pPidParser->pidArray[count].h264)
-		{
-			StreamArray[index].Vid = true;
-			m_pDemux->GetH264Media(&StreamArray[index].media);
 		}
 		index++;
 
@@ -108,7 +143,7 @@ HRESULT StreamParser::ParsePidArray()
 		if (m_pPidParser->pidArray[count].aud2)
 		{
 			AddStreamArray();
-			StreamArray[index].AC3 = true;
+			StreamArray[index].Aud = true;
 			StreamArray[index].Aud2 = true;
 			m_pDemux->GetMP2Media(&StreamArray[index].media);
 			StreamArray[index].Pid = m_pPidParser->pidArray[count].aud2;
@@ -134,6 +169,27 @@ HRESULT StreamParser::ParsePidArray()
 			StreamArray[index].Pid = m_pPidParser->pidArray[count].ac3_2;
 			m_pDemux->GetAC3Media(&StreamArray[index].media);
 			wcscat(StreamArray[index].name, L"        AC3 Audio Track 2");
+			StreamArray[index].lcid = MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_NEUTRAL), SORT_DEFAULT);
+			index++;
+		}
+		if (m_pPidParser->pidArray[count].aac)
+		{
+			AddStreamArray();
+			StreamArray[index].AAC = true;
+			StreamArray[index].Pid = m_pPidParser->pidArray[count].aac;
+			m_pDemux->GetAACMedia(&StreamArray[index].media);
+			wcscat(StreamArray[index].name, L"        AAC Audio Track");
+			StreamArray[index].lcid = MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_NEUTRAL), SORT_DEFAULT);
+			index++;
+		}
+		if (m_pPidParser->pidArray[count].aac2)
+		{
+			AddStreamArray();
+			StreamArray[index].AAC = true;
+			StreamArray[index].Aud2 = true;
+			StreamArray[index].Pid = m_pPidParser->pidArray[count].aac2;
+			m_pDemux->GetAACMedia(&StreamArray[index].media);
+			wcscat(StreamArray[index].name, L"        AAC Audio Track 2");
 			StreamArray[index].lcid = MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_NEUTRAL), SORT_DEFAULT);
 			index++;
 		}

@@ -167,6 +167,10 @@ SOURCE=.\src\Demux.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\DvbFormats.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\FileReader.h
 # End Source File
 # Begin Source File

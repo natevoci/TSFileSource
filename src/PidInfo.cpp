@@ -40,8 +40,11 @@ void PidInfo::Clear()
 {
 	vid   = 0;
 	h264  = 0;
+	mpeg4 = 0;
 	aud   = 0;
 	aud2  = 0;
+	aac   = 0;
+	aac2  = 0;
 	ac3   = 0;
 	ac3_2   = 0;
 	chnumb	= 0;
@@ -56,6 +59,7 @@ void PidInfo::Clear()
 	sid   = 0;
 	pmt   = 0;
 	pcr   = 0;
+	opcr  = 0;
 	start = 0;
 	end   = 0;
 	dur   = 0;
@@ -70,8 +74,11 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 {
 	vid   = pidInfo->vid;
 	h264  = pidInfo->h264;
+	mpeg4 = pidInfo->mpeg4;
 	aud   = pidInfo->aud;
 	aud2  = pidInfo->aud2;
+	aac   = pidInfo->aac;
+	aac2  = pidInfo->aac2;
 	ac3   = pidInfo->ac3;
 	ac3_2   = pidInfo->ac3_2;
 	chnumb	= pidInfo->chnumb;
@@ -86,6 +93,7 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 	sid   = pidInfo->sid;
 	pmt   = pidInfo->pmt;
 	pcr   = pidInfo->pcr;
+	opcr   = pidInfo->opcr;
 	start = pidInfo->start;
 	end   = pidInfo->end;
 	dur   = pidInfo->dur;

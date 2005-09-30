@@ -187,6 +187,9 @@ protected:
 	STDMETHODIMP SetClockMode(WORD ClockMode);
 
 	STDMETHODIMP GetVideoPidType(BYTE * POINTER);
+	STDMETHODIMP ShowEPGInfo();
+	STDMETHODIMP GetAACPid(WORD *pAacPid);
+	STDMETHODIMP GetAAC2Pid(WORD *pAac2Pid);
 
 protected:
 

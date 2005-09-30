@@ -61,13 +61,16 @@ public:
 	void set_ClockMode(int clockMode);
 	void SetRefClock();
 	int  get_MP2AudioPid();
-	int  get_AC3_2AudioPid();
+	int  get_AAC_AudioPid();
+	int  get_AC3_AudioPid();
 	int get_ClockMode();
 	HRESULT	GetAC3Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetMP2Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetMP1Media(AM_MEDIA_TYPE *pintype);
+	HRESULT	GetAACMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetVideoMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT GetH264Media(AM_MEDIA_TYPE *pintype);
+	HRESULT GetMpeg4Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetTelexMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetTSMedia(AM_MEDIA_TYPE *pintype);
 
@@ -76,12 +79,14 @@ protected:
 	HRESULT CheckDemuxPin(IBaseFilter* pDemux, AM_MEDIA_TYPE pintype, IPin** pIPin);
 	HRESULT CheckVideoPin(IBaseFilter* pDemux);
 	HRESULT CheckAudioPin(IBaseFilter* pDemux);
+	HRESULT CheckAACPin(IBaseFilter* pDemux);
 	HRESULT CheckAC3Pin(IBaseFilter* pDemux);
 	HRESULT CheckTelexPin(IBaseFilter* pDemux);
 	HRESULT CheckTsPin(IBaseFilter* pDemux);
 	HRESULT	NewTsPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
+	HRESULT	NewAACPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewTelexPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	LoadTsPin(IPin* pIPin);
@@ -128,9 +133,13 @@ protected:
 
 public:
 
+	BOOL m_StreamH264;
+	BOOL m_StreamMpeg4;
+	BOOL m_StreamVid;
 	BOOL m_StreamAC3;
 	BOOL m_StreamMP2;
 	BOOL m_StreamAud2;
+	BOOL m_StreamAAC;
 	int  m_SelAudioPid;
 	int  m_SelVideoPid;
 };

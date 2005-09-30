@@ -48,6 +48,8 @@
 #define IDC_NETID                       1035
 #define IDC_ROTMODE                     1036
 #define IDC_VIDEOTYPE                   1037
+#define IDC_AAC                         1038
+#define IDC_AAC2                        1039
 #define IDC_DEFCLOCK                    1040
 #define IDC_DEMCLOCK                    1041
 #define IDC_RENCLOCK                    1042
@@ -56,7 +58,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        102
+#define _APS_NEXT_RESOURCE_VALUE        103
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1030
 #define _APS_NEXT_SYMED_VALUE           101
