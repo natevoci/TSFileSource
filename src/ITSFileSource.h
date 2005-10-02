@@ -122,5 +122,8 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 	STDMETHOD (ShowEPGInfo)(void) PURE;
 	STDMETHOD(GetAACPid) (THIS_ WORD * pAacPid) PURE;
 	STDMETHOD(GetAAC2Pid) (THIS_ WORD * pAac2Pid) PURE;
+	STDMETHOD(GetCreateTxtPinOnDemux) (THIS_ WORD * pbCreatePin) PURE;
+	STDMETHOD(SetCreateTxtPinOnDemux) (THIS_ WORD bCreatePin) PURE;
+
 };
 

@@ -186,10 +186,13 @@ protected:
 	STDMETHODIMP GetClockMode(WORD *ClockMode);
 	STDMETHODIMP SetClockMode(WORD ClockMode);
 
+//New method added after 2.0.1.8
 	STDMETHODIMP GetVideoPidType(BYTE * POINTER);
 	STDMETHODIMP ShowEPGInfo();
 	STDMETHODIMP GetAACPid(WORD *pAacPid);
 	STDMETHODIMP GetAAC2Pid(WORD *pAac2Pid);
+	STDMETHODIMP GetCreateTxtPinOnDemux(WORD *pbCreatePin);
+	STDMETHODIMP SetCreateTxtPinOnDemux(WORD bCreatePin);
 
 protected:
 

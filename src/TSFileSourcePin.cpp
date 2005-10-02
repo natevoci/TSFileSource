@@ -1102,7 +1102,7 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 				for (int i = 0; i < m_pPidParser->pidArray.Count(); i++)
 				{
 					m_pPidParser->pidArray[i].dur = m_pPidParser->pids.dur;
-					m_pPidParser->pidArray[i].end += (__int64)((__int64)((__int64)deltaDuration * (__int64)9) / (__int64)1000);;;
+					m_pPidParser->pidArray[i].end += (__int64)((__int64)((__int64)deltaDuration * (__int64)9) / (__int64)1000);
 				}
 				secondDelay = true;
 			}

@@ -85,6 +85,11 @@ BOOL CSettingsStore::getCreateTSPinOnDemuxReg()
 	return tsPinMode;
 }
 
+BOOL CSettingsStore::getCreateTxtPinOnDemuxReg()
+{
+	return txtPinMode;
+}
+
 BOOL CSettingsStore::getDelayModeReg()
 {
 	return delayMode;
@@ -148,6 +153,12 @@ void CSettingsStore::setAC3ModeReg(BOOL bAC3)
 void CSettingsStore::setCreateTSPinOnDemuxReg(BOOL bTSPin)
 {
 	tsPinMode = bTSPin;
+	return;
+}
+
+void CSettingsStore::setCreateTxtPinOnDemuxReg(BOOL bTxtPin)
+{
+	txtPinMode = bTxtPin;
 	return;
 }
 

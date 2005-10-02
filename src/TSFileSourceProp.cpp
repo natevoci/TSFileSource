@@ -218,6 +218,9 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	m_pProgram->GetCreateTSPinOnDemux(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_CREATETSPIN, PidNr);
 
+	m_pProgram->GetCreateTxtPinOnDemux(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_CREATETXTPIN, PidNr);
+
 	m_pProgram->GetAC3Mode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_AC3MODE,PidNr);
 
@@ -351,6 +354,16 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					SetDirty();
 					break;
 				}
+
+				case IDC_CREATETXTPIN:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_CREATETXTPIN);
+					m_pProgram->SetCreateTxtPinOnDemux(checked);
+					OnRefreshProgram();
+					SetDirty();
+					break;
+				}
+
 				case IDC_AC3MODE:
 				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_AC3MODE);

@@ -215,6 +215,18 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			return FALSE;
 		}
 		setStore->setClockModeReg(regClock);
+
+		BOOL regTxtPin(FALSE);
+		datalen = 1;
+		type = 0;
+
+		resp = RegQueryValueEx(settingsKey, "enableTxtPin", NULL, &type, (BYTE*)&regTxtPin, &datalen);
+		if(resp != ERROR_SUCCESS)
+		{
+			RegCloseKey(settingsKey);
+			return FALSE;
+		}
+		setStore->setCreateTxtPinOnDemuxReg(regTxtPin);
 	}
 	
 	BOOL regAC3(TRUE);
@@ -302,6 +314,9 @@ BOOL CRegStore::setSettingsInfo(CSettingsStore *setStore)
 
 		int regClock = setStore->getClockModeReg();
 		resp = RegSetValueEx(settingsKey, "clockType", NULL, REG_BINARY, (BYTE*)&regClock, 4);
+
+		BOOL regTxtPin = setStore->getCreateTxtPinOnDemuxReg();
+		resp = RegSetValueEx(settingsKey, "enableTxtPin", NULL, REG_BINARY, (BYTE*)&regTxtPin, 1);
 	}
 	BOOL regAudio2 = setStore->getAudio2ModeReg();
 	resp = RegSetValueEx(settingsKey, "enableAudio2", NULL, REG_BINARY, (BYTE*)&regAudio2, 1);

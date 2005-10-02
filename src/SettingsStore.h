@@ -63,6 +63,9 @@ public:
 	BOOL getCreateTSPinOnDemuxReg();
 	void setCreateTSPinOnDemuxReg(BOOL bTSPin);
 
+	BOOL getCreateTxtPinOnDemuxReg();
+	void setCreateTxtPinOnDemuxReg(BOOL bTxtPin);
+
 	BOOL getDelayModeReg();
 	void setDelayModeReg(BOOL bDelay);
 
@@ -94,6 +97,7 @@ private:
 	BOOL	mp2Mode;
 	BOOL	ac3Mode;
 	BOOL	tsPinMode;
+	BOOL	txtPinMode;
 	BOOL	delayMode;
 	BOOL	rateMode;
 	BOOL	audio2Mode;

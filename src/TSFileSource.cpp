@@ -1260,6 +1260,24 @@ STDMETHODIMP CTSFileSourceFilter::SetCreateTSPinOnDemux(WORD bCreatePin)
 	return NOERROR;
 }
 
+STDMETHODIMP CTSFileSourceFilter::GetCreateTxtPinOnDemux(WORD *pbCreatePin)
+{
+	if(!pbCreatePin)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pbCreatePin = m_pDemux->get_CreateTxtPinOnDemux();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetCreateTxtPinOnDemux(WORD bCreatePin)
+{
+	CAutoLock lock(&m_Lock);
+	m_pDemux->set_CreateTxtPinOnDemux(bCreatePin);
+	OnConnect();
+	return NOERROR;
+}
+
 STDMETHODIMP CTSFileSourceFilter::GetReadOnly(WORD *ReadOnly)
 {
 	if(!ReadOnly)
@@ -1357,6 +1375,7 @@ STDMETHODIMP CTSFileSourceFilter::SetRegStore(LPTSTR nameReg)
 		m_pSettingsStore->setCreateTSPinOnDemuxReg((BOOL)m_pDemux->get_CreateTSPinOnDemux());
 		m_pSettingsStore->setROTModeReg((int)m_bRotEnable);
 		m_pSettingsStore->setClockModeReg((BOOL)m_pDemux->get_ClockMode());
+		m_pSettingsStore->setCreateTxtPinOnDemuxReg((BOOL)m_pDemux->get_CreateTxtPinOnDemux());
 
 		m_pRegStore->setSettingsInfo(m_pSettingsStore);
 	}
@@ -1395,6 +1414,7 @@ STDMETHODIMP CTSFileSourceFilter::GetRegStore(LPTSTR nameReg)
 			m_pPin->set_RateControl(m_pSettingsStore->getRateControlModeReg());
 			m_bRotEnable = m_pSettingsStore->getROTModeReg();
 			m_pDemux->set_ClockMode(m_pSettingsStore->getClockModeReg());
+			m_pDemux->set_CreateTxtPinOnDemux(m_pSettingsStore->getCreateTxtPinOnDemuxReg());
 		}
 	}
 

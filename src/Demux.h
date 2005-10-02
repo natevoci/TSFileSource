@@ -49,10 +49,12 @@ public:
 	BOOL get_NPSlave();
 	BOOL get_AC3Mode();
 	BOOL get_CreateTSPinOnDemux();
+	BOOL get_CreateTxtPinOnDemux();
 	BOOL get_MPEG2AudioMediaType();
 	BOOL get_MPEG2Audio2Mode();
 	void set_MPEG2AudioMediaType(BOOL bMPEG2AudioMediaType);
 	void set_CreateTSPinOnDemux(BOOL bCreateTSPinOnDemux);
+	void set_CreateTxtPinOnDemux(BOOL bCreateTxtPinOnDemux);
 	void set_AC3Mode(BOOL bAC3Mode);
 	void set_NPSlave(BOOL bNPSlave);
 	void set_NPControl(BOOL bNPControl);
@@ -124,6 +126,7 @@ protected:
 	BOOL m_bNPSlave;
 	BOOL m_bAC3Mode;
 	BOOL m_bCreateTSPinOnDemux;
+	BOOL m_bCreateTxtPinOnDemux;
 	BOOL m_bMPEG2AudioMediaType;
 	BOOL m_bMPEG2Audio2Mode;
 	BOOL m_WasPlaying;

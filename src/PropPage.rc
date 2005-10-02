@@ -59,18 +59,18 @@ BEGIN
     LTEXT           "File Status",IDC_STATIC,123,113,35,8
     EDITTEXT        IDC_FILEMODE,160,111,39,12,ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Live Delay",IDC_DELAYMODE,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,210,112,85,10
+                    WS_TABSTOP,210,108,85,10
     GROUPBOX        "MPEG Audio Pin Type",IDC_STATIC,210,7,85,34
     RADIOBUTTON     "MPEG 1",IDC_MPEG1MODE,223,18,65,8,WS_GROUP
     RADIOBUTTON     "MPEG 2",IDC_MPEG2MODE,223,29,65,8,WS_GROUP
     CONTROL         "Demux Control",IDC_AUTOMODE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,131,137,62,10
     CONTROL         "AC3 Preference",IDC_AC3MODE,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,210,64,85,10
+                    WS_TABSTOP,210,60,85,10
     CONTROL         "Rate Control",IDC_RATECONTROL,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,210,95,85,10
-    CONTROL         "Create TS Pin",IDC_CREATETSPIN,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,210,79,85,10
+                    WS_TABSTOP,210,97,85,10
+    CONTROL         "Enable TS Pin",IDC_CREATETSPIN,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,210,84,85,10
     CONTROL         "Audio2 Preference",IDC_AUDIO2MODE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,210,48,85,10
     PUSHBUTTON      "&Save",IDC_SAVE,251,195,44,13
@@ -110,6 +110,8 @@ BEGIN
     LTEXT           "Vid Typ",IDC_STATIC,129,32,28,8
     EDITTEXT        IDC_AAC,159,78,20,12,ES_AUTOHSCROLL | ES_READONLY
     EDITTEXT        IDC_AAC2,179,78,20,12,ES_AUTOHSCROLL | ES_READONLY
+    CONTROL         "Enable Teletext Pin",IDC_CREATETXTPIN,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,210,72,85,10
 END
 
 
@@ -164,8 +166,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,1,1,0
- PRODUCTVERSION 2,1,1,0
+ FILEVERSION 2,1,1,1
+ PRODUCTVERSION 2,1,1,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -183,14 +185,14 @@ BEGIN
             VALUE "Comments", "Push Source filter for MPEG-2 Transport Stream Files.(BDA Compatable)\0"
             VALUE "CompanyName", "\0"
             VALUE "FileDescription", "TS File Source(AU)\0"
-            VALUE "FileVersion", "2, 1, 1, 0\0"
+            VALUE "FileVersion", "2, 1, 1, 1\0"
             VALUE "InternalName", "TS File Source(AU)\0"
             VALUE "LegalCopyright", "This filter is published under Gnu Public Licence © 2003. Written by DH & bear@forums.dvbowners.com & nate@forums.dvbowners.com.\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "TSFileSource.ax\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "TS File Source(AU)\0"
-            VALUE "ProductVersion", "2, 1, 1, 0\0"
+            VALUE "ProductVersion", "2, 1, 1, 1\0"
             VALUE "SpecialBuild", "\0"
         END
     END

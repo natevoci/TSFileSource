@@ -55,7 +55,8 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_StreamAud2(FALSE),
 	m_StreamAAC(FALSE),
 	m_ClockMode(0),
-	m_bCreateTSPinOnDemux(FALSE)
+	m_bCreateTSPinOnDemux(FALSE),
+	m_bCreateTxtPinOnDemux(FALSE)
 {
 	m_Info.pGraph = NULL;
 	m_pTSFileSourceFilter = pFilter;
@@ -483,7 +484,10 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 		// Update Teletext Pin
 		if (FAILED(CheckTelexPin(pDemux))){
 			// If no Teletext Pin was found
-			hr = NewTelexPin(muxInterface, L"Teletext");
+			if (m_bCreateTxtPinOnDemux){
+				//If we have the option set
+				hr = NewTelexPin(muxInterface, L"Teletext");
+			}
 		}
 
 		muxInterface->Release();
@@ -1591,9 +1595,6 @@ HRESULT Demux::GetMP1Media(AM_MEDIA_TYPE *pintype)
 	return S_OK;
 }
 
-// {000000FF-0000-0010-8000-00AA00389B71}
-const GUID MEDIASUBTYPE_AAC = {0x00000FF, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71};
-
 HRESULT Demux::GetAACMedia(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
@@ -1935,6 +1936,16 @@ BOOL Demux::get_CreateTSPinOnDemux()
 void Demux::set_CreateTSPinOnDemux(BOOL bCreateTSPinOnDemux)
 {
 	m_bCreateTSPinOnDemux = bCreateTSPinOnDemux;
+}
+
+BOOL Demux::get_CreateTxtPinOnDemux()
+{
+	return m_bCreateTxtPinOnDemux;
+}
+
+void Demux::set_CreateTxtPinOnDemux(BOOL bCreateTxtPinOnDemux)
+{
+	m_bCreateTxtPinOnDemux = bCreateTxtPinOnDemux;
 }
 
 BOOL Demux::get_MPEG2AudioMediaType()
