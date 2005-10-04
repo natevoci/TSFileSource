@@ -69,7 +69,7 @@ static BYTE	PmtPacket [] = {
 //6
 	0xB0, 0x27, 						// 0xB0 & section_length 27bytes from inc here inc crc's
 	0x04, 0x01,							//program_number 1025	
-	0xDB, //,0xCD,						//reserved	
+	0xCD,//C9//C3//DF								//reserved	bit 0 = 4 zeros next instead of 2
 	0x00,								//version_number
 	0x00,								//current_next_indicator
 //13	
@@ -227,7 +227,7 @@ inline void LoadPCRPacket(PBYTE pData, USHORT pcr, REFERENCE_TIME pcrtime)
 	//Fill our packet with nulls
 	memset(pData, 0xFF, 188);
 
-	//Copy our blank pat accross
+	//Copy our blank pcr accross
 	memcpy(pData, &PcrPacket, 12);
 
 	//Set our pcr pid numb if we have one

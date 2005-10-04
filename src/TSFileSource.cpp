@@ -406,37 +406,39 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 {
 	CAutoLock cObjectLock(m_pLock);
 
-	if (m_pFileReader->IsFileInvalid())
-	{
-		HRESULT hr = m_pFileReader->OpenFile();
-		if (FAILED(hr))
-			return hr;
-	}
+	if(!IsActive()){
 
-	//Set our StreamTime Reference offset to zero
-	m_tStart = tStart;
+		if (m_pFileReader->IsFileInvalid())
+		{
+			HRESULT hr = m_pFileReader->OpenFile();
+			if (FAILED(hr))
+				return hr;
+		}
 
-	REFERENCE_TIME start, stop;
-	m_pPin->GetCurrentPosition(&start);
+		//Set our StreamTime Reference offset to zero
+		m_tStart = tStart;
 
-	//Start at least 100ms into file to skip header
-	if (start == 0)
-		start += 1000000;
+		REFERENCE_TIME start, stop;
+		m_pPin->GetCurrentPosition(&start);
+
+		//Start at least 100ms into file to skip header
+		if (start == 0)
+			start += 1000000;
 
 //***********************************************************************************************
 //Old Capture format Additions
-	if (m_pPidParser->pids.pcr) 
+		if (m_pPidParser->pids.pcr){ 
 //***********************************************************************************************
-	if(!IsActive())
-	{
-		m_pPin->m_DemuxLock = TRUE;
-		m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
-		m_pPin->m_DemuxLock = FALSE;
+			m_pPin->m_DemuxLock = TRUE;
+			m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+			m_pPin->m_DemuxLock = FALSE;
+		}
+
+		SetTunerEvent();
+
+		CAMThread::CallWorker(CMD_RUN);
 	}
 
-	SetTunerEvent();
-
-	CAMThread::CallWorker(CMD_RUN);
 
 	return CSource::Run(tStart);
 
@@ -445,6 +447,23 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 HRESULT CTSFileSourceFilter::Pause()
 {
 	CAutoLock cObjectLock(m_pLock);
+
+
+	if(!IsActive())
+	{
+		if (m_pFileReader->IsFileInvalid())
+		{
+			HRESULT hr = m_pFileReader->OpenFile();
+			if (FAILED(hr))
+				return hr;
+		}
+
+		SetTunerEvent();
+
+		CAMThread::CallWorker(CMD_PAUSE);
+	}
+
+
 	return CSource::Pause();
 }
 
@@ -832,7 +851,7 @@ STDMETHODIMP CTSFileSourceFilter::GetPCRPid(WORD *pPCRPid)
 		return E_INVALIDARG;
 
 	CAutoLock lock(&m_Lock);
-	*pPCRPid = m_pPidParser->pids.pcr;
+	*pPCRPid = m_pPidParser->pids.pcr - m_pPidParser->pids.opcr;
 
 	return NOERROR;
 

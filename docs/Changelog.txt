@@ -1,4 +1,10 @@
-Version 2.1.1.0
+Version 2.1.1.2
+=================
+Add a fix to the Pause function to allow it to work if called from a stopped condition.
+Fixed a few more bugs. 
+
+
+Version 2.1.1.1
 =================
 Added a option on the property page to enable the Teletext pin.(Should solve any rendering Problems and make it quicker to load.)
 Added ITSFileSource function support for the above option.

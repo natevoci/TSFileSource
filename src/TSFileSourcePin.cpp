@@ -112,9 +112,9 @@ STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void **
     {
 		return GetInterface((IAMFilterMiscFlags*)m_pTSFileSourceFilter, ppv);
     }
-	if (riid == IID_IAMStreamSelect)
+	if (riid == IID_IAMStreamSelect && m_pTSFileSourceFilter->get_AutoMode())
 	{
-		return GetInterface((IAMStreamSelect*)m_pTSFileSourceFilter, ppv);
+		 GetInterface((IAMStreamSelect*)m_pTSFileSourceFilter, ppv);
 	}
 	if (riid == IID_IMediaSeeking)
     {
@@ -571,39 +571,57 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	//If no TSID then we won't have a PAT so create one
 	if (!m_pPidParser->m_TStreamID && firstPass == -1)
 	{
-		ULONG pos = 0;
+		ULONG pos = 0; 
 		REFERENCE_TIME pcrPos = -1;
 
 		//Get the first occurance of a timing packet
 		hr = S_OK;
 		hr = m_pPidParser->FindNextPCR(pData, lDataLength, &m_pPidParser->pids, &pcrPos, &pos, 1); //Get the PCR
-		//If we have one then check if we can have room to insert a few packets	
-		if(pcrPos && (pos + 188*11) < lDataLength) {
-			//Insert a number of times
-			for (int i = 0; i < 5; i++)
-			{
-				pos+= 188; //shift to after last packet
-				LoadPATPacket(pData + pos, m_pPidParser->m_TStreamID, m_pPidParser->pids.sid, m_pPidParser->pids.pmt);
-
-				//Also insert a pmt if we don't have one already
-				if (!m_pPidParser->pids.pmt){ 
-					pos+= 188;	//shift to after last packet
-					LoadPMTPacket(pData + pos,
-						  m_pPidParser->pids.pcr,
-						  m_pPidParser->pids.vid,
-						  m_pPidParser->pids.aud,
-						  m_pPidParser->pids.aud2,
-						  m_pPidParser->pids.ac3,
-						  m_pPidParser->pids.ac3_2,
-						  m_pPidParser->pids.txt);
-				}
+		//If we have one then load our PAT, PMT & PCR Packets	
+		if(pcrPos && hr == S_OK) {
+			//Check if we can back up before timing packet	
+			if (pos > 188*2) {
+			//back up before timing packet
+				pos-= 188*2;	//shift back to before pat & pmt packet
 			}
 		}
+		else {
+			// if no timing packet found then load the PAT at the start of the buffer
+			pos=0;
+		}
+
+		LoadPATPacket(pData + pos, m_pPidParser->m_TStreamID, m_pPidParser->pids.sid, m_pPidParser->pids.pmt);
+		pos+= 188;	//shift to the pmt packet
+
+		//Also insert a pmt if we don't have one already
+		if (!m_pPidParser->pids.pmt){ 
+			LoadPMTPacket(pData + pos,
+				  m_pPidParser->pids.pcr - m_pPidParser->pids.opcr,
+				  m_pPidParser->pids.vid,
+				  m_pPidParser->pids.aud,
+				  m_pPidParser->pids.aud2,
+				  m_pPidParser->pids.ac3,
+				  m_pPidParser->pids.ac3_2,
+				  m_pPidParser->pids.txt);
+		}
+		else {
+			//load another PAT instead
+			LoadPATPacket(pData + pos, m_pPidParser->m_TStreamID, m_pPidParser->pids.sid, m_pPidParser->pids.pmt);
+		}
+
+		pos+= 188;	//shift to the pcr packet
+
+		//Load in our own pcr if we need to
+		if (m_pPidParser->pids.opcr) {
+			LoadPCRPacket(pData + pos, m_pPidParser->pids.pcr - m_pPidParser->pids.opcr, pcrPos);
+		}
+
 	}
+/*
 	//If we need to insert a new PCR packet
 	if (m_pPidParser->pids.opcr) {
 
-		ULONG pos = 0;
+		ULONG pos = 0, lastpos = 0;
 		REFERENCE_TIME pcrPos = -1;
 		hr = S_OK;
 		while (hr == S_OK) {
@@ -611,15 +629,23 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 			hr = m_pPidParser->FindNextOPCR(pData, lDataLength, &m_pPidParser->pids, &pcrPos, &pos, 1); //Get the PCR
 			if (pcrPos) {
 				//Insert our new PCR Packet
-//					LoadPCRPacket(pData + pos, 0, 0);
-//					LoadPCRPacket(pData + pos, 0, pcrPos);
+				LoadPCRPacket(pData + pos, m_pPidParser->pids.pcr - m_pPidParser->pids.opcr, pcrPos);
 //PrintTime("Insert PCR packet", (__int64) pcrPos, 90);
-				break;
+//				break;
 			}
 			pos += 188;
+
+			if (pos > lastpos + 10*188 && pos + 188 < lDataLength){
+//PrintTime("delta PCR packet", (__int64) m_llPCRDelta, 90);
+				__int64 offset = (__int64)(m_llPCRDelta *(__int64)(pos - lastpos) / (__int64)m_lByteDelta);
+//PrintTime("offset PCR packet", (__int64) offset, 90);
+				LoadPCRPacket(pData + pos, m_pPidParser->pids.pcr - m_pPidParser->pids.opcr, pcrPos + offset);
+				pos += 188;
+				lastpos = pos;
+			}
 		};
 	}
-
+*/
 //*************************************************************************************************
 
 	return NOERROR;
@@ -1352,7 +1378,7 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 				{
 //***********************************************************************************************
 //Old Capture format Additions
-					if (m_pPidParser->pids.pcr) // && !m_pPidParser->pids.opcr) 
+					if (m_pPidParser->pids.pcr && m_pTSFileSourceFilter->get_AutoMode()) // && !m_pPidParser->pids.opcr) 
 //***********************************************************************************************
 						pFilter->SetSyncSource(pClock);
 					muxInterface->Release();

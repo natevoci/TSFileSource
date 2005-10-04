@@ -714,6 +714,17 @@ HRESULT PidParser::CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids,
 							((REFERENCE_TIME)(0xFE & pData[pos+15])<<14) |
 							((REFERENCE_TIME)(0xFF & pData[pos+16])<<7)  |
 							((REFERENCE_TIME)(0xFE & pData[pos+17])>>1);
+//*pcrtime = *pcrtime - 50000;
+TCHAR sz[100];
+long ms = (long)(*pcrtime / 90); 
+long secs = ms / 1000;
+long mins = secs / 60;
+long hours = mins / 60;
+ms -= (secs*(__int64)1000);
+secs -= (mins*(__int64)60);
+mins -= (hours*(__int64)60);
+sprintf(sz, TEXT("Time Position %02i hrs %02i mins %02i.%03i secs"), hours, mins, secs, ms);
+//MessageBox(NULL, sz, "PTS packet", NULL);
 				return S_OK;
 			}
 			// Get DTS
@@ -725,6 +736,16 @@ HRESULT PidParser::CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids,
 							((REFERENCE_TIME)(0xFE & pData[pos+20])<<14) |
 							((REFERENCE_TIME)(0xFF & pData[pos+21])<<7)  |
 							((REFERENCE_TIME)(0xFE & pData[pos+22])>>1);
+TCHAR sz[100];
+long ms = (long)(*pcrtime / 90); 
+long secs = ms / 1000;
+long mins = secs / 60;
+long hours = mins / 60;
+ms -= (secs*(__int64)1000);
+secs -= (mins*(__int64)60);
+mins -= (hours*(__int64)60);
+sprintf(sz, TEXT("Time Position %02i hrs %02i mins %02i.%03i secs"), hours, mins, secs, ms);
+//MessageBox(NULL, sz, "DTS packet", NULL);
 				return S_OK;
 			}
 		};
@@ -1899,3 +1920,4 @@ HRESULT PidParser::set_ProgramSID()
 	}
 	return S_FALSE;
 }
+
