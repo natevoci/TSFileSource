@@ -59,7 +59,7 @@ BEGIN
     LTEXT           "File Status",IDC_STATIC,123,113,35,8
     EDITTEXT        IDC_FILEMODE,160,111,39,12,ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Live Delay",IDC_DELAYMODE,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,210,108,85,10
+                    WS_TABSTOP,210,109,85,10
     GROUPBOX        "MPEG Audio Pin Type",IDC_STATIC,210,7,85,34
     RADIOBUTTON     "MPEG 1",IDC_MPEG1MODE,223,18,65,8,WS_GROUP
     RADIOBUTTON     "MPEG 2",IDC_MPEG2MODE,223,29,65,8,WS_GROUP
@@ -68,7 +68,7 @@ BEGIN
     CONTROL         "AC3 Preference",IDC_AC3MODE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,210,60,85,10
     CONTROL         "Rate Control",IDC_RATECONTROL,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,210,97,85,10
+                    WS_TABSTOP,210,96,85,10
     CONTROL         "Enable TS Pin",IDC_CREATETSPIN,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,210,84,85,10
     CONTROL         "Audio2 Preference",IDC_AUDIO2MODE,"Button",
@@ -166,8 +166,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,1,1,2
- PRODUCTVERSION 2,1,1,2
+ FILEVERSION 2,1,1,3
+ PRODUCTVERSION 2,1,1,3
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -185,14 +185,14 @@ BEGIN
             VALUE "Comments", "Push Source filter for MPEG-2 Transport Stream Files.(BDA Compatable)\0"
             VALUE "CompanyName", "\0"
             VALUE "FileDescription", "TS File Source(AU)\0"
-            VALUE "FileVersion", "2, 1, 1, 2\0"
+            VALUE "FileVersion", "2, 1, 1, 3\0"
             VALUE "InternalName", "TS File Source(AU)\0"
             VALUE "LegalCopyright", "This filter is published under Gnu Public Licence © 2003. Written by DH & bear@forums.dvbowners.com & nate@forums.dvbowners.com.\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "TSFileSource.ax\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "TS File Source(AU)\0"
-            VALUE "ProductVersion", "2, 1, 1, 2\0"
+            VALUE "ProductVersion", "2, 1, 1, 3\0"
             VALUE "SpecialBuild", "\0"
         END
     END

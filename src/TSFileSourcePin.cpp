@@ -265,7 +265,27 @@ HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
 
 HRESULT CTSFileSourcePin::BreakConnect()
 {
-	return CBaseOutputPin::BreakConnect();
+	HRESULT hr = CBaseOutputPin::BreakConnect();
+
+	m_pTSBuffer->Clear();
+	m_bSeeking = FALSE;
+	m_rtLastSeekStart = 0;
+	m_llBasePCR = -1;
+	m_llNextPCR = -1;
+	m_llPrevPCR = -1;
+	m_lNextPCRByteOffset = 0;
+	m_lPrevPCRByteOffset = 0;
+	m_DataRate = 10000000;
+	m_DataRateTotal = 0;
+	m_BitRateCycle = 0;
+	for (int i = 0; i < 256; i++) { 
+		m_BitRateStore[i] = 0;
+	}
+	m_rtLastCurrentTime = 0;
+	m_LastFileSize = 0;
+	m_DemuxLock = FALSE;
+	m_IntLastStreamTime = 0;
+	return hr;
 }
 
 HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
@@ -1388,6 +1408,14 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 			}
 		}
 	}
+
+	//Clear the filter list;
+	POSITION pos = FList.GetHeadPosition();
+	while (pos){
+		FList.Remove(pos);
+		pos = FList.GetHeadPosition();
+	}
+
 	return S_OK;
 }
 

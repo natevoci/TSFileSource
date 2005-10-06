@@ -63,6 +63,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	ASSERT(phr);
 
 	m_pFileReader = new FileReader();
+	m_pFileDuration = new FileReader();//Get Live File Duration Thread
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
@@ -87,31 +88,35 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	cmt.SetSubtype(&MEDIASUBTYPE_MPEG2_TRANSPORT);
 	m_pPin->SetMediaType(&cmt);
 
-	//Get Live File Duration Thread
-	m_pFileDuration = new FileReader();
 	CAMThread::Create();
 
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
 {
+	//Make sure the worker thread is stopped before we exit.
+	//Also closes the files.
+	Stop();
 	CAMThread::CallWorker(CMD_EXIT);
 	CAMThread::Close();
+
+	delete	m_pPidParser;
+	delete	m_pStreamParser;
+	delete	m_pPin;
+	delete	m_pDemux;
+	delete 	m_pRegStore;
+	delete  m_pSettingsStore;
+	delete	m_pFileReader;
+	delete  m_pFileDuration;
+
+	m_pTunerEvent->UnRegisterForTunerEvents();
+	delete 	m_pTunerEvent;
 
     if (m_dwGraphRegister)
     {
         RemoveGraphFromRot(m_dwGraphRegister);
         m_dwGraphRegister = 0;
     }
-	m_pTunerEvent->UnRegisterForTunerEvents();
-	delete 	m_pTunerEvent;
-	delete 	m_pRegStore;
-	delete  m_pSettingsStore;
-	delete	m_pDemux;
-	delete	m_pFileReader;
-	delete	m_pPidParser;
-	delete	m_pPin;
-	delete  m_pFileDuration;
 }
 
 DWORD CTSFileSourceFilter::ThreadProc(void)

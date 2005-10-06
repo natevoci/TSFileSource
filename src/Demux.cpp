@@ -58,7 +58,6 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_bCreateTSPinOnDemux(FALSE),
 	m_bCreateTxtPinOnDemux(FALSE)
 {
-	m_Info.pGraph = NULL;
 	m_pTSFileSourceFilter = pFilter;
 	m_pPidParser = pPidParser;
 }
@@ -273,6 +272,13 @@ HRESULT Demux::AOnConnect()
 		}
 	}
 
+	//Clear the filter list;
+	POSITION pos = FList.GetHeadPosition();
+	while (pos){
+		FList.Remove(pos);
+		pos = FList.GetHeadPosition();
+	}
+
 	//Set the reference clock type
 	SetRefClock();
 
@@ -325,7 +331,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 				// Update AAC Pin
 				if (FAILED(CheckAACPin(pDemux))){
 					// If no AAC Pin was found
-					hr = NewAACPin(muxInterface, L"AAC");
+					hr = NewAACPin(muxInterface, L"Audio");
 				}
 			}
 		}
@@ -486,7 +492,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 			// If no Teletext Pin was found
 			if (m_bCreateTxtPinOnDemux){
 				//If we have the option set
-				hr = NewTelexPin(muxInterface, L"Teletext");
+				hr = NewTelexPin(muxInterface, L"VTeletext");
 			}
 		}
 

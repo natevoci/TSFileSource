@@ -1,3 +1,8 @@
+Version 2.1.1.3
+=================
+Changed the Pin name of the audio pin for AAC media types from "AAC" to "Audio" so Applications can still look for the audio label. 
+Fixed a bug that was holding up the filtergraph when it was destroyed from a active filter state.RE CAMThread.
+
 Version 2.1.1.2
 =================
 Add a fix to the Pause function to allow it to work if called from a stopped condition.

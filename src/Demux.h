@@ -118,7 +118,6 @@ protected:
 
 	IBaseFilter *m_pTSFileSourceFilter;
 	PidParser *m_pPidParser;
-	FILTER_INFO m_Info;
 
 	BOOL m_bAuto;
 	bool m_bConnectBusyFlag;
