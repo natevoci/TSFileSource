@@ -248,7 +248,8 @@ HRESULT Demux::AOnConnect()
 	// that implement the IMpeg2Demultiplexer interface while
 	// the count is still active.
 	CFilterList FList(NAME("MyList"));  // List to hold the downstream peers.
-	if (SUCCEEDED(GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList)) && FList.GetHeadPosition())
+	if (SUCCEEDED(GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList))
+		&& FList.GetHeadPosition())
 	{
 		IBaseFilter* pFilter = NULL;
 		POSITION pos = FList.GetHeadPosition();
@@ -275,6 +276,7 @@ HRESULT Demux::AOnConnect()
 	//Clear the filter list;
 	POSITION pos = FList.GetHeadPosition();
 	while (pos){
+
 		FList.Remove(pos);
 		pos = FList.GetHeadPosition();
 	}
@@ -322,6 +324,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 			hr = NewVideoPin(muxInterface, L"Video");
 		}
 
+		// Update Video Pin
 		if (!(m_StreamAC3 | m_StreamMP2)) {
 
 			USHORT pPid;
@@ -334,6 +337,10 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 					hr = NewAACPin(muxInterface, L"Audio");
 				}
 			}
+//			else if (FAILED(CheckAudioPin(pDemux))){
+//				// If no Audio Pin was found
+//				hr = NewAudioPin(muxInterface, L"Audio");
+//			}
 		}
 
 		// If we have AC3 preference and we are not forcing MP2 Stream
@@ -1013,7 +1020,10 @@ HRESULT Demux::NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 
 	HRESULT hr = E_INVALIDARG;
 
-	if(muxInterface == NULL || pPid == 0)
+	if(muxInterface == NULL)
+		return hr;
+
+	if(pPid == 0 && m_pPidParser->pids.pcr)
 		return hr;
 
 	// Create out new pin 
@@ -1150,6 +1160,22 @@ HRESULT Demux::LoadVideoPin(IPin* pIPin, ULONG pid)
 		muxMapPid->Release();
 		hr = S_OK;
 	}
+	else {
+
+		IMPEG2StreamIdMap* muxMapPid;
+		if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid)))
+		{
+			if (pid)
+			{
+				muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0, 0);
+				m_SelVideoPid = pid;
+			}
+
+			muxMapPid->Release();
+			hr = S_OK;
+		}
+	}
+
 	return hr;
 }
 
@@ -1176,6 +1202,21 @@ HRESULT Demux::LoadAudioPin(IPin* pIPin, ULONG pid)
 		muxMapPid->Release();
 		hr = S_OK;
 	}
+	else {
+
+		IMPEG2StreamIdMap* muxMapPid;
+		if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid)))
+		{
+			if (pid)
+			{
+				muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0, 0);
+				m_SelAudioPid = pid;
+			}
+
+			muxMapPid->Release();
+			hr = S_OK;
+		}
+	}
 	return hr;
 }
 
@@ -1198,6 +1239,21 @@ HRESULT Demux::LoadTelexPin(IPin* pIPin, ULONG pid)
 		}
 		muxMapPid->Release();
 		hr = S_OK;
+	}
+	else {
+
+		IMPEG2StreamIdMap* muxMapPid;
+		if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid)))
+		{
+			if (pid)
+			{
+				muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0, 0);
+				m_SelAudioPid = pid;
+			}
+
+			muxMapPid->Release();
+			hr = S_OK;
+		}
 	}
 	return hr;
 }
@@ -1548,8 +1604,8 @@ HRESULT Demux::GetAC3Media(AM_MEDIA_TYPE *pintype)
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Audio;
 	pintype->subtype = MEDIASUBTYPE_DOLBY_AC3;
-	pintype->cbFormat = sizeof(MPEG1AudioFormat);
-	pintype->pbFormat = MPEG1AudioFormat;
+	pintype->cbFormat = sizeof(MPEG1AudioFormat);//sizeof(AC3AudioFormat); //
+	pintype->pbFormat = MPEG1AudioFormat;//AC3AudioFormat; //
 	pintype->bFixedSizeSamples = TRUE;
 	pintype->bTemporalCompression = 0;
 	pintype->lSampleSize = 1;

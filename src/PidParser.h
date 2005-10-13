@@ -46,11 +46,11 @@ PidParser(FileReader *pFileReader);
 	HRESULT RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader);
 	HRESULT get_EPGFromFile();
 	HRESULT set_ProgramSID();
-	static HRESULT FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int step);
-	static HRESULT FindFirstPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
-	static HRESULT FindLastPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
-	static HRESULT FindNextPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
-	static HRESULT FindNextOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
+	HRESULT FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int step);
+	HRESULT FindFirstPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
+	HRESULT FindLastPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
+	HRESULT FindNextPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
+	HRESULT FindNextOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
 	void get_ChannelNumber(BYTE *pointer);
 	void get_NetworkName(BYTE *pointer);
 	void get_ONetworkName(BYTE *pointer);
@@ -63,11 +63,16 @@ PidParser(FileReader *pFileReader);
 	void set_ProgramNumber(WORD programNumber);
 	void set_SIDPid(BOOL bProgramSID);
 	WORD get_ProgramNumber();
+	BOOL get_ProgPinMode();
+	void PidParser::set_ProgPinMode(BOOL mode);
+	ULONG get_PacketSize();
 
 	int m_NetworkID;
 	int m_ONetworkID;
 	int m_TStreamID;
 	int m_ProgramSID;
+	BOOL m_ProgPinMode;
+	ULONG m_PacketSize;
 	PidInfo pids;
 	PidInfoArray pidArray;	//Currently selected pids
 	BOOL m_ATSCFlag;
@@ -79,6 +84,7 @@ protected:
 	HRESULT ParsePMT(PBYTE pData, ULONG ulDataLength, long pos);
 	HRESULT IsValidPMT(PBYTE pData, ULONG ulDataLength);
 	HRESULT ACheckVAPids(PBYTE pData, ULONG ulDataLength);
+	HRESULT CheckVAStreams(PBYTE pData, ULONG ulDataLength);
 	HRESULT CheckEPGFromFile();
 	HRESULT CheckNIDInFile(FileReader *pFileReader);
 	HRESULT CheckONIDInFile(FileReader *pFileReader);
@@ -94,8 +100,8 @@ protected:
 		__int64* pEndFilePos,
 		FileReader *pFileReader);
 
-	static HRESULT CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
-	static HRESULT CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
+	HRESULT CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
+	HRESULT CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
 
 	void AddPidArray();
 	void SetPidArray(int n);

@@ -82,6 +82,7 @@ public:
 	HRESULT UpdateDuration(FileReader *pFileReader);
 	HRESULT SetDuration(REFERENCE_TIME duration);
 
+	HRESULT CTSFileSourcePin::DisconnectDemuxPins();
 	HRESULT SetDemuxClock(IReferenceClock *pClock);
 	HRESULT GetPeerFilters(
 		IBaseFilter *pFilter, // Pointer to the starting filter
@@ -143,6 +144,7 @@ protected:
 	__int64 m_LastFileSize;
 
 	__int64 m_IntLastStreamTime;
+	__int64 m_DataRateSave;
 
 public:
 	BOOL	m_DemuxLock;

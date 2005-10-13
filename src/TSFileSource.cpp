@@ -96,27 +96,27 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 {
 	//Make sure the worker thread is stopped before we exit.
 	//Also closes the files.
-	Stop();
+	CAMThread::CallWorker(CMD_STOP);
 	CAMThread::CallWorker(CMD_EXIT);
 	CAMThread::Close();
-
-	delete	m_pPidParser;
-	delete	m_pStreamParser;
-	delete	m_pPin;
-	delete	m_pDemux;
-	delete 	m_pRegStore;
-	delete  m_pSettingsStore;
-	delete	m_pFileReader;
-	delete  m_pFileDuration;
-
-	m_pTunerEvent->UnRegisterForTunerEvents();
-	delete 	m_pTunerEvent;
 
     if (m_dwGraphRegister)
     {
         RemoveGraphFromRot(m_dwGraphRegister);
         m_dwGraphRegister = 0;
     }
+
+	m_pTunerEvent->UnRegisterForTunerEvents();
+	m_pTunerEvent->Release();
+
+	delete	m_pDemux;
+	delete 	m_pRegStore;
+	delete  m_pSettingsStore;
+	m_pPidParser->~PidParser();
+	m_pStreamParser->~StreamParser();
+	m_pPin->~CTSFileSourcePin();
+	m_pFileReader->~FileReader();
+	m_pFileDuration->~FileReader();
 }
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
@@ -560,6 +560,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	m_pFileReader->SetFilePointer(300000, FILE_BEGIN);
 
 	RefreshPids();
+
 	LoadPgmReg();
 	RefreshDuration();
 
@@ -1516,6 +1517,11 @@ STDMETHODIMP CTSFileSourceFilter::ShowFilterProperties()
 BOOL CTSFileSourceFilter::get_AutoMode()
 {
 	return m_pDemux->get_Auto();
+}
+
+BOOL CTSFileSourceFilter::get_PinMode()
+{
+	return m_pPidParser->get_ProgPinMode();;
 }
 
 // Adds a DirectShow filter graph to the Running Object Table,

@@ -39,10 +39,12 @@
 PidParser::PidParser(FileReader *pFileReader)
 {
 	m_pFileReader = pFileReader;
+	m_PacketSize = 188; //Start with Transport packet size 
 }
 
 PidParser::~PidParser()
 {
+	pidArray.Clear();
 }
 
 HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
@@ -102,6 +104,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	m_ONetworkID = 0; //ONID store
 	m_TStreamID = 0; //TSID store
 	m_ProgramSID = 0; //SID store for prog search
+	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
 
 	ulDataLength = ulDataRead;
 	if (ulDataLength > 0)
@@ -133,7 +136,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 						patfound = true;
 					}
 				};
-				a += 188;
+				a += m_PacketSize;
 			}
 		}
 
@@ -172,7 +175,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 						pids.sid = 0x00;
 						pids.pmt = 0x00;
 					}
-					a += 188;
+					a += m_PacketSize;
 				}
 			}
 		}
@@ -227,7 +230,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 						pids.sid = 0;
 					}
 				}
-				a += 188;
+				a += m_PacketSize;
 			};
 
 			if (pids.pmt != curr_pmt || pids.sid != curr_sid || hr != S_OK) //Make sure we have a correct packet
@@ -237,6 +240,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		//Search for A/V pids if no NIT or valid PMT found.
 		if (pidArray.Count() == 0)
 		{
+
 			//Search for any A/V Pids
 			if (ACheckVAPids(pData, ulDataLength) == S_OK)
 			{
@@ -293,10 +297,38 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 					pids.pcr = pcrsave;
 					RefreshDuration(FALSE, pFileReader);
 				}
+				else
+					AddPidArray();
+			}
 
-				AddPidArray();
+			if ((pids.vid | pids.h264| pids.mpeg4  
+				| pids.aud |pids.txt | pids.ac3 
+				| pids.aac | pids.pcr | pids.opcr) == 0)
+			{
+				set_ProgPinMode(TRUE); //Set to Program Stream Mode
+				//Search for any A/V Pids
+				if (CheckVAStreams(pData, ulDataLength) == S_OK)
+				{
+					if (!(pids.vid | pids.h264 | pids.mpeg4  
+						 | pids.aud  | pids.txt  | pids.ac3 
+						 | pids.aac))
+						set_ProgPinMode(FALSE); //Set back to Transport Stream Mode
+					else
+						RefreshDuration(FALSE, pFileReader);
+
+					// restore pcr pid if no matches with A/V pids
+					if (!pids.dur) {
+					//set fake duration if needed
+						RefreshDuration(FALSE, pFileReader);
+					}
+					else
+						AddPidArray();
+				}
+
+
 			}
 		}
+
 
 
 		//Scan for missing durations & Fix
@@ -329,7 +361,10 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		pids.Clear();
 		pids.CopyFrom(&pidArray[m_pgmnumb]);
 
-		if (pids.vid != 0 || pids.h264 != 0 || pids.aud != 0 || pids.ac3 != 0 || pids.txt != 0)
+		if (pids.vid != 0 || pids.h264 != 0 || pids.mpeg4 != 0 
+			|| pids.aud != 0 || pids.txt != 0
+			|| pids.ac3 != 0 || pids.aac != 0 || pids.pcr != 0
+			|| pids.pcr != 0)
 		{
 			hr = S_OK;
 		}
@@ -346,7 +381,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	delete[] pData;
 
 	pFileReader->CloseFile();
-	delete pFileReader;
+	pFileReader->~FileReader();
+//	delete pFileReader;
 
 	return hr;
 }
@@ -397,7 +433,7 @@ HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 //*********************************************************************************************
 //Old Capture format Additions
 
-	if (!pids.pcr) {
+	if (!pids.pcr && !m_ProgPinMode) {
 		//Set our fake duration
 		__int64 filelength;
 		pFileReader->GetFileSize(&filelength);
@@ -442,13 +478,53 @@ HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 
 HRESULT PidParser::FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int step)
 {
+	//look for Program Pin Mode
+	if (m_ProgPinMode)
+	{
+		//Look for Mpeg Program Pack headers
+		while ((*a >= 0) && (*a < ulDataLength))
+		{
+			if ((ULONG)((0xFF&pbData[*a])<<24
+					| (0xFF&pbData[*a+1])<<16
+					| (0xFF&pbData[*a+2])<<8
+					| (0xFF&pbData[*a+3])) == 0x1BA)
+			{
+				if (*a+m_PacketSize < ulDataLength)
+				{
+					if ((ULONG)((0xFF&pbData[*a + m_PacketSize])<<24
+						| (0xFF&pbData[*a+1 + m_PacketSize])<<16
+						| (0xFF&pbData[*a+2 + m_PacketSize])<<8
+						| (0xFF&pbData[*a+3 + m_PacketSize])) == 0x1BA)
+						return S_OK;
+				}
+				else
+				{
+					if (step > 0)
+						return E_FAIL;
+
+					if (*a-m_PacketSize > 0)
+					{
+						if ((ULONG)((0xFF&pbData[*a - m_PacketSize])<<24
+						| (0xFF&pbData[*a+1 - m_PacketSize])<<16
+						| (0xFF&pbData[*a+2 - m_PacketSize])<<8
+						| (0xFF&pbData[*a+3 - m_PacketSize])) == 0x1BA)
+							return S_OK;
+					}
+				}
+			}
+			*a += step;
+		}
+		return E_FAIL;
+	}
+
+	//Set for Transport Pin Mode
 	while ((*a >= 0) && (*a < ulDataLength))
 	{
 		if (pbData[*a] == 0x47)
 		{
-			if (*a+188 < ulDataLength)
+			if (*a+m_PacketSize < ulDataLength)
 			{
-				if (pbData[*a+188] == 0x47)
+				if (pbData[*a+m_PacketSize] == 0x47)
 					return S_OK;
 			}
 			else
@@ -456,9 +532,9 @@ HRESULT PidParser::FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int 
 				if (step > 0)
 					return E_FAIL;
 
-				if (*a-188 > 0)
+				if (*a-m_PacketSize > 0)
 				{
-					if (pbData[*a-188] == 0x47)
+					if (pbData[*a-m_PacketSize] == 0x47)
 						return S_OK;
 				}
 			}
@@ -617,6 +693,23 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 
 HRESULT PidParser::CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime)
 {
+	if (m_ProgPinMode)
+	{
+		// Get PTS
+		if((0xC0&pData[pos+4]) == 0x40) {
+
+			*pcrtime =	((REFERENCE_TIME)(0x38 & pData[pos+4])<<27) |
+						((REFERENCE_TIME)(0x03 & pData[pos+4])<<28) |
+						((REFERENCE_TIME)(0xFF & pData[pos+5])<<20) |
+						((REFERENCE_TIME)(0xF8 & pData[pos+6])<<12) |
+						((REFERENCE_TIME)(0x03 & pData[pos+6])<<13) |
+						((REFERENCE_TIME)(0xFF & pData[pos+7])<<5)  |
+						((REFERENCE_TIME)(0xF8 & pData[pos+8])>>3);
+			return S_OK;
+		}
+		return S_FALSE;
+	}
+
 	if ((WORD)((0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2])) == pPids->pcr)
 	{
 		WORD pcrmask = 0x10;
@@ -714,17 +807,6 @@ HRESULT PidParser::CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids,
 							((REFERENCE_TIME)(0xFE & pData[pos+15])<<14) |
 							((REFERENCE_TIME)(0xFF & pData[pos+16])<<7)  |
 							((REFERENCE_TIME)(0xFE & pData[pos+17])>>1);
-//*pcrtime = *pcrtime - 50000;
-TCHAR sz[100];
-long ms = (long)(*pcrtime / 90); 
-long secs = ms / 1000;
-long mins = secs / 60;
-long hours = mins / 60;
-ms -= (secs*(__int64)1000);
-secs -= (mins*(__int64)60);
-mins -= (hours*(__int64)60);
-sprintf(sz, TEXT("Time Position %02i hrs %02i mins %02i.%03i secs"), hours, mins, secs, ms);
-//MessageBox(NULL, sz, "PTS packet", NULL);
 				return S_OK;
 			}
 			// Get DTS
@@ -736,16 +818,6 @@ sprintf(sz, TEXT("Time Position %02i hrs %02i mins %02i.%03i secs"), hours, mins
 							((REFERENCE_TIME)(0xFE & pData[pos+20])<<14) |
 							((REFERENCE_TIME)(0xFF & pData[pos+21])<<7)  |
 							((REFERENCE_TIME)(0xFE & pData[pos+22])>>1);
-TCHAR sz[100];
-long ms = (long)(*pcrtime / 90); 
-long secs = ms / 1000;
-long mins = secs / 60;
-long hours = mins / 60;
-ms -= (secs*(__int64)1000);
-secs -= (mins*(__int64)60);
-mins -= (hours*(__int64)60);
-sprintf(sz, TEXT("Time Position %02i hrs %02i mins %02i.%03i secs"), hours, mins, secs, ms);
-//MessageBox(NULL, sz, "DTS packet", NULL);
 				return S_OK;
 			}
 		};
@@ -767,7 +839,7 @@ HRESULT PidParser::FindNextOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids,
 
 		if (S_FALSE == CheckForOPCR(pData, ulDataLength, pPids, *pulPos, pcrtime))
 		{
-			*pulPos = *pulPos + (step * 188);
+			*pulPos = *pulPos + (step * m_PacketSize);
 		}
 		else
 		{
@@ -872,7 +944,7 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 				};
 
 			}
-			a += 188;
+			a += m_PacketSize;
 		}
 	}
 	return hr;
@@ -886,7 +958,7 @@ HRESULT PidParser::FindFirstPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids,
 
 HRESULT PidParser::FindLastPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos)
 {
-	*pulPos = ulDataLength - 188;
+	*pulPos = ulDataLength - m_PacketSize;
 	return FindNextPCR(pData, ulDataLength, pPids, pcrtime, pulPos, -1);
 }
 
@@ -904,7 +976,7 @@ HRESULT PidParser::FindNextPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, 
 
 		if (S_FALSE == CheckForPCR(pData, ulDataLength, pPids, *pulPos, pcrtime))
 		{
-			*pulPos = *pulPos + (step * 188);
+			*pulPos = *pulPos + (step * m_PacketSize);
 		}
 		else
 		{
@@ -926,13 +998,13 @@ REFERENCE_TIME PidParser::GetPCRFromFile(int step)
 	ULONG lDataRead = 0;
 
 	m_pFileReader->Read(pData, lDataLength, &lDataRead, 0, (step > 0) ? FILE_BEGIN : FILE_END);
-	if (lDataRead <= 188){
+	if (lDataRead <= m_PacketSize){
 
 		delete[] pData;
 		return 0;
 	}
 	
-	ULONG a = (step > 0) ? 0 : lDataRead-188;
+	ULONG a = (step > 0) ? 0 : lDataRead-m_PacketSize;
 
 	if (step > 0)
 		FindFirstPCR(pData, lDataRead, &pids, &pcrtime, &a);
@@ -972,7 +1044,7 @@ HRESULT PidParser::ACheckVAPids(PBYTE pData, ULONG ulDataLength)
 				addlength = 0;
 			}
 
-			if (start == 0x40) {
+			if (start == 0x40 && pData[b+6+addlength] == 0x01) {
 
 				pesID = ( (255&pData[b+4+addlength])<<24
 						| (255&pData[b+5+addlength])<<16
@@ -1009,7 +1081,70 @@ HRESULT PidParser::ACheckVAPids(PBYTE pData, ULONG ulDataLength)
 				};
 			}
 		}
-		a += 188;
+		a += m_PacketSize;
+	}
+	return S_OK;
+}
+
+HRESULT PidParser::CheckVAStreams(PBYTE pData, ULONG ulDataLength)
+{
+	ULONG a, b;
+	WORD pid;
+	HRESULT hr;
+	int addlength;
+	WORD error, start;
+	DWORD psiID, pesID;
+	a = 0;
+
+	hr = S_OK;
+	while (hr == S_OK)
+	{
+		hr = FindSyncByte(pData, ulDataLength, &a, 1);
+		if (hr == S_OK)
+		{
+			b = a;
+			error = 0x80&pData[b+4];
+			start = 0x40&pData[b+4];
+			addlength = 14 + (0x07&pData[b+13]);
+
+			if (start == 0x40&& pData[b+2+addlength] == 0x01) {
+
+				pesID = ( (255&pData[b+addlength])<<24
+						| (255&pData[b+1+addlength])<<16
+						| (255&pData[b+2+addlength])<<8
+						| (255&pData[b+3+addlength]));
+
+				psiID = pesID>>16;
+
+				pid = 0xFF&pesID;
+
+				if (((0xFF0&pesID) == 0x1e0) && (pids.vid == 0)) {
+					pids.vid = pid;
+
+				};
+
+				if ((0xFF0&pesID) == 0x1c0) {
+					if (pids.aud == 0) {
+						pids.aud = pid;
+					} else {
+						if (pids.aud != pid) {
+							pids.aud2 = pid;
+						}
+					}
+				};
+
+				if ((0xFF0&pesID) == 0x1b0) {
+					if (pids.ac3 == 0) {
+						pids.ac3 = pid;
+					} else {
+						if (pids.ac3 != pid) {
+							pids.ac3_2 = pid;
+						}
+					}
+				};
+			}
+		}
+		a += m_PacketSize;
 	}
 	return S_OK;
 }
@@ -1029,7 +1164,8 @@ HRESULT PidParser::CheckEPGFromFile()
 		hr = pFileReader->OpenFile();
 		if (FAILED(hr)) {
 
-			delete pFileReader;
+			pFileReader->~FileReader();
+//			delete pFileReader;
 			return VFW_E_INVALIDMEDIATYPE;
 		}
 
@@ -1085,7 +1221,7 @@ HRESULT PidParser::CheckEPGFromFile()
 				{
 					if (epgfound == false)
 					{
-						pos = pos + 188;
+						pos = pos + m_PacketSize;
 						if (pos >= 2000000)
 						{
 							ULONG ulBytesRead = 0;
@@ -1125,7 +1261,8 @@ HRESULT PidParser::CheckEPGFromFile()
 
 		pFileReader->CloseFile();
 		delete[] pData;
-		delete pFileReader;
+		pFileReader->~FileReader();
+//		delete pFileReader;
 	}
 	return S_OK;
 }
@@ -1136,7 +1273,7 @@ bool PidParser::CheckForEPG(PBYTE pData, int pos, bool *extPacket, int *sectlen,
 		return true;
 
 	int b = pos; //Set pos for Start Packet ID
-	int endpos = pos + 188; //Set to exclude crc bytes
+	int endpos = pos + m_PacketSize; //Set to exclude crc bytes
 
 	if (
 		(pData[pos + 11] == *event)
@@ -1276,7 +1413,7 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 			{
 				if (nitfound == false)
 				{
-					pos = pos + 188;
+					pos = pos + m_PacketSize;
 					if (pos >= 2000000)
 					{
 						ULONG ulBytesRead = 0;
@@ -1332,7 +1469,7 @@ bool PidParser::CheckForNID(PBYTE pData, int pos, bool *extpacket, int *sectlen)
 		return true;
 
 	int b = pos; //Set pos for Start Packet ID
-	int endpos = pos + 188; //Set to exclude crc bytes
+	int endpos = pos + m_PacketSize; //Set to exclude crc bytes
 
 	//Test if we have an NID discriptor
 	if (pData[pos + 4] == 0
@@ -1425,7 +1562,7 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 			{
 				if (onitfound == false)
 				{
-					pos = pos + 188;
+					pos = pos + m_PacketSize;
 					if (pos >= 2000000)
 					{
 						ULONG ulBytesRead = 0;
@@ -1482,7 +1619,7 @@ bool PidParser::CheckForONID(PBYTE pData, int pos, bool *extpacket, int *sectlen
 		return true;
 
 	int b = pos; //Set pos for Start Packet ID
-	int endpos = pos + 188; //Set to exclude crc bytes
+	int endpos = pos + m_PacketSize; //Set to exclude crc bytes
 
 	//Test if we have an ONID discriptor
 	if ((*extpacket == false)
@@ -1607,7 +1744,6 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 	int count = 0;
 	__int64 kByteRate = 0;
 	REFERENCE_TIME calcDuration = 0;
-//***********************************************************************************************
 
 	// find first Duration
 	while (m_fileStartOffset < filelength){
@@ -1617,16 +1753,16 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			//Save the start PCR only
 			if (startPCRSave == 0 && pPids->start > 0)
 				startPCRSave = pPids->start;
+
 			//Add the PCR time difference
 			totalduration = totalduration + (__int64)(pPids->end - pPids->start); // add duration to total.
 
-//***********************************************************************************************
 			if (totalduration > 0 && calcDuration == 0) {
 				//Only do this once even if we have a partial duration.
 				kByteRate = (__int64) ((endFilePos*(__int64)100) / totalduration);
-				calcDuration = 	(REFERENCE_TIME)((filelength / kByteRate)/100);
+				calcDuration = 	(REFERENCE_TIME)((__int64)((__int64)filelength / (__int64)kByteRate)*(__int64)100);
 //				kByteRate = (__int64) ((endFilePos *(__int64)10000) / totalduration);
-//				calcDuration = 	(REFERENCE_TIME)((filelength / kByteRate)*(__int64)10000);
+//				calcDuration = 	(REFERENCE_TIME)((__int64)((__int64)filelength / (__int64)kByteRate)*(__int64)10000);
 			}
 
 			WORD readonly = 0;
@@ -1647,8 +1783,6 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			else
 				count++;
 
-//***********************************************************************************************
-
 			//Test if at end of file & return
 			if (endFilePos >= (__int64)(filelength - tolerence)){
 
@@ -1668,14 +1802,12 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 
 		//If unable to find any pids dont go again
 		if (pPids->start == 0 || pPids->end == 0){
-//***********************************************************************************************
 
 			//Check if we have a pre-calculated length to use. 
 			if(calcDuration > 0) {
 				totalduration = calcDuration;
 				pPids->end = startPCRSave + totalduration;
 			}
-//***********************************************************************************************
 			break;
 		}
 
@@ -1714,14 +1846,16 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 	REFERENCE_TIME midPCR;
 	__int64 filetolerence = 100000UL;
 	ULONG ulBytesRead = 0;
-	pos = 0;
+	pos = 0; 
 
 	pFileReader->SetFilePointer(m_fileStartOffset, FILE_BEGIN);
 	pFileReader->Read(pData, lDataLength, &ulBytesRead);
 
 	hr = FindNextPCR(pData, lDataLength, pPids, &pPids->start, &pos, 1); //Get the PCR
-	
 	if (hr == S_OK){
+		//In case the PCR starts with zero
+		if (!pPids->start)
+			pPids->start = 1;
 
 		m_fileLenOffset = m_fileLenOffset - (((__int64)pos) - 1);
 		*pStartFilePos = m_fileStartOffset + (((__int64)pos) - 1);
@@ -1731,19 +1865,19 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 //		*pStartFilePos = m_fileStartOffset + (__int64)(pos - 1); 
 	}
 
-	pos = lDataLength - 188;
+	pos = lDataLength - m_PacketSize;
 	hr = FindNextPCR(pData, lDataLength, pPids, &pPids->end, &pos, -1); //Get the PCR
 	if (hr != S_OK)
 		return S_FALSE; // Unable to get PCR time in first block
 
 	__int64 SaveEndPCR = pPids->end;
 
-	while(m_fileLenOffset > (__int64)(10 * 188))
+	while(m_fileLenOffset > (__int64)0x800)//(10 * m_PacketSize))
 	{
 		if (pPids->start == 0)
 			break; //exit if no PCR found
 
-		pos = lDataLength - 188;
+		pos = lDataLength - m_PacketSize;
 
 		pFileReader->SetFilePointer(-(__int64)(m_fileEndOffset + (__int64)lDataLength), FILE_END);
 		pFileReader->Read(pData, lDataLength, &ulBytesRead);
@@ -1762,7 +1896,7 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 		//exit if bad PCR timming found
 		if (pPids->end > pPids->start)
 		{
-			pos = lDataLength - 188;
+			pos = lDataLength - m_PacketSize;
 
 			pFileReader->SetFilePointer(-(__int64)(m_fileEndOffset + (__int64)lDataLength), FILE_END);
 			pFileReader->Read(pData, lDataLength, &ulBytesRead);
@@ -1780,6 +1914,12 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 
 				return S_OK; // File length matchs PCR time
 			}
+			//force match if program pin mode
+			if (m_ProgPinMode && pPids->end && pPids->start) {
+				m_fileLenOffset = (__int64)(m_fileLenOffset / 2); //Set file length offset for next search  
+				return S_OK; // File length matchs PCR time
+			}
+
 		}
 		m_fileLenOffset = (__int64)(m_fileLenOffset / 2); //Set file length offset for next search 
 	}
@@ -1883,6 +2023,31 @@ void PidParser::get_CurrentTSArray(ULONG *pPidArray)
 WORD PidParser::get_ProgramNumber()
 {
 	return m_pgmnumb;
+}
+
+BOOL PidParser::get_ProgPinMode()
+{
+	return m_ProgPinMode;
+}
+
+void PidParser::set_ProgPinMode(BOOL mode)
+{
+	if (mode){
+
+		m_pFileReader->set_DelayMode(TRUE);
+		m_ProgPinMode = TRUE;
+		m_PacketSize = 0x800;
+	}
+	else{
+		m_PacketSize = 188;
+		m_pFileReader->set_DelayMode(FALSE);
+		m_ProgPinMode = FALSE;
+	}
+}
+
+ULONG PidParser::get_PacketSize()
+{
+	return m_PacketSize;
 }
 
 void PidParser::set_ProgramNumber(WORD programNumber)

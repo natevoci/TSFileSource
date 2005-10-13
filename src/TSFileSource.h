@@ -101,6 +101,7 @@ public:
 	STDMETHODIMP SetTunerEvent(void);
 	STDMETHODIMP Refresh();
 	BOOL get_AutoMode();
+	BOOL get_PinMode();
 
 protected:
 

@@ -44,6 +44,7 @@ StreamParser::StreamParser(PidParser *pPidParser, Demux * pDemux)
 
 StreamParser::~StreamParser()
 {
+	StreamArray.Clear();
 }
 
 HRESULT StreamParser::ParsePidArray()

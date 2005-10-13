@@ -51,6 +51,8 @@ CTSFileSourceProp::CTSFileSourceProp(IUnknown *pUnk) :
 
 CTSFileSourceProp::~CTSFileSourceProp(void)
 {
+	if (m_pProgram)
+		m_pProgram->Release();
 }
 
 HRESULT CTSFileSourceProp::OnConnect(IUnknown *pUnk)
