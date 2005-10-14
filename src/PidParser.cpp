@@ -301,6 +301,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 					AddPidArray();
 			}
 
+			// If nothing then check for Program Pin Mode
 			if ((pids.vid | pids.h264| pids.mpeg4  
 				| pids.aud |pids.txt | pids.ac3 
 				| pids.aac | pids.pcr | pids.opcr) == 0)
@@ -316,20 +317,16 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 					else
 						RefreshDuration(FALSE, pFileReader);
 
-					// restore pcr pid if no matches with A/V pids
+					// Check if we found mpg header times 
 					if (!pids.dur) {
-					//set fake duration if needed
+						//set fake duration if needed
 						RefreshDuration(FALSE, pFileReader);
 					}
 					else
 						AddPidArray();
 				}
-
-
 			}
 		}
-
-
 
 		//Scan for missing durations & Fix
 		for (int n = 0; n < pidArray.Count(); n++){

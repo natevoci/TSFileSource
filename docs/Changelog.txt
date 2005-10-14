@@ -1,3 +1,8 @@
+Version 2.1.1.5
+=================
+Fixed a problem where the IMPEG2StreamIdMap pids were not being cleared when changing streams.(re mpg files)
+Fixed the AC3 Audio playback issue with mpg files. Had to add the stream offset values.
+
 Version 2.1.1.4
 =================
 Made some changes to the main destructor method so that all class destructors were used.

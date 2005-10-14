@@ -1209,7 +1209,15 @@ HRESULT Demux::LoadAudioPin(IPin* pIPin, ULONG pid)
 		{
 			if (pid)
 			{
-				muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0, 0);
+				if (pid == get_MP2AudioPid())
+					muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0x00, 0x00);
+
+				if (pid == get_AC3_AudioPid())
+					muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0x80, 0x04);
+
+				if (pid == get_AAC_AudioPid())
+					muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0x00, 0x00);
+
 				m_SelAudioPid = pid;
 			}
 
@@ -1278,6 +1286,23 @@ HRESULT Demux::ClearDemuxPin(IPin* pIPin)
 			}
 		}
 		muxMapPid->Release();
+	}
+	else {
+
+		IMPEG2StreamIdMap* muxStreamMap;
+		if(SUCCEEDED(pIPin->QueryInterface (&muxStreamMap))){
+
+			IEnumStreamIdMap *pIEnumStreamMap;
+			if (SUCCEEDED(muxStreamMap->EnumStreamIdMap(&pIEnumStreamMap))){
+				ULONG pNumb = 0;
+				STREAM_ID_MAP pStreamIdMap;
+				while(pIEnumStreamMap->Next(1, &pStreamIdMap, &pNumb) == S_OK){
+					ULONG pid = pStreamIdMap.stream_id;
+					hr = muxStreamMap->UnmapStreamId(1, &pid);
+				}
+			}
+			muxStreamMap->Release();
+		}
 	}
 	return S_OK;
 }
@@ -2115,12 +2140,12 @@ HRESULT Demux::ReconnectFilterPin(IPin *pIPin)
 	return hr;
 }
 
-HRESULT Demux::GetReferenceClock(IReferenceClock **pClock)
+HRESULT Demux::GetReferenceClock(IBaseFilter *pFilter, IReferenceClock **ppClock)
 {
 	HRESULT hr;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
+	if (SUCCEEDED(pFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		// Get IMediaFilter interface
 		IMediaFilter* pMediaFilter = NULL;
@@ -2129,7 +2154,7 @@ HRESULT Demux::GetReferenceClock(IReferenceClock **pClock)
 		if (pMediaFilter)
 		{
 			// Get IReferenceClock interface
-			hr = pMediaFilter->GetSyncSource(pClock);
+			hr = pMediaFilter->GetSyncSource(ppClock);
 			pMediaFilter->Release();
 			return S_OK;
 		}

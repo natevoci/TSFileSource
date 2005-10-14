@@ -84,15 +84,6 @@ public:
 
 	HRESULT CTSFileSourcePin::DisconnectDemuxPins();
 	HRESULT SetDemuxClock(IReferenceClock *pClock);
-	HRESULT GetPeerFilters(
-		IBaseFilter *pFilter, // Pointer to the starting filter
-		PIN_DIRECTION Dir,    // Direction to search (upstream or downstream)
-		CFilterList &FilterList);  // Collect the results in this list.
-	void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
-	HRESULT GetNextFilter(
-		IBaseFilter *pFilter, // Pointer to the starting filter
-		PIN_DIRECTION Dir,    // Direction to search (upstream or downstream)
-		IBaseFilter **ppNext); // Receives a pointer to the next filter.
 
 	BOOL get_RateControl();
 	void set_RateControl(BOOL bRateControl);
@@ -102,7 +93,6 @@ public:
 
 protected:
 
-	HRESULT GetReferenceClock(IReferenceClock **pClock);
 	HRESULT FindNextPCR(__int64 *pcrtime, long *byteOffset, long maxOffset);
 	HRESULT FindPrevPCR(__int64 *pcrtime, long *byteOffset);
 	__int64 ConvertPCRtoRT(REFERENCE_TIME pcrtime);

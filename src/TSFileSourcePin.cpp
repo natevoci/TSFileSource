@@ -496,7 +496,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		Debug(TEXT("Setting Base PCR\n"));
 #ifdef USE_EVENT
 		IReferenceClock* pReferenceClock = NULL;
-		hr = GetReferenceClock(&pReferenceClock);
+		hr = Demux::GetReferenceClock(m_pTSFileSourceFilter, &pReferenceClock);
 		if (pReferenceClock != NULL)
 		{
 			pReferenceClock->GetTime(&m_rtStartTime);
@@ -538,7 +538,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		//Wait if necessary
 #ifdef USE_EVENT
 		IReferenceClock* pReferenceClock = NULL;
-		hr = GetReferenceClock(&pReferenceClock);
+		hr = Demux::GetReferenceClock(m_pTSFileSourceFilter, &pReferenceClock);
 		if (pReferenceClock != NULL)
 		{
 			REFERENCE_TIME rtCurrTime;
@@ -691,6 +691,7 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 {
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 	m_llPrevPCR = -1;
+	m_pTSBuffer->Clear();
 	m_DataRate = m_pPidParser->pids.bitrate;
 	debugcount = 0;
 
@@ -727,7 +728,7 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 	if (!m_bSeeking && !m_DemuxLock)
 	{	
 		IReferenceClock *pClock = NULL;
-		GetReferenceClock(&pClock);
+		Demux::GetReferenceClock(m_pTSFileSourceFilter, &pClock);
 		SetDemuxClock(pClock);
 		m_pTSFileSourceFilter->NotifyEvent(EC_CLOCK_UNSET, NULL, NULL);
 	}
@@ -874,6 +875,16 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 
 HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 {
+//PrintTime("seekin", (__int64) seektime, 10000);
+
+	HRESULT hr;
+	ULONG pos;
+	__int64 pcrEndPos;
+	ULONG ulBytesRead = 0;
+	long lDataLength = 1000000;
+	__int64 nFileIndex = 0;
+	__int64 filelength = 0;
+	m_pFileReader->GetFileSize(&filelength);
 
 //***********************************************************************************************
 //Old Capture format Additions
@@ -882,9 +893,8 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 			// Revert to old method
 			// shifting right by 14 rounds the seek and duration time down to the
 			// nearest multiple 16.384 ms. More than accurate enough for our seeks.
-		__int64 filelength = 0;
-		m_pFileReader->GetFileSize(&filelength);
-		__int64 nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pPidParser->pids.dur>>14);
+
+		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pPidParser->pids.dur>>14);
 
 		if (nFileIndex < 300000)
 			nFileIndex = 300000; //Skip head of file
@@ -893,18 +903,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	}
 //***********************************************************************************************
 
-//PrintTime("seekin", (__int64) seektime, 10000);
-
-	HRESULT hr;
-	ULONG pos;
-	__int64 pcrEndPos;
-	ULONG ulBytesRead = 0;
-	long lDataLength = 1000000;
 	PBYTE pData = new BYTE[4000000];
-	__int64 nFileIndex = 0;
-	__int64 filelength = 0;
-	m_pFileReader->GetFileSize(&filelength);
-
 	__int64 pcrByteRate = (__int64)((__int64)m_DataRate / (__int64)720);
 //PrintTime("our pcr Byte Rate", (__int64)pcrByteRate, 90);
 
@@ -1238,30 +1237,6 @@ void CTSFileSourcePin::set_RateControl(BOOL bRateControl)
 	m_bRateControl = bRateControl;
 }
 
-
-HRESULT CTSFileSourcePin::GetReferenceClock(IReferenceClock **pClock)
-{
-	HRESULT hr;
-
-	FILTER_INFO	filterInfo;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&filterInfo)) && filterInfo.pGraph != NULL)
-	{
-		// Get IMediaFilter interface
-		IMediaFilter* pMediaFilter = NULL;
-		hr = filterInfo.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
-		filterInfo.pGraph->Release();
-
-		if (pMediaFilter)
-		{
-			// Get IReferenceClock interface
-			hr = pMediaFilter->GetSyncSource(pClock);
-			pMediaFilter->Release();
-			return S_OK;
-		}
-	}
-	return E_FAIL;
-}
-
 __int64 CTSFileSourcePin::ConvertPCRtoRT(__int64 pcrtime)
 {
 	return (__int64)(pcrtime / 9) * 1000;
@@ -1395,12 +1370,12 @@ HRESULT CTSFileSourcePin::DisconnectDemuxPins()
 	// that implement the IMpeg2Demultiplexer interface while
 	// the count is still active.
 	CFilterList FList(NAME("MyList"));  // List to hold the downstream peers.
-	if (SUCCEEDED(GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList)) && FList.GetHeadPosition())
+	if (SUCCEEDED(Demux::GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList)) && FList.GetHeadPosition())
 	{
 		IBaseFilter* pFilter = NULL;
 		POSITION pos = FList.GetHeadPosition();
 		pFilter = FList.Get(pos);
-		while (SUCCEEDED(GetPeerFilters(pFilter, PINDIR_OUTPUT, FList)) && pos)
+		while (SUCCEEDED(Demux::GetPeerFilters(pFilter, PINDIR_OUTPUT, FList)) && pos)
 		{
 			pFilter = FList.GetNext(pos);
 		}
@@ -1468,12 +1443,12 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 	// that implement the IMpeg2Demultiplexer interface while
 	// the count is still active.
 	CFilterList FList(NAME("MyList"));  // List to hold the downstream peers.
-	if (SUCCEEDED(GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList)) && FList.GetHeadPosition())
+	if (SUCCEEDED(Demux::GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList)) && FList.GetHeadPosition())
 	{
 		IBaseFilter* pFilter = NULL;
 		POSITION pos = FList.GetHeadPosition();
 		pFilter = FList.Get(pos);
-		while (SUCCEEDED(GetPeerFilters(pFilter, PINDIR_OUTPUT, FList)) && pos)
+		while (SUCCEEDED(Demux::GetPeerFilters(pFilter, PINDIR_OUTPUT, FList)) && pos)
 		{
 			pFilter = FList.GetNext(pos);
 		}
@@ -1513,129 +1488,3 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 
 	return S_OK;
 }
-
-// Find all the immediate upstream or downstream peers of a filter.
-HRESULT CTSFileSourcePin::GetPeerFilters(
-    IBaseFilter *pFilter, // Pointer to the starting filter
-    PIN_DIRECTION Dir,    // Direction to search (upstream or downstream)
-    CFilterList &FilterList)  // Collect the results in this list.
-{
-    if (!pFilter) return E_POINTER;
-
-    IEnumPins *pEnum = 0;
-    IPin *pPin = 0;
-    HRESULT hr = pFilter->EnumPins(&pEnum);
-    if (FAILED(hr)) return hr;
-    while (S_OK == pEnum->Next(1, &pPin, 0))
-    {
-        // See if this pin matches the specified direction.
-        PIN_DIRECTION thisPinDir;
-        hr = pPin->QueryDirection(&thisPinDir);
-        if (FAILED(hr))
-        {
-            // Something strange happened.
-            hr = E_UNEXPECTED;
-            pPin->Release();
-            break;
-        }
-        if (thisPinDir == Dir)
-        {
-            // Check if the pin is connected to another pin.
-            IPin *pPinNext = 0;
-            hr = pPin->ConnectedTo(&pPinNext);
-            if (SUCCEEDED(hr))
-            {
-                // Get the filter that owns that pin.
-                PIN_INFO PinInfo;
-                hr = pPinNext->QueryPinInfo(&PinInfo);
-                pPinNext->Release();
-                if (FAILED(hr) || (PinInfo.pFilter == NULL))
-                {
-                    // Something strange happened.
-                    pPin->Release();
-                    pEnum->Release();
-                    return E_UNEXPECTED;
-                }
-                // Insert the filter into the list.
-                AddFilterUnique(FilterList, PinInfo.pFilter);
-                PinInfo.pFilter->Release();
-            }
-        }
-        pPin->Release();
-    }
-    pEnum->Release();
-    return S_OK;
-}
-
-void CTSFileSourcePin::AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew)
-{
-    if (pNew == NULL) return;
-
-    POSITION pos = FilterList.GetHeadPosition();
-    while (pos)
-    {
-        IBaseFilter *pF = FilterList.GetNext(pos);
-        if (IsEqualObject(pF, pNew))
-        {
-            return;
-        }
-    }
-    pNew->AddRef();  // The caller must release everything in the list.
-    FilterList.AddTail(pNew);
-}
-
-// Get the first upstream or downstream filter
-HRESULT CTSFileSourcePin::GetNextFilter(
-    IBaseFilter *pFilter, // Pointer to the starting filter
-    PIN_DIRECTION Dir,    // Direction to search (upstream or downstream)
-    IBaseFilter **ppNext) // Receives a pointer to the next filter.
-{
-    if (!pFilter || !ppNext) return E_POINTER;
-
-    IEnumPins *pEnum = 0;
-    IPin *pPin = 0;
-    HRESULT hr = pFilter->EnumPins(&pEnum);
-    if (FAILED(hr)) return hr;
-    while (S_OK == pEnum->Next(1, &pPin, 0))
-    {
-        // See if this pin matches the specified direction.
-        PIN_DIRECTION thisPinDir;
-        hr = pPin->QueryDirection(&thisPinDir);
-        if (FAILED(hr))
-        {
-            // Something strange happened.
-            hr = E_UNEXPECTED;
-            pPin->Release();
-            break;
-        }
-        if (thisPinDir == Dir)
-        {
-            // Check if the pin is connected to another pin.
-            IPin *pPinNext = 0;
-            hr = pPin->ConnectedTo(&pPinNext);
-            if (SUCCEEDED(hr))
-            {
-                // Get the filter that owns that pin.
-                PIN_INFO PinInfo;
-                hr = pPinNext->QueryPinInfo(&PinInfo);
-                pPinNext->Release();
-                pPin->Release();
-                pEnum->Release();
-                if (FAILED(hr) || (PinInfo.pFilter == NULL))
-                {
-                    // Something strange happened.
-                    return E_UNEXPECTED;
-                }
-                // This is the filter we're looking for.
-                *ppNext = PinInfo.pFilter; // Client must release.
-                return S_OK;
-            }
-        }
-        pPin->Release();
-    }
-    pEnum->Release();
-    // Did not find a matching filter.
-    return E_FAIL;
-}
-
-

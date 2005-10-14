@@ -75,6 +75,10 @@ public:
 	HRESULT GetMpeg4Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetTelexMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetTSMedia(AM_MEDIA_TYPE *pintype);
+	static	HRESULT GetPeerFilters(IBaseFilter *pFilter, PIN_DIRECTION Dir, CFilterList &FilterList);  
+	static  HRESULT GetNextFilter(IBaseFilter *pFilter, PIN_DIRECTION Dir, IBaseFilter **ppNext);
+	static  void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
+	static  HRESULT GetReferenceClock(IBaseFilter *pFilter, IReferenceClock **ppClock);
 
 protected:
 	HRESULT UpdateDemuxPins(IBaseFilter* pDemux);
@@ -107,13 +111,9 @@ protected:
 	HRESULT UpdateNetworkProvider(IBaseFilter* pNetworkProvider);
 	HRESULT CheckTIFPin(IBaseFilter* pDemux);
 	HRESULT GetTIFMedia(AM_MEDIA_TYPE *pintype);
-	HRESULT GetPeerFilters(IBaseFilter *pFilter, PIN_DIRECTION Dir, CFilterList &FilterList);  
-	HRESULT GetNextFilter(IBaseFilter *pFilter, PIN_DIRECTION Dir, IBaseFilter **ppNext);
-	void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
 	HRESULT RemoveFilterChain(IBaseFilter *pStartFilter, IBaseFilter *pEndFilter);
 	HRESULT RenderFilterPin(IPin *pIPin);
 	HRESULT ReconnectFilterPin(IPin *pIPin);
-	HRESULT GetReferenceClock(IReferenceClock **pClock);
 	HRESULT SetReferenceClock(IBaseFilter *pFilter);
 
 	IBaseFilter *m_pTSFileSourceFilter;
