@@ -117,11 +117,33 @@ STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void **
 	{
 		 GetInterface((IAMStreamSelect*)m_pTSFileSourceFilter, ppv);
 	}
+	if (riid == IID_IAsyncReader)
+		if ((!m_pPidParser->pids.pcr
+			&& !m_pTSFileSourceFilter->get_AutoMode()
+			&& m_pPidParser->get_ProgPinMode())
+			| m_pPidParser->get_AsyncMode())
+		{
+			return GetInterface((IAsyncReader*)m_pTSFileSourceFilter, ppv);
+		}
 	if (riid == IID_IMediaSeeking)
     {
         return CSourceSeeking::NonDelegatingQueryInterface( riid, ppv );
     }
 	return CSourceStream::NonDelegatingQueryInterface(riid, ppv);
+}
+
+STDMETHODIMP CTSFileSourcePin::IsFormatSupported(const GUID * pFormat)
+{
+	if (*pFormat == TIME_FORMAT_MEDIA_TIME)
+		return S_OK;
+	else
+		return E_FAIL;
+}
+
+STDMETHODIMP CTSFileSourcePin::QueryPreferredFormat(GUID *pFormat)
+{
+	*pFormat = TIME_FORMAT_MEDIA_TIME;
+	return S_OK;
 }
 
 HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
@@ -135,6 +157,8 @@ HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 
 	//Set for Program mode
 	if (m_pPidParser->get_ProgPinMode())
+		pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_PROGRAM);
+	else if (!m_pPidParser->pids.pcr)
 		pmt->SetSubtype   (& MEDIASUBTYPE_MPEG2_PROGRAM);
 
     return S_OK;
@@ -160,6 +184,8 @@ HRESULT CTSFileSourcePin::GetMediaType(int iPosition, CMediaType *pMediaType)
 	//Set for Program mode
 	if (m_pPidParser->get_ProgPinMode())
 		pMediaType->SetSubtype   (& MEDIASUBTYPE_MPEG2_PROGRAM);
+	else if (!m_pPidParser->pids.pcr)
+		pMediaType->SetSubtype   (& MEDIASUBTYPE_MPEG2_PROGRAM);
 	
     return S_OK;
 }
@@ -177,6 +203,9 @@ HRESULT CTSFileSourcePin::CheckMediaType(const CMediaType* pType)
 
 		//Are we in Program mode
 		else if (MEDIASUBTYPE_MPEG2_PROGRAM == pType->subtype && m_pPidParser->get_ProgPinMode())
+			return S_OK;
+
+		else if (MEDIASUBTYPE_MPEG2_PROGRAM == pType->subtype && !m_pPidParser->pids.pcr)
 			return S_OK;
 	}
 
@@ -361,7 +390,8 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 
 	__int64 firstPass = m_llPrevPCR;
 
-	if (!m_pPidParser->pids.pcr && !m_pPidParser->get_ProgPinMode()) {
+//	if (!m_pPidParser->pids.pcr && !m_pPidParser->get_ProgPinMode()) {
+	if (!m_pPidParser->pids.pcr && m_pPidParser->get_AsyncMode()) {
 
 		if (firstPass == -1) {
 
@@ -741,6 +771,7 @@ STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
 {
 	if (pCurrent)
 	{
+		CAutoLock seekLock(&m_SeekLock);
 		REFERENCE_TIME stop;
 		return GetPositions(pCurrent, &stop);
 	}
@@ -814,10 +845,16 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 				m_rtLastSeekStart = rtCurrent;
 				DeliverEndFlush();
 				CSourceStream::Run();
+				if (CurrentFlags & AM_SEEKING_ReturnTime)
+					*pCurrent  = rtCurrent;
+
 				CAutoLock lock(&m_SeekLock);
 				return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
 			}
 		}
+		if (CurrentFlags & AM_SEEKING_ReturnTime)
+			*pCurrent  = rtCurrent;
+
 		return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
 	}
 
@@ -889,7 +926,8 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 //***********************************************************************************************
 //Old Capture format Additions
 
-	if (m_pPidParser->pids.pcr && !m_pPidParser->get_ProgPinMode()) {
+	if (!m_pPidParser->pids.pcr && m_pPidParser->get_AsyncMode()) {
+//	if (!m_pPidParser->pids.pcr && !m_pPidParser->get_ProgPinMode()) {
 			// Revert to old method
 			// shifting right by 14 rounds the seek and duration time down to the
 			// nearest multiple 16.384 ms. More than accurate enough for our seeks.

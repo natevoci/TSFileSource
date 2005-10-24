@@ -86,6 +86,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	cmt.InitMediaType();
 	cmt.SetType(&MEDIATYPE_Stream);
 	cmt.SetSubtype(&MEDIASUBTYPE_MPEG2_TRANSPORT);
+	cmt.SetSubtype(&MEDIASUBTYPE_NULL);
 	m_pPin->SetMediaType(&cmt);
 
 	CAMThread::Create();
@@ -259,6 +260,14 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 	{
 		return GetInterface((IAMStreamSelect*)this, ppv);
 	}
+	if (riid == IID_IAsyncReader)
+		if ((!m_pPidParser->pids.pcr
+			&& !get_AutoMode()
+			&& m_pPidParser->get_ProgPinMode())
+			| m_pPidParser->get_AsyncMode())
+		{
+			return GetInterface((IAsyncReader*)this, ppv);
+		}
 	return CSource::NonDelegatingQueryInterface(riid, ppv);
 
 } // NonDelegatingQueryInterface
@@ -662,6 +671,7 @@ STDMETHODIMP CTSFileSourceFilter::GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TY
 		pmt->majortype = MEDIATYPE_Stream;
 //		pmt->majortype = MEDIATYPE_Video;
 		pmt->subtype = MEDIASUBTYPE_MPEG2_TRANSPORT;
+		pmt->subtype = MEDIASUBTYPE_NULL;
 	}
 
 	return S_OK;
@@ -1643,14 +1653,14 @@ HRESULT CTSFileSourceFilter::ShowEPGInfo()
 
 	if (hr == S_OK)
 	{
-		unsigned char netname[128];
-		unsigned char onetname[128];
-		unsigned char chname[128];
-		unsigned char chnumb[128];
-		unsigned char shortdescripor[128];
-		unsigned char Extendeddescripor[600];
-		unsigned char shortnextdescripor[128];
-		unsigned char Extendednextdescripor[600];
+		unsigned char netname[128] = "";
+		unsigned char onetname[128] ="";
+		unsigned char chname[128] ="";
+		unsigned char chnumb[128] ="";
+		unsigned char shortdescripor[128] ="";
+		unsigned char Extendeddescripor[600] ="";
+		unsigned char shortnextdescripor[128] ="";
+		unsigned char Extendednextdescripor[600] ="";
 		GetNetworkName((unsigned char*)&netname);
 		GetONetworkName((unsigned char*)&onetname);
 		GetChannelName((unsigned char*)&chname);
@@ -1681,6 +1691,158 @@ HRESULT CTSFileSourceFilter::ShowEPGInfo()
 	}
 	return hr;
 }
+
+//*****************************************************************************************
+//ASync Additions
+
+STDMETHODIMP CTSFileSourceFilter::RequestAllocator(
+                      IMemAllocator* pPreferred,
+                      ALLOCATOR_PROPERTIES* pProps,
+                      IMemAllocator ** ppActual)
+{
+	Pause();
+	Stop();
+    return S_OK;
+}
+
+STDMETHODIMP CTSFileSourceFilter::Request(
+                     IMediaSample* pSample,
+                     DWORD_PTR dwUser)
+{
+	return E_NOTIMPL;
+}
+
+STDMETHODIMP CTSFileSourceFilter::WaitForNext(
+                      DWORD dwTimeout,
+                      IMediaSample** ppSample,  
+                      DWORD_PTR * pdwUser)
+{
+	return E_NOTIMPL;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SyncReadAligned(
+                      IMediaSample* pSample)
+{
+	return E_NOTIMPL;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SyncRead(
+                      LONGLONG llPosition,  // absolute file position
+                      LONG lLength,         // nr bytes required
+                      BYTE* pBuffer)
+{
+	HRESULT hr;
+	LONG dwBytesToRead = lLength;
+    CAutoLock lck(&m_Lock);
+    DWORD dwReadLength;
+
+	if (m_pFileReader->IsFileInvalid())
+	{
+		hr = m_pFileReader->OpenFile();
+		if (FAILED(hr))
+			return E_FAIL;
+
+		int count = 0;
+		__int64	fileSize = 0;
+		m_pFileReader->GetFileSize(&fileSize);
+
+		//If this a file start then return null.
+		while(fileSize < 500000 && count < 10)
+		{
+			Sleep(100);
+			m_pFileReader->GetFileSize(&fileSize);
+			count++;
+		}
+	}
+
+	// Read the data from the file
+	hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
+	if (FAILED(hr))
+		return hr;
+
+	if (dwReadLength < dwBytesToRead) 
+	{
+		WORD wReadOnly = 0;
+		m_pFileReader->get_ReadOnly(&wReadOnly);
+		if (wReadOnly)
+		{
+			while (dwReadLength < dwBytesToRead) 
+			{
+				WORD bDelay = 0;
+				m_pFileReader->get_DelayMode(&bDelay);
+
+				if (bDelay > 0)
+					Sleep(2000);
+				else
+					Sleep(100);
+
+				ULONG ulNextBytesRead = 0;				
+				HRESULT hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
+				if (FAILED(hr))
+					return hr;
+
+				if ((ulNextBytesRead == 0) || (ulNextBytesRead == dwReadLength))
+					return E_FAIL;
+
+				dwReadLength = ulNextBytesRead;
+			}
+		}
+		else
+		{
+			m_pFileReader->CloseFile();
+			return E_FAIL;
+		}
+	}
+
+	return NOERROR;
+}
+
+    // return total length of stream, and currently available length.
+    // reads for beyond the available length but within the total length will
+    // normally succeed but may block for a long period.
+STDMETHODIMP CTSFileSourceFilter::Length(
+                      LONGLONG* pTotal,
+                      LONGLONG* pAvailable)
+{
+	HRESULT hr;
+	if (m_pFileReader->IsFileInvalid())
+	{
+		hr = m_pFileReader->OpenFile();
+		if (FAILED(hr))
+			return E_FAIL;
+
+		int count = 0;
+		__int64	fileSize = 0;
+		m_pFileReader->GetFileSize(&fileSize);
+
+		//If this a file start then return null.
+		while(fileSize < 500000 && count < 10)
+		{
+			Sleep(100);
+			m_pFileReader->GetFileSize(&fileSize);
+			count++;
+		}
+	}
+
+	__int64	fileSize = 0;
+	m_pFileReader->GetFileSize(&fileSize);
+
+	*pTotal = fileSize;		
+	*pAvailable = fileSize;		
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::BeginFlush(void)
+{
+	return E_NOTIMPL;
+}
+
+STDMETHODIMP CTSFileSourceFilter::EndFlush(void)
+{
+	return E_NOTIMPL;
+}
+
+//*****************************************************************************************
 
 
 //////////////////////////////////////////////////////////////////////////

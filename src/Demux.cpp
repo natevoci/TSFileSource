@@ -1319,11 +1319,11 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 	IMpeg2Demultiplexer* muxInterface = NULL;
 	if(SUCCEEDED(pDemux->QueryInterface (&muxInterface)))
 	{
-		char audiocheck[128];
-		char videocheck[128];
-		char telexcheck[128];
-		char tscheck[128];
-		char pinname[128];
+		char audiocheck[128] ="";
+		char videocheck[128] ="";
+		char telexcheck[128] ="";
+		char tscheck[128] ="";
+		char pinname[128] ="";
 		wcscpy((wchar_t*)pinname, *pPinName);
 		wcscpy((wchar_t*)audiocheck, L"Audio");
 		wcscpy((wchar_t*)videocheck, L"Video");
@@ -1723,6 +1723,7 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 
 	return S_OK;
 }
+static GUID H264_SubType = {0x8D2D71CB, 0x243F, 0x45E3, {0xB2, 0xD8, 0x5F, 0xD7, 0x96, 0x7E, 0xC0, 0x9B}};
 
 HRESULT Demux::GetH264Media(AM_MEDIA_TYPE *pintype)
 
@@ -1734,7 +1735,8 @@ HRESULT Demux::GetH264Media(AM_MEDIA_TYPE *pintype)
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Video;
-	pintype->subtype = FOURCCMap(MAKEFOURCC('h','2','6','4'));
+//	pintype->subtype = FOURCCMap(MAKEFOURCC('h','2','6','4'));
+	pintype->subtype = H264_SubType;
 	pintype->bFixedSizeSamples = FALSE;
 	pintype->bTemporalCompression = TRUE;
 	pintype->lSampleSize = 1;

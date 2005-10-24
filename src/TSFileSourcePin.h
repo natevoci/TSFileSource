@@ -54,6 +54,8 @@ public:
 	STDMETHODIMP NonDelegatingQueryInterface( REFIID riid, void ** ppv );
 
 	//CSourceStream
+	STDMETHODIMP IsFormatSupported(const GUID * pFormat);
+	STDMETHODIMP QueryPreferredFormat(GUID *pFormat);
 	HRESULT GetMediaType(CMediaType *pMediaType);
 	HRESULT GetMediaType(int iPosition, CMediaType *pMediaType);
 	HRESULT CheckMediaType(const CMediaType* pType);

@@ -64,7 +64,9 @@ PidParser(FileReader *pFileReader);
 	void set_SIDPid(BOOL bProgramSID);
 	WORD get_ProgramNumber();
 	BOOL get_ProgPinMode();
-	void PidParser::set_ProgPinMode(BOOL mode);
+	void set_ProgPinMode(BOOL mode);
+	BOOL get_AsyncMode();
+	void set_AsyncMode(BOOL mode);
 	ULONG get_PacketSize();
 
 	int m_NetworkID;
@@ -72,6 +74,7 @@ PidParser(FileReader *pFileReader);
 	int m_TStreamID;
 	int m_ProgramSID;
 	BOOL m_ProgPinMode;
+	BOOL m_AsyncMode;
 	ULONG m_PacketSize;
 	PidInfo pids;
 	PidInfoArray pidArray;	//Currently selected pids

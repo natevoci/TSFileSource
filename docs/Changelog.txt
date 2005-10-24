@@ -1,3 +1,12 @@
+Version 2.1.1.6
+=================
+
+Added a dummy IAsyncReader Interface to allow the MS Demux to parse the data in the file when the Demux control option is inactive.(Program Pin Mode Only)
+Added some changes to the PidParser code to allow for other country TS standards.(France)
+Changed the media subtype for H264 video mediatype so it wll play H264 streams.(France)
+
+
+
 Version 2.1.1.5
 =================
 Fixed a problem where the IMPEG2StreamIdMap pids were not being cleared when changing streams.(re mpg files)

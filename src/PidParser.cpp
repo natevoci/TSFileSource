@@ -89,7 +89,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 	// Access the sample's data buffer
 	a = 0;
-	ULONG ulDataLength = 2000000;
+//	ULONG ulDataLength = 2000000;
+	ULONG ulDataLength = 4000000;
 	ULONG ulDataRead = 0;
 	PBYTE pData = new BYTE[ulDataLength];
 
@@ -105,6 +106,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	m_TStreamID = 0; //TSID store
 	m_ProgramSID = 0; //SID store for prog search
 	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
+	m_AsyncMode = FALSE; //Set for control by filter
 
 	ulDataLength = ulDataRead;
 	if (ulDataLength > 0)
@@ -307,13 +309,25 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				| pids.aac | pids.pcr | pids.opcr) == 0)
 			{
 				set_ProgPinMode(TRUE); //Set to Program Stream Mode
+				m_PacketSize = 0x800; //Set for 2048 block
 				//Search for any A/V Pids
 				if (CheckVAStreams(pData, ulDataLength) == S_OK)
 				{
 					if (!(pids.vid | pids.h264 | pids.mpeg4  
 						 | pids.aud  | pids.txt  | pids.ac3 
-						 | pids.aac))
-						set_ProgPinMode(FALSE); //Set back to Transport Stream Mode
+						 | pids.aac)){
+
+						m_PacketSize = 0x930; //Set for 2352 block
+						if (CheckVAStreams(pData, ulDataLength) == S_OK)
+						{
+							if (!(pids.vid | pids.h264 | pids.mpeg4  
+								| pids.aud  | pids.txt  | pids.ac3 
+								| pids.aac))
+								set_ProgPinMode(FALSE); //Set back to Transport Stream Mode
+						}
+						else
+							RefreshDuration(FALSE, pFileReader);
+					}
 					else
 						RefreshDuration(FALSE, pFileReader);
 
@@ -367,6 +381,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		}
 		else
 		{
+			set_AsyncMode(TRUE); //Set IAsyncReader interface Active
 			hr = S_FALSE;
 		}
 	}
@@ -1588,7 +1603,8 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 				{
 					//Search ID Array for the SID Value
 					if (pidArray[n].sid == (((0xFF & m_pDummy[i]) << 8) | (0xFF & m_pDummy[i + 1]))
-						&& 0xFD80 == (((0xFF & m_pDummy[i + 2]) << 8) | (0xFF & m_pDummy[i + 3])))
+						&& 0xFD80 == (((0xFF & m_pDummy[i + 2]) << 8) | (0x80 & m_pDummy[i + 3])))
+//						&& 0xFD80 == (((0xFF & m_pDummy[i + 2]) << 8) | (0xFF & m_pDummy[i + 3])))
 					{
 						int a = i + 9;
 						int b = min(m_pDummy[i + 8], 128);
@@ -1623,7 +1639,8 @@ bool PidParser::CheckForONID(PBYTE pData, int pos, bool *extpacket, int *sectlen
 		&&  (pData[pos + 4] == 0)
 		&& (pData[pos + 5] == 0x42) 
 		&& ((0xF0 & pData[pos + 6]) == 0xF0)
-		&& ((0xF0 & pData[pos + 1]) == 0x40) //first packet of ID's
+		&& ((0xBF & pData[pos + 1]) == 0x00) //first packet of ID's
+//		&& ((0xF0 & pData[pos + 1]) == 0x40) //first packet of ID's
 		&& ((0x01 & pData[pos+11]) == 0x00)    // should be start of parsing
 		&& ((((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x11) 
 		&& ((((0x1F & pData[pos + 11]) << 8)|(0xFF & pData[pos + 12])) == 0)	//yes if we have the ONID flag
@@ -2027,19 +2044,33 @@ BOOL PidParser::get_ProgPinMode()
 	return m_ProgPinMode;
 }
 
+BOOL PidParser::get_AsyncMode()
+{
+	return m_AsyncMode;
+}
+
 void PidParser::set_ProgPinMode(BOOL mode)
 {
 	if (mode){
 
+		m_PacketSize = 0x800; //Set for 2048 block
 		m_pFileReader->set_DelayMode(TRUE);
 		m_ProgPinMode = TRUE;
-		m_PacketSize = 0x800;
 	}
 	else{
+
 		m_PacketSize = 188;
 		m_pFileReader->set_DelayMode(FALSE);
 		m_ProgPinMode = FALSE;
 	}
+}
+
+void PidParser::set_AsyncMode(BOOL mode)
+{
+	if (mode)
+		m_AsyncMode = TRUE;
+	else
+		m_AsyncMode = FALSE;
 }
 
 ULONG PidParser::get_PacketSize()

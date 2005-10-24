@@ -111,6 +111,8 @@ BOOL CTSFileSourceProp::OnRefreshProgram()
 BOOL CTSFileSourceProp::PopulateDialog()
 {
 
+	ASSERT(m_pProgram != NULL);
+
 	TCHAR sz[60];
 	WORD PidNr = 0x00;
 	REFERENCE_TIME dur;
@@ -152,19 +154,19 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_NID), sz);
 
-	unsigned char netname[128];
+	unsigned char netname[128] ="";
 	m_pProgram->GetNetworkName((unsigned char*)&netname);
 	sprintf(sz, "%s",netname);
 	SetWindowText(GetDlgItem(m_hwnd, IDC_NETID), sz);
 
-	unsigned char chnumb[128];
+	unsigned char chnumb[128] ="";
 	m_pProgram->GetChannelNumber((unsigned char*)&chnumb);
 	m_pProgram->GetONIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_ONID), sz);
 
-	unsigned char onetname[128];
-	unsigned char chname[128];
+	unsigned char onetname[128] ="";
+	unsigned char chname[128] ="";
 	m_pProgram->GetONetworkName((unsigned char*)&onetname);
 	m_pProgram->GetChannelName((unsigned char*)&chname);
 	sprintf(sz, "%s",onetname);
