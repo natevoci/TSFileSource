@@ -1,9 +1,11 @@
 Version 2.1.1.6
 =================
-
+Fixed a problem in the parser code that was causing false detection of A/V pids when in program Pin Mode.
+Fixed a problem with the CAMThread causing a lockup when the input file did not exist. Fixed the problem with the application task not ending after the above condition.
 Added a dummy IAsyncReader Interface to allow the MS Demux to parse the data in the file when the Demux control option is inactive.(Program Pin Mode Only)
 Added some changes to the PidParser code to allow for other country TS standards.(France)
 Changed the media subtype for H264 video mediatype so it wll play H264 streams.(France)
+Added some code to the FileReader class to do timeshifting, development only, using the FileWriter (TimeShift) Filter.
 
 
 

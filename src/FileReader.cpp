@@ -31,6 +31,15 @@ FileReader::FileReader() :
 	m_pFileName(0),
 	m_bReadOnly(FALSE),
 	m_fileSize(0),
+
+//*******************************************************************************************
+//TimeShift Additions
+
+	m_infoFileSize(0),
+	m_fileStartPos(0),
+
+//*******************************************************************************************
+
 	m_hInfoFile(INVALID_HANDLE_VALUE),
 	m_bDelay(FALSE)
 {
@@ -140,6 +149,8 @@ HRESULT FileReader::OpenFile()
 		m_bReadOnly = TRUE;
 	}
 
+	SetFilePointer(0, FILE_BEGIN);
+
 	TCHAR infoName[512];
 	strcpy(infoName, pFileName);
 	strcat(infoName, ".info");
@@ -238,6 +249,68 @@ __int64 FileReader::get_FileSize(void)
 	return m_fileSize;
 }
 
+//*******************************************************************************************
+//TimeShift Additions
+
+HRESULT FileReader::GetInfoFileSize(__int64 *lpllsize)
+{
+	//Do not get file size if static file or first time 
+	if (m_bReadOnly || !m_infoFileSize) {
+		
+		DWORD dwSizeLow;
+		DWORD dwSizeHigh;
+
+		dwSizeLow = ::GetFileSize(m_hInfoFile, &dwSizeHigh);
+		if ((dwSizeLow == 0xFFFFFFFF) && (GetLastError() != NO_ERROR ))
+		{
+			return E_FAIL;
+		}
+
+		LARGE_INTEGER li;
+		li.LowPart = dwSizeLow;
+		li.HighPart = dwSizeHigh;
+		m_infoFileSize = li.QuadPart;
+
+	}
+		*lpllsize = m_infoFileSize;
+		return S_OK;
+}
+
+HRESULT FileReader::GetStartPosition(__int64 *lpllpos)
+{
+	//Do not get file size if static file or first time 
+	if (m_bReadOnly || !m_fileStartPos) {
+		
+		if (m_hInfoFile != INVALID_HANDLE_VALUE)
+		{
+			__int64 size = 0;
+			GetInfoFileSize(&size);
+			//Check if timeshift info file
+			if (size > sizeof(__int64))
+			{
+				//Get the file start pointer
+				__int64 length = -1;
+				DWORD read = 0;
+				LARGE_INTEGER li;
+				li.QuadPart = sizeof(__int64);
+				::SetFilePointer(m_hInfoFile, li.LowPart, &li.HighPart, FILE_BEGIN);
+				ReadFile(m_hInfoFile, (PVOID)&length, (DWORD)sizeof(__int64), &read, NULL);
+
+				if(length > -1)
+				{
+					m_fileStartPos = length;
+					*lpllpos =  length;
+					return S_OK;
+				}
+			}
+		}
+		m_fileStartPos = 0;
+	}
+	*lpllpos = m_fileStartPos;
+	return S_OK;
+}
+
+//*******************************************************************************************
 
 DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 {
@@ -245,6 +318,30 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 
 	if (dwMoveMethod == FILE_END && m_hInfoFile != INVALID_HANDLE_VALUE)
 	{
+
+//*******************************************************************************************
+//TimeShift Additions
+
+		__int64 startPos = 0;
+		GetStartPosition(&startPos);
+
+		if (startPos > 0)
+		{
+			__int64 fileSize = 0;
+			GetFileSize(&fileSize);
+
+			__int64 filePos  = (__int64)((__int64)fileSize + (__int64)llDistanceToMove + (__int64)startPos);
+
+			if (filePos >= fileSize)
+				li.QuadPart = (__int64)((__int64)startPos + (__int64)llDistanceToMove);
+			else
+				li.QuadPart = filePos;
+
+			return ::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, FILE_BEGIN);
+		}
+
+//*******************************************************************************************
+
 		__int64 length = 0;
 		GetFileSize(&length);
 
@@ -256,6 +353,30 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 	}
 	else
 	{
+
+//*******************************************************************************************
+//TimeShift Additions
+
+		__int64 startPos = 0;
+		GetStartPosition(&startPos);
+
+		if (startPos > 0)
+		{
+			__int64 fileSize = 0;
+			GetFileSize(&fileSize);
+
+			__int64 filePos  = (__int64)((__int64)startPos + (__int64)llDistanceToMove);
+
+			if (filePos >= fileSize)
+				li.QuadPart = (__int64)((__int64)filePos - (__int64)fileSize);
+			else
+				li.QuadPart = filePos;
+
+			return ::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, dwMoveMethod);
+		}
+
+//*******************************************************************************************
+
 		li.QuadPart = llDistanceToMove;
 	}
 
@@ -267,6 +388,26 @@ __int64 FileReader::GetFilePointer()
 	LARGE_INTEGER li;
 	li.QuadPart = 0;
 	li.LowPart = ::SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
+
+//*******************************************************************************************
+//TimeShift Additions
+
+	__int64 length = 0;
+	GetFileSize(&length);
+
+	__int64 startPos = 0;
+	GetStartPosition(&startPos);
+
+	if (startPos > 0)
+	{
+		if(startPos > (__int64)li.QuadPart)
+			li.QuadPart = (__int64)(length - startPos + (__int64)li.QuadPart);
+		else
+			li.QuadPart = (__int64)((__int64)li.QuadPart - startPos);
+	}
+
+//*******************************************************************************************
+
 	return li.QuadPart;
 }
 
@@ -279,10 +420,72 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 		return S_FALSE;
 
 	//Get File Position
-	__int64 m_filecurrent = GetFilePointer();
+
+//*******************************************************************************************
+//TimeShift Additions
+
+	LARGE_INTEGER li;
+	li.QuadPart = 0;
+	li.LowPart = ::SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
+	__int64 m_filecurrent = li.QuadPart;
+
+//Removed	__int64 m_filecurrent = GetFilePointer();
+
+//*******************************************************************************************
 
 	if (m_hInfoFile != INVALID_HANDLE_VALUE)
 	{
+
+//*******************************************************************************************
+//TimeShift Additions
+
+		__int64 startPos = 0;
+		GetStartPosition(&startPos);
+
+		if (startPos > 0)
+		{
+			__int64 length = 0;
+			GetFileSize(&length);
+
+			if (length < (__int64)(m_filecurrent + (__int64)lDataLength) && m_filecurrent > startPos)
+			{
+
+				hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)(length - m_filecurrent), dwReadBytes, NULL);
+				if (FAILED(hr))
+					return hr;
+
+				LARGE_INTEGER li;
+				li.QuadPart = 0;
+				::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, FILE_BEGIN);
+
+				ULONG dwRead = 0;
+
+				hr = ReadFile(m_hFile,
+					(PVOID)(pbData + (DWORD)(length - m_filecurrent)),
+					(DWORD)((__int64)lDataLength -(__int64)((__int64)length - (__int64)m_filecurrent)),
+					&dwRead,
+					NULL);
+
+				*dwReadBytes = *dwReadBytes + dwRead;
+
+			}
+			else if (startPos < (__int64)(m_filecurrent + (__int64)lDataLength) && m_filecurrent < startPos)
+				hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)(startPos - m_filecurrent), dwReadBytes, NULL);
+
+			else
+				hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, dwReadBytes, NULL);
+
+			if (FAILED(hr))
+				return hr;
+
+			if (*dwReadBytes < (ULONG)lDataLength)
+				return S_FALSE;
+
+			return S_OK;
+		}
+
+//*******************************************************************************************
+
 		__int64 length = 0;
 		GetFileSize(&length);
 		if (length < (__int64)(m_filecurrent + (__int64)lDataLength))
@@ -329,4 +532,22 @@ HRESULT FileReader::set_DelayMode(WORD DelayMode)
 	m_bDelay = DelayMode;
 	return S_OK;
 }
+
+//*******************************************************************************************
+//TimeShift Additions
+
+HRESULT FileReader::get_TimeMode(WORD *TimeMode)
+{
+	__int64 startPos = 0;
+	GetStartPosition(&startPos);
+
+	if (m_bReadOnly && startPos > 0)
+		*TimeMode = TRUE;
+	else
+		*TimeMode = FALSE;
+
+	return S_OK;
+}
+
+//*******************************************************************************************
 

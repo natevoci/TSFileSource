@@ -47,6 +47,15 @@ public:
 	HRESULT set_DelayMode(WORD DelayMode);
 	HRESULT GetFileSize(__int64 *lpllsize);
 
+//*******************************************************************************************
+//TimeShift Additions
+
+	HRESULT GetInfoFileSize(__int64 *lpllsize);
+	HRESULT GetStartPosition(__int64 *lpllpos);
+	HRESULT get_TimeMode(WORD *TimeMode);
+
+//*******************************************************************************************
+
 	BOOL IsFileInvalid();
 
 	DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
@@ -60,6 +69,14 @@ protected:
 	BOOL     m_bReadOnly;
 	BOOL     m_bDelay;
 	__int64 m_fileSize;
+
+//*******************************************************************************************
+//TimeShift Additions
+
+	__int64 m_infoFileSize;
+	__int64 m_fileStartPos;
+
+//*******************************************************************************************
 
 };
 

@@ -89,17 +89,18 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	cmt.SetSubtype(&MEDIASUBTYPE_NULL);
 	m_pPin->SetMediaType(&cmt);
 
-	CAMThread::Create();
-
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
 {
 	//Make sure the worker thread is stopped before we exit.
-	//Also closes the files.
-	CAMThread::CallWorker(CMD_STOP);
-	CAMThread::CallWorker(CMD_EXIT);
-	CAMThread::Close();
+	//Also closes the files.m_hThread
+	if (ThreadExists())
+	{
+		CAMThread::CallWorker(CMD_STOP);
+		CAMThread::CallWorker(CMD_EXIT);
+		CAMThread::Close();
+	}
 
     if (m_dwGraphRegister)
     {
@@ -140,7 +141,16 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
 
 	LPOLESTR fileName;
 	m_pFileReader->GetFileName(&fileName);
-	m_pFileDuration->SetFileName(fileName);
+
+	hr = m_pFileDuration->SetFileName(fileName);
+	if (FAILED(hr))
+    {
+        DbgLog((LOG_ERROR, 1, TEXT("ThreadCreate failed. Aborting thread.")));
+
+        Reply(hr);  // send failed return code from ThreadCreate
+        return 1;
+    }
+
 	hr = m_pFileDuration->OpenFile();
     if(FAILED(hr))
     {
@@ -549,6 +559,7 @@ STDMETHODIMP CTSFileSourceFilter::GetPages(CAUUID *pPages)
 STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE *pmt)
 {
 	HRESULT hr;
+
 	hr = m_pFileReader->SetFileName(pszFileName);
 	if (FAILED(hr))
 		return hr;
@@ -557,11 +568,16 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	if (FAILED(hr))
 		return VFW_E_INVALIDMEDIATYPE;
 
+	CAMThread::Create();			 //Create our GetDuration thread
+	CAMThread::CallWorker(CMD_INIT); //Initalize our GetDuration thread
+
+
 	__int64	fileSize = 0;
 	m_pFileReader->GetFileSize(&fileSize);
 	//If this a file start then return null.
 	if(fileSize < 2000000)
 	{
+		CAutoLock lock(&m_Lock);
 		m_pFileReader->CloseFile();
 		return hr;
 	}
@@ -572,8 +588,6 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 
 	LoadPgmReg();
 	RefreshDuration();
-
-	CAMThread::CallWorker(CMD_INIT); //Initalize our GetDuration thread
 
 	CAutoLock lock(&m_Lock);
 	m_pFileReader->CloseFile();

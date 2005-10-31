@@ -1174,7 +1174,24 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 	}
 
 //***********************************************************************************************
+//*******************************************************************************************
+//TimeShift Additions
+/*
+	WORD timeMode = FALSE;
+	m_pFileReader->get_TimeMode(&timeMode);
+	if (timeMode == TRUE && !m_bSeeking)
+	{
+		REFERENCE_TIME current, stop;
+		CSourceSeeking::GetPositions(&current, &stop);
+		if(current > 10000000)
+			current -= 10000000;
+		CSourceSeeking::SetPositions(&current,AM_SEEKING_AbsolutePositioning | AM_SEEKING_ReturnTime, &stop, AM_SEEKING_NoPositioning);
+		m_rtStart = 0;
 
+//		m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
+	}
+*/
+//*******************************************************************************************
 
 	WORD readonly = 0;
 	pFileReader->get_ReadOnly(&readonly);

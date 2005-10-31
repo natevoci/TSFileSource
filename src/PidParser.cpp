@@ -40,6 +40,25 @@ PidParser::PidParser(FileReader *pFileReader)
 {
 	m_pFileReader = pFileReader;
 	m_PacketSize = 188; //Start with Transport packet size 
+	m_ATSCFlag = false;
+	m_NetworkID = 0; //NID store
+	ZeroMemory(m_NetworkName, 128);
+	m_ONetworkID = 0; //ONID store
+	m_TStreamID = 0; //TSID store
+	m_ProgramSID = 0; //SID store for prog search
+	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
+	m_AsyncMode = FALSE; //Set for control by filter
+	pids.Clear();
+	m_buflen = 0;
+	ZeroMemory(m_pDummy, 0x4000);
+	ZeroMemory(m_shortdescr, 128);
+	ZeroMemory(m_extenddescr, 600);
+	m_pgmnumb = 0;
+	filepos = 0;
+	m_fileLenOffset = 0;
+	m_fileEndOffset = 0;
+	m_fileStartOffset = 0;
+	m_FileStartPointer = 0;
 }
 
 PidParser::~PidParser()
@@ -293,6 +312,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 					pids.opcr = pids.pcr;
 					RefreshDuration(FALSE, pFileReader);
 				}
+
 				// restore pcr pid if no matches with A/V pids
 				if (!pids.dur) {
 					//set fake duration if needed
@@ -302,6 +322,9 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				else
 					AddPidArray();
 			}
+
+			if (!pidArray.Count())
+				pids.Clear();
 
 			// If nothing then check for Program Pin Mode
 			if ((pids.vid | pids.h264| pids.mpeg4  
@@ -369,8 +392,11 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 		//Set the Program Number to beginning & load back pids
 		m_pgmnumb = 0;
-		pids.Clear();
-		pids.CopyFrom(&pidArray[m_pgmnumb]);
+		if (pidArray.Count()) {
+
+			pids.Clear();
+			pids.CopyFrom(&pidArray[m_pgmnumb]);
+		}
 
 		if (pids.vid != 0 || pids.h264 != 0 || pids.mpeg4 != 0 
 			|| pids.aud != 0 || pids.txt != 0
@@ -1064,33 +1090,35 @@ HRESULT PidParser::ACheckVAPids(PBYTE pData, ULONG ulDataLength)
 						| (255&pData[b+7+addlength]) );
 
 				psiID = pesID>>16;
+				if (!psiID) {
 
-				pid = ((0x1F & pData[b+1])<<8 | (0xFF & pData[b+2]));
+					pid = ((0x1F & pData[b+1])<<8 | (0xFF & pData[b+2]));
 
-				if (((0xFF0&pesID) == 0x1e0) && (pids.vid == 0)) {
-					pids.vid = pid;
+					if (((0xFF0&pesID) == 0x1e0) && (pids.vid == 0)) {
+						pids.vid = pid;
 
-				};
+					};
 
-				if ((0xFF0&pesID) == 0x1c0) {
-					if (pids.aud == 0) {
-						pids.aud = pid;
-					} else {
-						if (pids.aud != pid) {
-							pids.aud2 = pid;
+					if ((0xFF0&pesID) == 0x1c0) {
+						if (pids.aud == 0) {
+							pids.aud = pid;
+						} else {
+							if (pids.aud != pid) {
+								pids.aud2 = pid;
+							}
 						}
-					}
-				};
+					};
 
-				if ((0xFF0&pesID) == 0x1b0) {
-					if (pids.ac3 == 0) {
-						pids.ac3 = pid;
-					} else {
-						if (pids.ac3 != pid) {
-							pids.ac3_2 = pid;
+					if ((0xFF0&pesID) == 0x1b0) {
+						if (pids.ac3 == 0) {
+							pids.ac3 = pid;
+						} else {
+							if (pids.ac3 != pid) {
+								pids.ac3_2 = pid;
+							}
 						}
-					}
-				};
+					};
+				}
 			}
 		}
 		a += m_PacketSize;
@@ -1127,33 +1155,35 @@ HRESULT PidParser::CheckVAStreams(PBYTE pData, ULONG ulDataLength)
 						| (255&pData[b+3+addlength]));
 
 				psiID = pesID>>16;
+				if (!psiID) {
 
-				pid = 0xFF&pesID;
+					pid = 0xFF&pesID;
 
-				if (((0xFF0&pesID) == 0x1e0) && (pids.vid == 0)) {
-					pids.vid = pid;
+					if (((0xFF0&pesID) == 0x1e0) && (pids.vid == 0)) {
+						pids.vid = pid;
 
-				};
+					};
 
-				if ((0xFF0&pesID) == 0x1c0) {
-					if (pids.aud == 0) {
-						pids.aud = pid;
-					} else {
-						if (pids.aud != pid) {
-							pids.aud2 = pid;
+					if ((0xFF0&pesID) == 0x1c0) {
+						if (pids.aud == 0) {
+							pids.aud = pid;
+						} else {
+							if (pids.aud != pid) {
+								pids.aud2 = pid;
+							}
 						}
-					}
-				};
+					};
 
-				if ((0xFF0&pesID) == 0x1b0) {
-					if (pids.ac3 == 0) {
-						pids.ac3 = pid;
-					} else {
-						if (pids.ac3 != pid) {
-							pids.ac3_2 = pid;
+					if ((0xFF0&pesID) == 0x1b0 && (0xFFF&pesID) != 0x1bb) {
+						if (pids.ac3 == 0) {
+							pids.ac3 = pid;
+						} else {
+							if (pids.ac3 != pid) {
+								pids.ac3_2 = pid;
+							}
 						}
-					}
-				};
+					};
+				}
 			}
 		}
 		a += m_PacketSize;
