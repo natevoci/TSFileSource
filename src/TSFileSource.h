@@ -43,6 +43,7 @@ class CTSFileSourceFilter;
 #include "PidInfo.h"
 #include "PidParser.h"
 #include "FileReader.h"
+#include "MultiFileReader.h"
 #include "Demux.h"
 #include "StreamInfo.h"
 #include "StreamParser.h"
@@ -63,7 +64,7 @@ class CTSFileSourceFilter : public CSource,
 							public IAsyncReader,
 							public ISpecifyPropertyPages
 {
-	//friend class CTSFileSourcePin;
+	friend class CTSFileSourcePin;
 public:
 	DECLARE_IUNKNOWN
 	static CUnknown * WINAPI CreateInstance(LPUNKNOWN punk, HRESULT *phr);
@@ -94,7 +95,7 @@ public:
 	HRESULT FileSeek(REFERENCE_TIME seektime);
 
 	HRESULT LoadPgmReg(void);
-	HRESULT GetFileSize(__int64 *pfilesize);
+	HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition);
 	HRESULT OnConnect();
 	HRESULT RefreshPids();
 	HRESULT RefreshDuration();

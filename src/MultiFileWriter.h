@@ -1,5 +1,5 @@
 /**
-*  TSBuffer.h
+*  MultiFileWriter.h
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -23,39 +23,49 @@
 *    http://forums.dvbowners.com/
 */
 
-#ifndef TSBUFFER_H
-#define TSBUFFER_H
+#ifndef MULTIFILEWRITER
+#define MULTIFILEWRITER
 
+#include "FileWriter.h"
 #include <vector>
-#include "FileReader.h"
-#include "PidInfo.h"
 
-class CTSBuffer
+class MultiFileWriter
 {
 public:
+	MultiFileWriter();
+	virtual ~MultiFileWriter();
 
-
-	CTSBuffer(PidInfo *pPids, PidInfoArray *pPidArray);
-	virtual ~CTSBuffer();
-
-	void SetFileReader(FileReader *pFileReader);
-
-	void Clear();
-	long Count();
-	HRESULT Require(long nBytes);
-
-	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
-	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
+	HRESULT GetFileName(LPWSTR *lpszFileName);
+	HRESULT OpenFile(LPCWSTR pszFileName);
+	HRESULT CloseFile();
+	HRESULT GetFileSize(__int64 *lpllsize);
+	
+	HRESULT Write(PBYTE pbData, ULONG lDataLength);
 
 protected:
-	FileReader *m_pFileReader;
-	PidInfo *m_pPids;
-	PidInfoArray *m_pPidArray;
+	HRESULT PrepareTSFile();
+	HRESULT CreateNewTSFile();
+	HRESULT ReuseTSFile();
 
-	std::vector<BYTE *> m_Array;
-	long m_lItemOffset;
+	HRESULT WriteTSBufferFile();
+	HRESULT CleanupFiles();
+	BOOL IsFileLocked(LPWSTR pFilename);
 
-	long m_lTSBufferItemSize;
+	HANDLE m_hTSBufferFile;
+	LPWSTR m_pTSBufferFileName;
+
+	CCritSec m_Lock;
+
+	FileWriter *m_pCurrentTSFile;
+	std::vector<LPWSTR> m_tsFileNames;
+	long m_filesAdded;
+	long m_filesRemoved;
+	long m_currentFilenameId;
+
+	long m_minTSFiles;
+	long m_maxTSFiles;
+	__int64 m_maxTSFileSize;
+	__int64 m_chunkReserve;
 };
 
 #endif

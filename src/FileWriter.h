@@ -1,5 +1,5 @@
 /**
-*  TSBuffer.h
+*  FileWriter.h
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -23,39 +23,37 @@
 *    http://forums.dvbowners.com/
 */
 
-#ifndef TSBUFFER_H
-#define TSBUFFER_H
+#ifndef FILEWRITER
+#define FILEWRITER
 
-#include <vector>
-#include "FileReader.h"
-#include "PidInfo.h"
-
-class CTSBuffer
+class FileWriter
 {
 public:
 
+	FileWriter();
+	virtual ~FileWriter();
 
-	CTSBuffer(PidInfo *pPids, PidInfoArray *pPidArray);
-	virtual ~CTSBuffer();
+	HRESULT GetFileName(LPWSTR *lpszFileName);
+	HRESULT SetFileName(LPCWSTR pszFileName);
+	HRESULT OpenFile();
+	HRESULT CloseFile();
+	HRESULT Write(PBYTE pbData, ULONG lDataLength);
 
-	void SetFileReader(FileReader *pFileReader);
+	BOOL IsFileInvalid();
 
-	void Clear();
-	long Count();
-	HRESULT Require(long nBytes);
+	DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
+	__int64 GetFilePointer();
 
-	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
-	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
+	void SetChunkReserve(BOOL bEnable, __int64 chunkReserveSize, __int64 maxFileSize);
 
 protected:
-	FileReader *m_pFileReader;
-	PidInfo *m_pPids;
-	PidInfoArray *m_pPidArray;
+	HANDLE m_hFile;
+	LPWSTR m_pFileName;
 
-	std::vector<BYTE *> m_Array;
-	long m_lItemOffset;
-
-	long m_lTSBufferItemSize;
+	BOOL m_bChunkReserve;
+	__int64 m_chunkReserveFileSize;
+	__int64 m_chunkReserveSize;
+	__int64 m_maxFileSize;
 };
 
 #endif

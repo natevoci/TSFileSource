@@ -1,5 +1,5 @@
 /**
-*  TSBuffer.h
+*  ITSFileSink.h
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -19,43 +19,19 @@
 *  along with TSFileSource; if not, write to the Free Software
 *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 *
-*  nate can be reached on the forums at
+*  authors can be reached on the forums at
 *    http://forums.dvbowners.com/
 */
 
-#ifndef TSBUFFER_H
-#define TSBUFFER_H
 
-#include <vector>
-#include "FileReader.h"
-#include "PidInfo.h"
+// {0d2620cd-a57a-4458-b96f-76442b70e9c7}
+DEFINE_GUID(IID_ITSFileSink,
+0x0d2620cd, 0xa57a, 0x4458, 0xb9, 0x6f, 0x76, 0x44, 0x2b, 0x70, 0xe9, 0xc7);
 
-class CTSBuffer
+DECLARE_INTERFACE_(ITSFileSink, IUnknown)
 {
-public:
+	STDMETHOD(GetBufferSize) (THIS_ long * size) PURE;
 
 
-	CTSBuffer(PidInfo *pPids, PidInfoArray *pPidArray);
-	virtual ~CTSBuffer();
-
-	void SetFileReader(FileReader *pFileReader);
-
-	void Clear();
-	long Count();
-	HRESULT Require(long nBytes);
-
-	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
-	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
-
-protected:
-	FileReader *m_pFileReader;
-	PidInfo *m_pPids;
-	PidInfoArray *m_pPidArray;
-
-	std::vector<BYTE *> m_Array;
-	long m_lItemOffset;
-
-	long m_lTSBufferItemSize;
 };
 
-#endif

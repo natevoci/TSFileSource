@@ -1,5 +1,5 @@
 /**
-*  TSBuffer.h
+*  TSFileSinkPin.h
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -19,43 +19,43 @@
 *  along with TSFileSource; if not, write to the Free Software
 *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 *
-*  nate can be reached on the forums at
+*  authors can be reached on the forums at
 *    http://forums.dvbowners.com/
 */
 
-#ifndef TSBUFFER_H
-#define TSBUFFER_H
+#ifndef TSFILESINKPIN_H
+#define TSFILESINKPIN_H
 
-#include <vector>
-#include "FileReader.h"
-#include "PidInfo.h"
+//#include "TSFileSink.h"	//included in .cpp file
 
-class CTSBuffer
+/**********************************************
+ *
+ *  CTSFileSinkPin Class
+ *
+ **********************************************/
+
+class CTSFileSinkPin : public CRenderedInputPin
 {
 public:
+	CTSFileSinkPin(CTSFileSink *pTSFileSink, LPUNKNOWN pUnk, CBaseFilter *pFilter, CCritSec *pLock, HRESULT *phr);
+	~CTSFileSinkPin();
 
+	STDMETHODIMP Receive(IMediaSample *pSample);
+    STDMETHODIMP EndOfStream(void);
+    STDMETHODIMP ReceiveCanBlock();
 
-	CTSBuffer(PidInfo *pPids, PidInfoArray *pPidArray);
-	virtual ~CTSBuffer();
+    HRESULT CheckMediaType(const CMediaType *);
 
-	void SetFileReader(FileReader *pFileReader);
+    HRESULT BreakConnect();
 
-	void Clear();
-	long Count();
-	HRESULT Require(long nBytes);
+    STDMETHODIMP NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate);
 
-	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
-	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
+private:
+	CTSFileSink * const m_pTSFileSink;
+    REFERENCE_TIME m_tLast;             // Last sample receive time
 
-protected:
-	FileReader *m_pFileReader;
-	PidInfo *m_pPids;
-	PidInfoArray *m_pPidArray;
+    CCritSec m_ReceiveLock;
 
-	std::vector<BYTE *> m_Array;
-	long m_lItemOffset;
-
-	long m_lTSBufferItemSize;
 };
 
 #endif

@@ -95,22 +95,6 @@ LINK32=link.exe
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
-SOURCE=.\src\Demux.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\FileReader.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\PidInfo.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\PidParser.cpp
-# End Source File
-# Begin Source File
-
 SOURCE=.\src\PropPage.rc
 # End Source File
 # Begin Source File
@@ -135,27 +119,7 @@ SOURCE=.\src\StreamParser.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\TSBuffer.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\TSFileSource.cpp
-# End Source File
-# Begin Source File
-
 SOURCE=.\src\TSFileSource.def
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\TSFileSourcePin.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\TSFileSourceProp.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\TunerEvent.cpp
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -163,31 +127,7 @@ SOURCE=.\src\TunerEvent.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
-SOURCE=.\src\Demux.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\src\DvbFormats.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\FileReader.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\ITSFileSource.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\MediaFormats.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\PidInfo.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\PidParser.h
 # End Source File
 # Begin Source File
 
@@ -209,9 +149,25 @@ SOURCE=.\src\StreamInfo.h
 
 SOURCE=.\src\StreamParser.h
 # End Source File
+# End Group
+# Begin Group "Resource Files"
+
+# PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
 # Begin Source File
 
-SOURCE=.\src\TSBuffer.h
+SOURCE=.\TSFileSource.reg
+# End Source File
+# End Group
+# Begin Group "TSFileSource"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\src\ITSFileSource.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSource.cpp
 # End Source File
 # Begin Source File
 
@@ -223,23 +179,139 @@ SOURCE=.\src\TSFileSourceGuids.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\TSFileSourcePin.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\TSFileSourcePin.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSourceProp.cpp
 # End Source File
 # Begin Source File
 
 SOURCE=.\src\TSFileSourceProp.h
 # End Source File
+# End Group
+# Begin Group "TSFileSink"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\src\ITSFileSink.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSink.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSink.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSinkFilter.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSinkFilter.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSinkGuids.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSinkPin.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSinkPin.h
+# End Source File
+# End Group
+# Begin Group "File Handling"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\src\FileReader.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\FileReader.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\FileWriter.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\FileWriter.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MultiFileReader.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MultiFileReader.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MultiFileWriter.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MultiFileWriter.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSBuffer.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSBuffer.h
+# End Source File
+# End Group
+# Begin Group "Filter Handling"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\src\Demux.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\Demux.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MediaFormats.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\PidInfo.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\PidInfo.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\PidParser.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\PidParser.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TunerEvent.cpp
+# End Source File
 # Begin Source File
 
 SOURCE=.\src\TunerEvent.h
-# End Source File
-# End Group
-# Begin Group "Resource Files"
-
-# PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
-# Begin Source File
-
-SOURCE=.\TSFileSource.reg
 # End Source File
 # End Group
 # End Target

@@ -68,7 +68,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pDemux = new Demux(m_pPidParser, this);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
 
-	m_pPin = new CTSFileSourcePin(GetOwner(), this, m_pFileReader, m_pPidParser, phr);
+	m_pPin = new CTSFileSourcePin(GetOwner(), this, phr);
 	if (m_pPin == NULL) {
 		if (phr)
 			*phr = E_OUTOFMEMORY;
@@ -519,8 +519,9 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 	if (m_pPidParser->pids.dur > 10)
 	{
+		__int64 start;
 		__int64 filelength = 0;
-		m_pFileReader->GetFileSize(&filelength);
+		m_pFileReader->GetFileSize(&start, &filelength);
 
 		// shifting right by 14 rounds the seek and duration time down to the
 		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
@@ -560,6 +561,27 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 {
 	HRESULT hr;
 
+	delete m_pStreamParser;
+	delete m_pDemux;
+	delete m_pPidParser;
+	delete m_pFileReader;
+	delete m_pFileDuration;
+
+	long length = lstrlenW(pszFileName);
+	if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
+	{
+		m_pFileReader = new FileReader();
+		m_pFileDuration = new FileReader();//Get Live File Duration Thread
+	}
+	else
+	{
+		m_pFileReader = (FileReader *)new MultiFileReader();
+		m_pFileDuration = (FileReader *)new MultiFileReader();
+	}
+	m_pPidParser = new PidParser(m_pFileReader);
+	m_pDemux = new Demux(m_pPidParser, this);
+	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
+
 	hr = m_pFileReader->SetFileName(pszFileName);
 	if (FAILED(hr))
 		return hr;
@@ -572,8 +594,9 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	CAMThread::CallWorker(CMD_INIT); //Initalize our GetDuration thread
 
 
+	__int64 start;
 	__int64	fileSize = 0;
-	m_pFileReader->GetFileSize(&fileSize);
+	m_pFileReader->GetFileSize(&start, &fileSize);
 	//If this a file start then return null.
 	if(fileSize < 2000000)
 	{
@@ -1120,10 +1143,10 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	return NOERROR;
 }
 
-HRESULT CTSFileSourceFilter::GetFileSize(__int64 *pfilesize)
+HRESULT CTSFileSourceFilter::GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition)
 {
 	CAutoLock lock(&m_Lock);
-	return m_pFileReader->GetFileSize(pfilesize);
+	return m_pFileReader->GetFileSize(pStartPosition, pEndPosition);
 }
 
 STDMETHODIMP CTSFileSourceFilter::GetTsArray(ULONG *pPidArray)
@@ -1757,14 +1780,15 @@ STDMETHODIMP CTSFileSourceFilter::SyncRead(
 			return E_FAIL;
 
 		int count = 0;
+		__int64 start;
 		__int64	fileSize = 0;
-		m_pFileReader->GetFileSize(&fileSize);
+		m_pFileReader->GetFileSize(&start, &fileSize);
 
 		//If this a file start then return null.
 		while(fileSize < 500000 && count < 10)
 		{
 			Sleep(100);
-			m_pFileReader->GetFileSize(&fileSize);
+			m_pFileReader->GetFileSize(&start, &fileSize);
 			count++;
 		}
 	}
@@ -1819,6 +1843,10 @@ STDMETHODIMP CTSFileSourceFilter::Length(
                       LONGLONG* pAvailable)
 {
 	HRESULT hr;
+
+	__int64 start;
+	__int64	fileSize = 0;
+
 	if (m_pFileReader->IsFileInvalid())
 	{
 		hr = m_pFileReader->OpenFile();
@@ -1826,20 +1854,18 @@ STDMETHODIMP CTSFileSourceFilter::Length(
 			return E_FAIL;
 
 		int count = 0;
-		__int64	fileSize = 0;
-		m_pFileReader->GetFileSize(&fileSize);
+		m_pFileReader->GetFileSize(&start, &fileSize);
 
 		//If this a file start then return null.
 		while(fileSize < 500000 && count < 10)
 		{
 			Sleep(100);
-			m_pFileReader->GetFileSize(&fileSize);
+			m_pFileReader->GetFileSize(&start, &fileSize);
 			count++;
 		}
 	}
 
-	__int64	fileSize = 0;
-	m_pFileReader->GetFileSize(&fileSize);
+	m_pFileReader->GetFileSize(&start, &fileSize);
 
 	*pTotal = fileSize;		
 	*pAvailable = fileSize;		

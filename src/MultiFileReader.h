@@ -1,5 +1,5 @@
 /**
-*  FileReader.h
+*  MultiFileReader.h
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -23,21 +23,30 @@
 *    http://forums.dvbowners.com/
 */
 
-#ifndef FILEREADER
-#define FILEREADER
+#ifndef MULTIFILEREADER
+#define MULTIFILEREADER
 
-#include "PidInfo.h"
+#include "FileReader.h"
+#include <vector>
 
-class FileReader
+class MultiFileReaderFile
+{
+public:
+	LPWSTR filename;
+	__int64 startPosition;
+	__int64 length;
+	long filePositionId;
+};
+
+class MultiFileReader : FileReader
 {
 public:
 
-	FileReader();
-	virtual ~FileReader();
+	MultiFileReader();
+	virtual ~MultiFileReader();
 
 	virtual FileReader* CreateFileReader();
 
-	// Open and write to the file
 	virtual HRESULT GetFileName(LPOLESTR *lpszFileName);
 	virtual HRESULT SetFileName(LPCOLESTR pszFileName);
 	virtual HRESULT OpenFile();
@@ -45,40 +54,32 @@ public:
 	virtual HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes);
 	virtual HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual HRESULT get_ReadOnly(WORD *ReadOnly);
-	virtual HRESULT get_DelayMode(WORD *DelayMode);
-	virtual HRESULT set_DelayMode(WORD DelayMode);
+	//virtual HRESULT get_DelayMode(WORD *DelayMode);
+	//virtual HRESULT set_DelayMode(WORD DelayMode);
+
+	//TODO: GetFileSize should go since get_FileSize should do the same thing.
 	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition);
-
-//*******************************************************************************************
-//TimeShift Additions
-
-	HRESULT GetInfoFileSize(__int64 *lpllsize);
-	HRESULT GetStartPosition(__int64 *lpllpos);
-	HRESULT get_TimeMode(WORD *TimeMode);
-
-//*******************************************************************************************
 
 	virtual BOOL IsFileInvalid();
 
 	virtual DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual __int64 GetFilePointer();
-	//virtual __int64 get_FileSize(void);
 
 protected:
-	HANDLE   m_hFile; 				// Handle to file for streaming
-	HANDLE   m_hInfoFile;           // Handle to Infofile for filesize from FileWriter
-	LPOLESTR m_pFileName;           // The filename where we stream
-	BOOL     m_bReadOnly;
-	BOOL     m_bDelay;
-	__int64 m_fileSize;
+	HRESULT RefreshTSBufferFile();
+	HRESULT GetFileLength(LPWSTR pFilename, __int64 &length);
 
-//*******************************************************************************************
-//TimeShift Additions
+	FileReader m_TSBufferFile;
+	__int64 m_startPosition;
+	__int64 m_endPosition;
+	__int64 m_currentPosition;
+	long m_filesAdded;
+	long m_filesRemoved;
 
-	__int64 m_infoFileSize;
-	__int64 m_fileStartPos;
+	std::vector<MultiFileReaderFile *> m_tsFiles;
 
-//*******************************************************************************************
+	FileReader m_TSFile;
+	long m_TSFileId;
 
 };
 

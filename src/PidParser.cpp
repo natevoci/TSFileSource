@@ -80,7 +80,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	//Store file pointer so we can reset it before leaving this method
 	__int64 originalFilePointer = m_pFileReader->GetFilePointer();
 
-	FileReader *pFileReader = new FileReader();
+	FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
 	LPOLESTR fileName;
 	m_pFileReader->GetFileName(&fileName);
 	pFileReader->SetFileName(fileName);
@@ -91,8 +91,9 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 	int iterations = 0;
 	m_FileStartPointer = fileStartPointer;
+	__int64 start = 0;
 	__int64 filesize = 0;
-	pFileReader->GetFileSize(&filesize);
+	pFileReader->GetFileSize(&start, &filesize);
 
 	iterations = ((filesize - m_FileStartPointer) / 2000000); 
 	if (iterations >= 8)
@@ -432,8 +433,9 @@ HRESULT PidParser::RefreshPids()
 		return NOERROR;
 	}
 
+	__int64 start;
 	__int64 filesize;
-	m_pFileReader->GetFileSize(&filesize);
+	m_pFileReader->GetFileSize(&start, &filesize);
 	__int64 filestartpointer = m_pFileReader->GetFilePointer();
 
 	//Check if file is being recorded
@@ -443,14 +445,14 @@ HRESULT PidParser::RefreshPids()
 		__int64 fileSizeSave = (filesize);
 		while ((filesize) < 20000000 && count < 20)
 		{
-			m_pFileReader->GetFileSize(&filesize);
+			m_pFileReader->GetFileSize(&start, &filesize);
 			while (((filesize) < fileSizeSave + 2000000) && (count < 20))
 			{
 				Sleep(100);
 				count++;
 			}
 			count++;
-			m_pFileReader->GetFileSize(&filesize);
+			m_pFileReader->GetFileSize(&start, &filesize);
 			fileSizeSave = filesize;
 			ParseFromFile(filestartpointer); 
 			if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0)
@@ -473,8 +475,9 @@ HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 
 	if (!pids.pcr && !m_ProgPinMode) {
 		//Set our fake duration
+		__int64 start;
 		__int64 filelength;
-		pFileReader->GetFileSize(&filelength);
+		pFileReader->GetFileSize(&start, &filelength);
 
 		__int64 calcDuration = (REFERENCE_TIME)(filelength / (__int64)((__int64)pids.bitrate / (__int64)8000));
 		pids.dur = (REFERENCE_TIME)(calcDuration * (__int64)10000);
@@ -1198,7 +1201,7 @@ HRESULT PidParser::CheckEPGFromFile()
 	if (m_NetworkID != 0 && m_ONetworkID != 0 && m_TStreamID !=0)
 	{
 
-		FileReader *pFileReader = new FileReader();
+		FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
 		LPOLESTR fileName;
 		m_pFileReader->GetFileName(&fileName);
 		pFileReader->SetFileName(fileName);
@@ -1226,8 +1229,9 @@ HRESULT PidParser::CheckEPGFromFile()
 		iterations = 0;
 		epgfound = false;
 
+		__int64 start;
 		__int64 filesize;
-		pFileReader->GetFileSize(&filesize);
+		pFileReader->GetFileSize(&start, &filesize);
 
 		__int64 filestartpointer = m_pFileReader->GetFilePointer();
 		iterations = ((filesize - filestartpointer) / 2000000); 
@@ -1763,6 +1767,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 {
 
 	HRESULT hr = S_OK;
+	__int64 start;
 	__int64 filelength;
 	REFERENCE_TIME totalduration = 0;
 	REFERENCE_TIME startPCRSave = 0;
@@ -1776,7 +1781,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 	long lDataLength = 2000000;
 	PBYTE pData = new BYTE[lDataLength];
 
-	pFileReader->GetFileSize(&filelength);
+	pFileReader->GetFileSize(&start, &filelength);
 
 	filelength = filelength;
 	__int64 endFilePos = filelength;

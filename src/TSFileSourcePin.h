@@ -48,7 +48,7 @@ class CTSFileSourcePin : public CSourceStream,
 						 public CSourceSeeking
 {
 public:
-	CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter, FileReader *pFileReader, PidParser *pPidParser, HRESULT *phr);
+	CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter, HRESULT *phr);
 	~CTSFileSourcePin();
 
 	STDMETHODIMP NonDelegatingQueryInterface( REFIID riid, void ** ppv );
@@ -104,8 +104,6 @@ protected:
 
 protected:
 	CTSFileSourceFilter * const m_pTSFileSourceFilter;
-	FileReader * const m_pFileReader;
-	PidParser * const m_pPidParser;
 	CTSBuffer *m_pTSBuffer;
 	
 	CCritSec  m_FillLock;

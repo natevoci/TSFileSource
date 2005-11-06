@@ -35,31 +35,65 @@
 #include "TSFileSource.h"
 #include "TSFileSourceProp.h"
 
-#define TSFILESOURCENAME		L"TS File Filter(AU)"
-#define TSFILESOURCEPROPERTIES	L"TS File Filter(AU) Properties"
-#define TSFILESOURCEINTERFACE	L"TS File Filter(AU) Interface"
+#include "TSFileSinkGuids.h"
+#include "TSFileSink.h"
+//#include "TSFileSinkProp.h"
 
+#define TSFILESOURCENAME		L"TS File Source"
+#define TSFILESOURCEPROPERTIES	L"TS File Source Properties"
+#define TSFILESOURCEINTERFACE	L"TS File Source Interface"
+
+#define TSFILESINKNAME			L"TS File Sink"
+//#define TSFILESINKPROPERTIES	L"TS File Sink Properties"
+#define TSFILESINKINTERFACE		L"TS File Sink Interface"
 
 // Filter setup data
-const AMOVIESETUP_MEDIATYPE sudOpPinTypes =
+
+// Pin Mediatypes
+
+const AMOVIESETUP_MEDIATYPE sudTSFileSourceOutputPinTypes =
 {
-//	&MEDIATYPE_Video,                  // Major type
-	&MEDIATYPE_Stream,    // clsMajorType
-	&MEDIASUBTYPE_MPEG2_TRANSPORT      // Minor type
+	&MEDIATYPE_Stream,
+	&MEDIASUBTYPE_MPEG2_TRANSPORT
 };
+
+const AMOVIESETUP_MEDIATYPE sudTSFileSinkInputPinTypes =
+{
+    &MEDIATYPE_NULL,
+    &MEDIASUBTYPE_NULL
+};
+
+
+// Pin Definitions
 
 const AMOVIESETUP_PIN sudTSFileSourcePin =
 {
-	L"Output",		    // Obsolete, not used.
-	FALSE,			// Is this pin rendered?
-	TRUE,			// Is it an output pin?
-	FALSE,			// Can the filter create zero instances?
-	FALSE,			// Does the filter create multiple instances?
-	&CLSID_NULL,	// Obsolete.
-	NULL,			// Obsolete.
-	1,				// Number of media types.
-	&sudOpPinTypes	// Pointer to media types.
+	L"Output",					   // Obsolete, not used.
+	FALSE,							// Is this pin rendered?
+	TRUE,							// Is it an output pin?
+	FALSE,							// Can the filter create zero instances?
+	FALSE,							// Does the filter create multiple instances?
+	&CLSID_NULL,					// Obsolete.
+	NULL,							// Obsolete.
+	1,								// Number of media types.
+	&sudTSFileSourceOutputPinTypes	// Pointer to media types.
 };
+
+const AMOVIESETUP_PIN sudTSFileSinkPin =
+{
+	L"Input",						// Obsolete, not used.
+	FALSE,							// Is this pin rendered?
+	FALSE,							// Is it an output pin?
+	FALSE,							// Can the filter create zero instances?
+	FALSE,							// Does the filter create multiple instances?
+	&CLSID_NULL,					// Obsolete.
+	NULL,							// Obsolete.
+	1,								// Number of media types.
+	&sudTSFileSinkInputPinTypes		// Pointer to media types.
+};
+
+
+// Filter Definitions
 
 const AMOVIESETUP_FILTER sudTSFileSourceFilter =
 {
@@ -69,6 +103,16 @@ const AMOVIESETUP_FILTER sudTSFileSourceFilter =
 	1,						// Number pins
 	&sudTSFileSourcePin		// Pin details
 };
+
+const AMOVIESETUP_FILTER sudTSFileSinkFilter =
+{
+	&CLSID_TSFileSink,		// Filter CLSID
+	TSFILESINKNAME,			// String name
+	MERIT_DO_NOT_USE,		// Filter merit
+	1,						// Number pins
+	&sudTSFileSinkPin		// Pin details
+};
+
 
 CFactoryTemplate g_Templates[] =
 {
@@ -86,6 +130,20 @@ CFactoryTemplate g_Templates[] =
 		NULL,
 		NULL
 	},
+	{
+		TSFILESINKNAME,
+		&CLSID_TSFileSink,
+		CTSFileSink::CreateInstance,
+		NULL,
+		&sudTSFileSinkFilter
+	},
+/*	{
+		TSFILESINKPROPERTIES,
+		&CLSID_TSFileSinkProp,
+		CTSFileSinkProp::CreateInstance,
+		NULL,
+		NULL
+	},*/
 };
 
 int g_cTemplates = sizeof(g_Templates) / sizeof(g_Templates[0]);

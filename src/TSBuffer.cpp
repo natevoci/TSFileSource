@@ -28,9 +28,9 @@
 #include "PidParser.h"
 #include <crtdbg.h>
 
-CTSBuffer::CTSBuffer(FileReader *pFileReader, PidInfo *pPids, PidInfoArray *pPidArray)
+CTSBuffer::CTSBuffer(PidInfo *pPids, PidInfoArray *pPidArray)
 {
-	m_pFileReader = pFileReader;
+	m_pFileReader = NULL;
 	m_pPidArray = pPidArray;
 	m_pPids = pPids;
 	m_lItemOffset = 0;
@@ -40,6 +40,11 @@ CTSBuffer::CTSBuffer(FileReader *pFileReader, PidInfo *pPids, PidInfoArray *pPid
 CTSBuffer::~CTSBuffer()
 {
 	Clear();
+}
+
+void CTSBuffer::SetFileReader(FileReader *pFileReader)
+{
+	m_pFileReader = pFileReader;
 }
 
 void CTSBuffer::Clear()
@@ -69,6 +74,8 @@ long CTSBuffer::Count()
 
 HRESULT CTSBuffer::Require(long nBytes)
 {
+	if (!m_pFileReader)
+		return E_POINTER;
 
 	long bytesAvailable = Count();
 
@@ -137,6 +144,9 @@ HRESULT CTSBuffer::Require(long nBytes)
 
 HRESULT CTSBuffer::DequeFromBuffer(BYTE *pbData, long lDataLength)
 {
+	if (!m_pFileReader)
+		return E_POINTER;
+
 	HRESULT hr = Require(lDataLength);
 	if (FAILED(hr))
 		return hr;
@@ -165,6 +175,9 @@ HRESULT CTSBuffer::DequeFromBuffer(BYTE *pbData, long lDataLength)
 
 HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 {
+	if (!m_pFileReader)
+		return E_POINTER;
+
 	HRESULT hr = Require(lOffset + lDataLength);
 	if (FAILED(hr))
 		return hr;

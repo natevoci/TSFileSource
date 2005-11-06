@@ -52,6 +52,11 @@ FileReader::~FileReader()
 		delete m_pFileName;
 }
 
+FileReader* FileReader::CreateFileReader()
+{
+	return new FileReader();
+}
+
 HRESULT FileReader::GetFileName(LPOLESTR *lpszFileName)
 {
 	*lpszFileName = m_pFileName;
@@ -201,8 +206,12 @@ BOOL FileReader::IsFileInvalid()
 	return (m_hFile == INVALID_HANDLE_VALUE);
 }
 
-HRESULT FileReader::GetFileSize(__int64 *lpllsize)
+HRESULT FileReader::GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition)
 {
+	CheckPointer(pStartPosition,E_POINTER);
+	CheckPointer(pEndPosition,E_POINTER);
+	
+	*pStartPosition = 0;
 	//Do not get file size if static file or first time 
 	if (m_bReadOnly || !m_fileSize) {
 		
@@ -218,7 +227,7 @@ HRESULT FileReader::GetFileSize(__int64 *lpllsize)
 			if(length > -1)
 			{
 				m_fileSize = length;
-				*lpllsize = length;
+				*pEndPosition = length;
 				return S_OK;
 			}
 		}
@@ -237,17 +246,11 @@ HRESULT FileReader::GetFileSize(__int64 *lpllsize)
 		li.LowPart = dwSizeLow;
 		li.HighPart = dwSizeHigh;
 		m_fileSize = li.QuadPart;
-
-//		*lpllsize = li.QuadPart;
 	}
-		*lpllsize = m_fileSize;
-		return S_OK;
+	*pEndPosition = m_fileSize;
+	return S_OK;
 }
 
-__int64 FileReader::get_FileSize(void)
-{
-	return m_fileSize;
-}
 
 //*******************************************************************************************
 //TimeShift Additions
@@ -327,8 +330,9 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 
 		if (startPos > 0)
 		{
+			__int64 start;
 			__int64 fileSize = 0;
-			GetFileSize(&fileSize);
+			GetFileSize(&start, &fileSize);
 
 			__int64 filePos  = (__int64)((__int64)fileSize + (__int64)llDistanceToMove + (__int64)startPos);
 
@@ -342,8 +346,9 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 
 //*******************************************************************************************
 
+		__int64 start = 0;
 		__int64 length = 0;
-		GetFileSize(&length);
+		GetFileSize(&start, &length);
 
 		length  = (__int64)((__int64)length + (__int64)llDistanceToMove);
 
@@ -362,8 +367,9 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 
 		if (startPos > 0)
 		{
+			__int64 start;
 			__int64 fileSize = 0;
-			GetFileSize(&fileSize);
+			GetFileSize(&start, &fileSize);
 
 			__int64 filePos  = (__int64)((__int64)startPos + (__int64)llDistanceToMove);
 
@@ -392,8 +398,9 @@ __int64 FileReader::GetFilePointer()
 //*******************************************************************************************
 //TimeShift Additions
 
+	__int64 start;
 	__int64 length = 0;
-	GetFileSize(&length);
+	GetFileSize(&start, &length);
 
 	__int64 startPos = 0;
 	GetStartPosition(&startPos);
@@ -444,8 +451,9 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 
 		if (startPos > 0)
 		{
+			__int64 start;
 			__int64 length = 0;
-			GetFileSize(&length);
+			GetFileSize(&start, &length);
 
 			if (length < (__int64)(m_filecurrent + (__int64)lDataLength) && m_filecurrent > startPos)
 			{
@@ -486,8 +494,9 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 
 //*******************************************************************************************
 
+		__int64 start = 0;
 		__int64 length = 0;
-		GetFileSize(&length);
+		GetFileSize(&start, &length);
 		if (length < (__int64)(m_filecurrent + (__int64)lDataLength))
 			hr = ReadFile(m_hFile, (PVOID)pbData, (DWORD)(length - m_filecurrent), dwReadBytes, NULL);
 		else

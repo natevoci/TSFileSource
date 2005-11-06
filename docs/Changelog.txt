@@ -1,3 +1,8 @@
+Version 2.1.1.7
+=================
+Added TSFileSink (multi file transport stream writer)
+Added MultiFileReader for .tsbuffer files (duration updates don't work yet)
+
 Version 2.1.1.6
 =================
 Fixed a problem in the parser code that was causing false detection of A/V pids when in program Pin Mode.
