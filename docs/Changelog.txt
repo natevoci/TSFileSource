@@ -1,3 +1,9 @@
+Implemented a ReferenceClock in TSFileSource
+Implemented the Audio Renderer Reference Clock selection option. (will not work as default setting)
+Added a TSFileSource Reference Clock selection option.
+Changed Rate Control to use timeGetTime rather than the IReferenceClock.
+Fixed a problem from 2.1.1.7 where registry defaults weren't loaded properly.
+
 Version 2.1.1.7
 =================
 Added TSFileSink (multi file transport stream writer)

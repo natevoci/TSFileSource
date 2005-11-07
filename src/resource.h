@@ -54,6 +54,7 @@
 #define IDC_DEMCLOCK                    1041
 #define IDC_RENCLOCK                    1042
 #define IDC_CREATETXTPIN                1043
+#define IDC_TSFSCLOCK                   1044
 
 // Next default values for new objects
 // 

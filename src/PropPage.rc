@@ -99,19 +99,21 @@ BEGIN
     CONTROL         "ROT Enable",IDC_ROTMODE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,131,176,55,10
     GROUPBOX        "Graph Control",IDC_STATIC,124,126,171,65
-    GROUPBOX        "Reference Clock",IDC_STATIC,209,136,80,50,BS_CENTER
-    CONTROL         "Default Clock",IDC_DEFCLOCK,"Button",BS_AUTORADIOBUTTON | 
-                    WS_GROUP,216,149,65,8
-    CONTROL         "Demux Clock",IDC_DEMCLOCK,"Button",BS_AUTORADIOBUTTON | 
-                    WS_GROUP,216,161,65,8
-    CONTROL         "Render Clock",IDC_RENCLOCK,"Button",BS_AUTORADIOBUTTON | 
-                    WS_GROUP,216,174,65,8
+    GROUPBOX        "Reference Clock",IDC_STATIC,209,131,80,57,BS_CENTER
+    CONTROL         "Default",IDC_DEFCLOCK,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,215,143,65,8
+    CONTROL         "Demux",IDC_DEMCLOCK,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,215,165,65,8
+    CONTROL         "Audio Render",IDC_RENCLOCK,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,215,176,65,8
     EDITTEXT        IDC_VIDEOTYPE,159,30,40,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Vid Typ",IDC_STATIC,129,32,28,8
     EDITTEXT        IDC_AAC,159,78,20,12,ES_AUTOHSCROLL | ES_READONLY
     EDITTEXT        IDC_AAC2,179,78,20,12,ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Enable Teletext Pin",IDC_CREATETXTPIN,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,210,72,85,10
+    CONTROL         "TSFileSource",IDC_TSFSCLOCK,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,215,154,65,8
 END
 
 

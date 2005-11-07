@@ -33,7 +33,7 @@
 #include "TSFileSourceGuids.h"
 #include "DvbFormats.h"
 
-#define USE_EVENT
+//#define USE_EVENT
 #ifndef USE_EVENT
 #include "Mmsystem.h"
 #endif
@@ -250,37 +250,31 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 		PIN_INFO pInfo;
 		if (SUCCEEDED(pReceivePin->QueryPinInfo(&pInfo)))
 		{
-			TCHAR name[128];
-			sprintf(name, "%S", pInfo.achName);
-
 			//Test for a filter with "MPEG-2" on input pin label
-			if (strstr(name, "MPEG-2") != NULL)
+			if (_wcsicmp(pInfo.achName, L"MPEG-2") != 0)
 			{
 				pInfo.pFilter->Release();
 				return hr;
 			}
 
 			// Get an instance of the Demux control interface
-			IMpeg2Demultiplexer* muxInterface = NULL;
+			CComPtr<IMpeg2Demultiplexer> muxInterface;
 			if(SUCCEEDED(pInfo.pFilter->QueryInterface (&muxInterface)))
 			{
-				muxInterface->Release();
 				pInfo.pFilter->Release();
 				return hr;
 			}
 
+			pInfo.pFilter->Release();
 
 			FILTER_INFO pFilterInfo;
 			if (SUCCEEDED(pInfo.pFilter->QueryFilterInfo(&pFilterInfo)))
 			{
-				TCHAR name[128];
-				sprintf(name, "%S", pFilterInfo.achName);
-
 				pFilterInfo.pGraph->Release();
-				pInfo.pFilter->Release();
 
 				//Test for an infinite tee filter
-				if (strstr(name, "Tee") != NULL || strstr(name, "Flow") != NULL) {
+				if (_wcsicmp(pFilterInfo.achName, L"Tee") != 0 || _wcsicmp(pFilterInfo.achName, L"Flow") != 0)
+				{
 					return hr;
 				}
 			}
@@ -525,12 +519,11 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	{
 		Debug(TEXT("Setting Base PCR\n"));
 #ifdef USE_EVENT
-		IReferenceClock* pReferenceClock = NULL;
+		CComPtr<IReferenceClock> pReferenceClock;
 		hr = Demux::GetReferenceClock(m_pTSFileSourceFilter, &pReferenceClock);
 		if (pReferenceClock != NULL)
 		{
 			pReferenceClock->GetTime(&m_rtStartTime);
-			pReferenceClock->Release();
 		}
 		else
 		{
@@ -567,7 +560,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	{
 		//Wait if necessary
 #ifdef USE_EVENT
-		IReferenceClock* pReferenceClock = NULL;
+		CComPtr<IReferenceClock> pReferenceClock;
 		hr = Demux::GetReferenceClock(m_pTSFileSourceFilter, &pReferenceClock);
 		if (pReferenceClock != NULL)
 		{
@@ -588,7 +581,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 				wsprintf(sz, TEXT("Bursting - late by %i (%i)\n"), rtCurrTime - rtNextTime, (pcrStart+m_llBasePCR) - m_llPrevPCR);
 				Debug(sz);
 			}
-			pReferenceClock->Release();
 		}
 #else
 		REFERENCE_TIME rtCurrTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * 10000);
@@ -760,7 +752,7 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 
 	if (!m_bSeeking && !m_DemuxLock)
 	{	
-		IReferenceClock *pClock = NULL;
+		CComPtr<IReferenceClock> pClock;
 		Demux::GetReferenceClock(m_pTSFileSourceFilter, &pClock);
 		SetDemuxClock(pClock);
 		m_pTSFileSourceFilter->NotifyEvent(EC_CLOCK_UNSET, NULL, NULL);
@@ -1450,10 +1442,10 @@ HRESULT CTSFileSourcePin::DisconnectDemuxPins()
 			pFilter = FList.GetNext(pos);
 			if(pFilter != NULL)
 			{
-				IPin* pDPin = NULL;
+				CComPtr<IPin> pDPin;
 				PIN_DIRECTION  direction;
 				// Enumerate the Demux pins
-				IEnumPins* pIEnumPins = NULL;
+				CComPtr<IEnumPins> pIEnumPins;
 				if (SUCCEEDED(pFilter->EnumPins(&pIEnumPins))){
 
 					ULONG pinfetch(0);
@@ -1462,13 +1454,12 @@ HRESULT CTSFileSourcePin::DisconnectDemuxPins()
 						pDPin->QueryDirection(&direction);
 						if(direction == PINDIR_OUTPUT){
 							// Get an instance of the Demux control interface
-							IMpeg2Demultiplexer* muxInterface = NULL;
+							CComPtr<IMpeg2Demultiplexer> muxInterface;
 							if(SUCCEEDED(pFilter->QueryInterface (&muxInterface)))
 							{
 								LPWSTR pinName = L"";
 								pDPin->QueryId(&pinName);
 								muxInterface->DeleteOutputPin(pinName);
-			 					muxInterface->Release();
 							}
 							else {
 //								pDPin->Disconnect();
@@ -1477,10 +1468,8 @@ HRESULT CTSFileSourcePin::DisconnectDemuxPins()
 						else {
 //							pDPin->Disconnect();
 						}
-						pDPin->Release();
-					 	pDPin = NULL;
+						pDPin.Release();
 					}
-					pIEnumPins->Release();
 				}
 				pFilter->Release();
 				pFilter = NULL;

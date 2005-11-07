@@ -69,7 +69,16 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
 
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, phr);
-	if (m_pPin == NULL) {
+	if (m_pPin == NULL)
+	{
+		if (phr)
+			*phr = E_OUTOFMEMORY;
+		return;
+	}
+
+	m_pClock = new CTSFileSourceClock( NAME(""), GetOwner(), phr );
+	if (m_pClock == NULL)
+	{
 		if (phr)
 			*phr = E_OUTOFMEMORY;
 		return;
@@ -111,6 +120,7 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	m_pTunerEvent->UnRegisterForTunerEvents();
 	m_pTunerEvent->Release();
 
+	delete  m_pClock;
 	delete	m_pDemux;
 	delete 	m_pRegStore;
 	delete  m_pSettingsStore;
@@ -269,6 +279,10 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 	if (riid == IID_IAMStreamSelect && m_pDemux->get_Auto())
 	{
 		return GetInterface((IAMStreamSelect*)this, ppv);
+	}
+	if (riid == IID_IReferenceClock)
+	{
+		return GetInterface((IReferenceClock*)m_pClock, ppv);
 	}
 	if (riid == IID_IAsyncReader)
 		if ((!m_pPidParser->pids.pcr
@@ -581,6 +595,9 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
+
+	// Load Registry Settings data
+	GetRegStore("default");
 
 	hr = m_pFileReader->SetFileName(pszFileName);
 	if (FAILED(hr))

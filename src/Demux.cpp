@@ -2205,12 +2205,17 @@ HRESULT Demux::SetReferenceClock(IBaseFilter *pFilter)
 
 void Demux::SetRefClock()
 {
-
-	if (!m_ClockMode) //(!m_ClockMode || !m_bAuto)
+	if (m_ClockMode == 0)
+	{
+		//Let the filter graph choose the best clock
+		SetReferenceClock(NULL);
 		return;
+	}
 
-	if (m_ClockMode == 1){
-		SetReferenceClock(NULL); //Set default clock
+	if (m_ClockMode == 1)
+	{
+		//Set the reference Clock to this TSFileSource filter
+		SetReferenceClock(m_pTSFileSourceFilter);
 		return;
 	}
 
@@ -2236,15 +2241,32 @@ void Demux::SetRefClock()
 			pFilter = FList.GetNext(pos);
 			if(pFilter != NULL)
 			{
-				//Set the reference Clock to the first Demux
 				if (!haveClock)
 				{
-					IReferenceClock *pClock = NULL;
+					CComPtr<IReferenceClock> pClock;
 					if (SUCCEEDED(pFilter->QueryInterface(IID_IReferenceClock, (void**)&pClock)) && pClock != NULL)
 					{
-						pClock->Release();
-						if (SUCCEEDED(SetReferenceClock(pFilter)) && m_ClockMode == 2)
-							haveClock = true;
+						bool bClock = false;
+						
+						if (m_ClockMode == 2)
+						{
+							//Set the reference Clock to the first Demux
+							bClock = true;
+						}
+						else if (m_ClockMode == 3)
+						{
+							//Set the reference Clock to the first audio renderer
+							CComPtr<IBasicAudio> pBasicAudio;
+							if (SUCCEEDED(pFilter->QueryInterface(IID_IBasicAudio, (void**)&pBasicAudio)) && pBasicAudio != NULL)
+								bClock = true;
+						}
+
+						if (bClock)
+						{
+							if (SUCCEEDED(SetReferenceClock(pFilter)))
+								haveClock = true;
+						}
+
 					}
 				}
 				pFilter->Release();

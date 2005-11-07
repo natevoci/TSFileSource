@@ -175,6 +175,14 @@ SOURCE=.\src\TSFileSource.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\TSFileSourceClock.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSourceClock.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\TSFileSourceGuids.h
 # End Source File
 # Begin Source File

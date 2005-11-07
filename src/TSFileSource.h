@@ -36,6 +36,7 @@
 
 class CTSFileSourceFilter;
 #include "TSFileSourcePin.h"
+#include "TSFileSourceClock.h"
 
 #include "RegStore.h"
 #include "SettingsStore.h"
@@ -200,6 +201,7 @@ protected:
 protected:
 
 	CTSFileSourcePin *m_pPin;          // A simple rendered input pin
+	CTSFileSourceClock *m_pClock;
 	CRegStore *m_pRegStore;
 	CSettingsStore *m_pSettingsStore;
 	TunerEvent *m_pTunerEvent;

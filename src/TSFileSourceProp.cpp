@@ -264,14 +264,17 @@ BOOL CTSFileSourceProp::PopulateDialog()
 
 	PidNr = 0;
 	m_pProgram->GetClockMode(&PidNr);
-	if (PidNr == 1)
+	if (PidNr == 0)
 		CheckDlgButton(m_hwnd,IDC_DEFCLOCK,TRUE);
+	else if (PidNr == 1)
+		CheckDlgButton(m_hwnd,IDC_TSFSCLOCK,TRUE);
 	else if (PidNr == 2)
 		CheckDlgButton(m_hwnd,IDC_DEMCLOCK,TRUE);
 	else if (PidNr == 3)
 		CheckDlgButton(m_hwnd,IDC_RENCLOCK,TRUE);
 	else{
 		CheckDlgButton(m_hwnd,IDC_DEFCLOCK,FALSE);
+		CheckDlgButton(m_hwnd,IDC_TSFSCLOCK,FALSE);
 		CheckDlgButton(m_hwnd,IDC_DEMCLOCK,FALSE);
 		CheckDlgButton(m_hwnd,IDC_RENCLOCK,FALSE);
 	}
@@ -477,14 +480,15 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 				case IDC_DEFCLOCK:
 				{
+					CheckDlgButton(hwnd,IDC_TSFSCLOCK,FALSE);
 					CheckDlgButton(hwnd,IDC_DEMCLOCK,FALSE);
 					CheckDlgButton(hwnd,IDC_RENCLOCK,FALSE);
 					if((BOOL)IsDlgButtonChecked(hwnd, IDC_DEFCLOCK))
 					{
 						WORD PidNr = 0;
 						m_pProgram->GetClockMode(&PidNr);
-						if (PidNr != 1){
-							m_pProgram->SetClockMode(1);
+						if (PidNr != 0){
+							m_pProgram->SetClockMode(0);
 							CheckDlgButton(hwnd,IDC_DEFCLOCK,TRUE);
 						}
 						else
@@ -499,9 +503,35 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					break;
 				}
 
+				case IDC_TSFSCLOCK:
+				{
+					CheckDlgButton(hwnd,IDC_DEFCLOCK,FALSE);
+					CheckDlgButton(hwnd,IDC_DEMCLOCK,FALSE);
+					CheckDlgButton(hwnd,IDC_RENCLOCK,FALSE);
+					if((BOOL)IsDlgButtonChecked(hwnd, IDC_TSFSCLOCK))
+					{
+						WORD PidNr = 0;
+						m_pProgram->GetClockMode(&PidNr);
+						if (PidNr != 1){
+							m_pProgram->SetClockMode(1);
+							CheckDlgButton(hwnd,IDC_TSFSCLOCK,TRUE);
+						}
+						else
+						{
+							CheckDlgButton(hwnd,IDC_TSFSCLOCK,FALSE);
+							m_pProgram->SetClockMode(0);
+						}
+					}
+
+					OnRefreshProgram () ;
+					SetDirty();
+					break;
+				}
+
 				case IDC_DEMCLOCK:
 				{
 					CheckDlgButton(hwnd,IDC_DEFCLOCK,FALSE);
+					CheckDlgButton(hwnd,IDC_TSFSCLOCK,FALSE);
 					CheckDlgButton(hwnd,IDC_RENCLOCK,FALSE);
 					if((BOOL)IsDlgButtonChecked(hwnd, IDC_DEMCLOCK))
 					{
@@ -526,6 +556,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				case IDC_RENCLOCK:
 				{
 					CheckDlgButton(hwnd,IDC_DEFCLOCK,FALSE);
+					CheckDlgButton(hwnd,IDC_TSFSCLOCK,FALSE);
 					CheckDlgButton(hwnd,IDC_DEMCLOCK,FALSE);
 					if((BOOL)IsDlgButtonChecked(hwnd, IDC_RENCLOCK))
 					{
