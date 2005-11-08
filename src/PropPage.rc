@@ -184,7 +184,7 @@ BEGIN
     BEGIN
         BLOCK "0c0904e4"
         BEGIN
-            VALUE "Comments", "Push Source filter for MPEG-2 Transport Stream Files.(BDA Compatable)\0"
+            VALUE "Comments", "Push Source & TimeShifting File Writer filter for MPEG-2 Transport Stream Files.(BDA Compatable)\0"
             VALUE "CompanyName", "\0"
             VALUE "FileDescription", "TS File Source(AU)\0"
             VALUE "FileVersion", "2, 1, 1, 7\0"

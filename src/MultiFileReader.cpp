@@ -35,6 +35,8 @@ MultiFileReader::MultiFileReader()
 	m_filesAdded = 0;
 	m_filesRemoved = 0;
 	m_TSFileId = 0;
+	m_bReadOnly = 1;
+	m_bDelay = 0;
 }
 
 MultiFileReader::~MultiFileReader()
@@ -91,6 +93,7 @@ BOOL MultiFileReader::IsFileInvalid()
 
 HRESULT MultiFileReader::GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition)
 {
+	RefreshTSBufferFile();
 	CheckPointer(pStartPosition,E_POINTER);
 	CheckPointer(pEndPosition,E_POINTER);
 	*pStartPosition = m_startPosition;
@@ -100,6 +103,8 @@ HRESULT MultiFileReader::GetFileSize(__int64 *pStartPosition, __int64 *pEndPosit
 
 DWORD MultiFileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 {
+	RefreshTSBufferFile();
+
 	if (dwMoveMethod == FILE_END)
 	{
 		m_currentPosition = m_endPosition + llDistanceToMove;
@@ -203,7 +208,7 @@ HRESULT MultiFileReader::get_ReadOnly(WORD *ReadOnly)
 {
 	CheckPointer(ReadOnly, E_POINTER);
 
-	*ReadOnly = TRUE;
+	*ReadOnly = m_bReadOnly;
 	return S_OK;
 }
 
@@ -384,3 +389,32 @@ HRESULT MultiFileReader::GetFileLength(LPWSTR pFilename, __int64 &length)
 	}
 	return S_OK;
 }
+
+HRESULT MultiFileReader::get_DelayMode(WORD *DelayMode)
+{
+	*DelayMode = m_bDelay;
+	return S_OK;
+}
+
+HRESULT MultiFileReader::set_DelayMode(WORD DelayMode)
+{
+	m_bDelay = DelayMode;
+	return S_OK;
+}
+
+HRESULT MultiFileReader::get_TimeMode(WORD *TimeMode)
+{
+	*TimeMode = FALSE; //TRUE;
+	return S_OK;
+
+	__int64 startPos = 0;
+	GetStartPosition(&startPos);
+
+	if (m_bReadOnly && startPos > 0)
+		*TimeMode = TRUE;
+	else
+		*TimeMode = FALSE;
+
+	return S_OK;
+}
+

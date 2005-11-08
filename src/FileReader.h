@@ -54,7 +54,7 @@ public:
 
 	HRESULT GetInfoFileSize(__int64 *lpllsize);
 	HRESULT GetStartPosition(__int64 *lpllpos);
-	HRESULT get_TimeMode(WORD *TimeMode);
+	virtual HRESULT get_TimeMode(WORD *TimeMode);
 
 //*******************************************************************************************
 

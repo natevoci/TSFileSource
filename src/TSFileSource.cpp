@@ -98,6 +98,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	cmt.SetSubtype(&MEDIASUBTYPE_NULL);
 	m_pPin->SetMediaType(&cmt);
 
+	m_bThreadRunning = FALSE;
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
@@ -141,6 +142,7 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
         com = GetRequest();
         if(com != CMD_INIT)
         {
+			m_bThreadRunning = FALSE;
             DbgLog((LOG_ERROR, 1, TEXT("Thread expected init command")));
             Reply((DWORD) E_UNEXPECTED);
         }
@@ -155,7 +157,8 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
 	hr = m_pFileDuration->SetFileName(fileName);
 	if (FAILED(hr))
     {
-        DbgLog((LOG_ERROR, 1, TEXT("ThreadCreate failed. Aborting thread.")));
+		m_bThreadRunning = FALSE;
+		DbgLog((LOG_ERROR, 1, TEXT("ThreadCreate failed. Aborting thread.")));
 
         Reply(hr);  // send failed return code from ThreadCreate
         return 1;
@@ -164,12 +167,15 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
 	hr = m_pFileDuration->OpenFile();
     if(FAILED(hr))
     {
+		m_bThreadRunning = FALSE;
         DbgLog((LOG_ERROR, 1, TEXT("ThreadCreate failed. Aborting thread.")));
 
 		hr = m_pFileDuration->CloseFile();
         Reply(hr);  // send failed return code from ThreadCreate
         return 1;
     }
+
+	hr = m_pFileDuration->CloseFile();
 
     // Initialisation suceeded
     Reply(NOERROR);
@@ -182,6 +188,7 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
         switch(cmd)
         {
             case CMD_EXIT:
+				m_bThreadRunning = FALSE;
                 Reply(NOERROR);
                 break;
 
@@ -191,11 +198,13 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
 
             case CMD_PAUSE:
 				m_pFileDuration->OpenFile();
+				m_bThreadRunning = TRUE;
                 Reply(NOERROR);
                 DoProcessingLoop();
                 break;
 
             case CMD_STOP:
+				m_bThreadRunning = FALSE;
 				m_pFileDuration->CloseFile();
                 Reply(NOERROR);
                 break;
@@ -209,6 +218,7 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
     } while(cmd != CMD_EXIT);
 
 	m_pFileDuration->CloseFile();
+	m_bThreadRunning = FALSE;
     DbgLog((LOG_TRACE, 1, TEXT("Worker thread exiting")));
     return 0;
 }
@@ -220,13 +230,49 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 {
     Command com;
 
+	int count = 1;
     do
     {
         while(!CheckRequest(&com))
         {
             // if an error occurs.
             HRESULT hr = S_OK;
-			hr = m_pPin->UpdateDuration(m_pFileDuration);
+
+			if (m_pDemux->CheckDemuxPids() == S_FALSE)
+				m_pDemux->AOnConnect();
+
+			if(m_State == State_Running)
+			{
+				if (count > 50) {
+				
+					int sid = m_pPidParser->pids.sid;
+					int sidsave = m_pPidParser->m_ProgramSID;
+
+					if (m_pPidParser->RefreshPids() == S_OK)
+					{
+						count = 0;
+
+						if (m_pPidParser->m_TStreamID) // && m_pPidParser->pidArray.Count() >= 2)
+						{
+							m_pPidParser->set_SIDPid(sid); //Setup for search
+							m_pPidParser->set_ProgramSID(); //set to same sid as before
+							m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
+						}
+
+						if (m_pDemux->CheckDemuxPids() == S_FALSE)
+							m_pDemux->AOnConnect();
+						
+						m_pStreamParser->ParsePidArray();
+						m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+					}
+
+				}
+				else
+					count++;
+			}
+
+			if (count)
+				hr = m_pPin->UpdateDuration(m_pFileDuration);
 			if (hr == E_FAIL)
 				return hr;
 
@@ -246,6 +292,11 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
     } while(com != CMD_STOP);
 
     return S_FALSE;
+}
+
+BOOL CTSFileSourceFilter::ThreadRunning(void)
+{ 
+	return m_bThreadRunning;
 }
 
 
@@ -453,6 +504,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 				return hr;
 		}
 
+//Refresh();
 		//Set our StreamTime Reference offset to zero
 		m_tStart = tStart;
 
@@ -474,9 +526,9 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 
 		SetTunerEvent();
 
-		CAMThread::CallWorker(CMD_RUN);
+		if (!ThreadRunning() && ThreadExists())
+			CAMThread::CallWorker(CMD_RUN);
 	}
-
 
 	return CSource::Run(tStart);
 
@@ -485,7 +537,6 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 HRESULT CTSFileSourceFilter::Pause()
 {
 	CAutoLock cObjectLock(m_pLock);
-
 
 	if(!IsActive())
 	{
@@ -498,7 +549,8 @@ HRESULT CTSFileSourceFilter::Pause()
 
 		SetTunerEvent();
 
-		CAMThread::CallWorker(CMD_PAUSE);
+		if (!ThreadRunning() && ThreadExists())
+			CAMThread::CallWorker(CMD_PAUSE);
 	}
 
 
@@ -510,7 +562,8 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 	CAutoLock cObjectLock(m_pLock);
 	CAutoLock lock(&m_Lock);
 
-	CAMThread::CallWorker(CMD_STOP);
+	if (ThreadRunning() && ThreadExists())
+		CAMThread::CallWorker(CMD_STOP);
 
 	HRESULT hr = CSource::Stop();
 
@@ -548,13 +601,21 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 HRESULT CTSFileSourceFilter::OnConnect()
 {
-	CAMThread::CallWorker(CMD_STOP);
+	BOOL wasThreadRunning = FALSE;
+	if (ThreadRunning() && ThreadExists()) {
+
+		CAMThread::CallWorker(CMD_STOP);
+		wasThreadRunning = TRUE;
+	}
+
 
 	HRESULT hr = m_pDemux->AOnConnect();
 
 	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 
-	CAMThread::CallWorker(CMD_RUN);
+	if (wasThreadRunning)
+		CAMThread::CallWorker(CMD_RUN);
+
 	return hr;
 }
 
@@ -608,7 +669,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 		return VFW_E_INVALIDMEDIATYPE;
 
 	CAMThread::Create();			 //Create our GetDuration thread
-	CAMThread::CallWorker(CMD_INIT); //Initalize our GetDuration thread
+	if (ThreadExists())
+		CAMThread::CallWorker(CMD_INIT); //Initalize our GetDuration thread
 
 
 	__int64 start;
@@ -1079,7 +1141,13 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 		PgmNumber = 0;
 	}
 	
-	CAMThread::CallWorker(CMD_STOP);
+	BOOL wasThreadRunning = FALSE;
+	if (ThreadRunning() && ThreadExists()) {
+
+		CAMThread::CallWorker(CMD_STOP);
+		wasThreadRunning = TRUE;
+	}
+
 	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
@@ -1089,7 +1157,8 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 
 	m_pPin->m_DemuxLock = FALSE;
 
-	CAMThread::CallWorker(CMD_RUN);
+	if (wasThreadRunning)
+		CAMThread::CallWorker(CMD_RUN);
 
 	return NOERROR;
 }
@@ -1112,7 +1181,13 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 		PgmNumb = 0;
 	}
 
-	CAMThread::CallWorker(CMD_STOP);
+	BOOL wasThreadRunning = FALSE;
+	if (ThreadRunning() && ThreadExists()) {
+
+		CAMThread::CallWorker(CMD_STOP);
+		wasThreadRunning = TRUE;
+	}
+
 	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
@@ -1122,7 +1197,8 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 
 	m_pPin->m_DemuxLock = FALSE;
 
-	CAMThread::CallWorker(CMD_RUN);
+	if (wasThreadRunning)
+		CAMThread::CallWorker(CMD_RUN);
 
 	return NOERROR;
 }
@@ -1145,7 +1221,13 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 		PgmNumb = m_pPidParser->pidArray.Count() - 1;
 	}
 
-	CAMThread::CallWorker(CMD_STOP);
+	BOOL wasThreadRunning = FALSE;
+	if (ThreadRunning() && ThreadExists()) {
+
+		CAMThread::CallWorker(CMD_STOP);
+		wasThreadRunning = TRUE;
+	}
+
 	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
@@ -1155,7 +1237,8 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 
 	m_pPin->m_DemuxLock = FALSE;
 
-	CAMThread::CallWorker(CMD_RUN);
+	if (wasThreadRunning)
+		CAMThread::CallWorker(CMD_RUN);
 
 	return NOERROR;
 }

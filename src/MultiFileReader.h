@@ -54,8 +54,9 @@ public:
 	virtual HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes);
 	virtual HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual HRESULT get_ReadOnly(WORD *ReadOnly);
-	//virtual HRESULT get_DelayMode(WORD *DelayMode);
-	//virtual HRESULT set_DelayMode(WORD DelayMode);
+	virtual HRESULT set_DelayMode(WORD DelayMode);
+	virtual HRESULT get_DelayMode(WORD *DelayMode);
+	virtual HRESULT get_TimeMode(WORD *TimeMode);
 
 	//TODO: GetFileSize should go since get_FileSize should do the same thing.
 	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition);
@@ -80,6 +81,8 @@ protected:
 
 	FileReader m_TSFile;
 	long m_TSFileId;
+	BOOL     m_bReadOnly;
+	BOOL     m_bDelay;
 
 };
 

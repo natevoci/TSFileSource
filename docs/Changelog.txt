@@ -1,3 +1,13 @@
+bear:
+Fixed a problem with the update duration thread locking the file when stopped. 
+Fixed the high cpu usage problem that occurs at 0 file start.
+Fixed the problem where the filter would not update the demux from a 0 file start.
+Fixed the filtergraph time to position itself relative to the position within the buffer so you can seek within it. This only happens when the buffer stops increasing in size and starts to cycle.
+Added a test for the demux pid settings to the update duration thread so that if the pids values change it will force a update on the demux.
+Changed the update duration method to parse only the end pcr rather than both start & end.
+Fixed a problem with the Update duration when using the TSFileWriter file by adding RefreshTSBufferFile() calls.
+
+nate:
 Implemented a ReferenceClock in TSFileSource
 Implemented the Audio Renderer Reference Clock selection option. (will not work as default setting)
 Added a TSFileSource Reference Clock selection option.

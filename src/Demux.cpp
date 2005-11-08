@@ -55,6 +55,9 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_StreamAud2(FALSE),
 	m_StreamAAC(FALSE),
 	m_ClockMode(0),
+	m_SelTelexPid(0),
+	m_SelAudioPid(0), 
+	m_SelVideoPid(0),
 	m_bCreateTSPinOnDemux(FALSE),
 	m_bCreateTxtPinOnDemux(FALSE)
 {
@@ -1244,6 +1247,7 @@ HRESULT Demux::LoadTelexPin(IPin* pIPin, ULONG pid)
 	{
 		if (pid){
 			muxMapPid->MapPID(1, &pid , MEDIA_TRANSPORT_PACKET); 
+			m_SelTelexPid = pid;
 		}
 		muxMapPid->Release();
 		hr = S_OK;
@@ -1256,7 +1260,7 @@ HRESULT Demux::LoadTelexPin(IPin* pIPin, ULONG pid)
 			if (pid)
 			{
 				muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0, 0);
-				m_SelAudioPid = pid;
+				m_SelTelexPid = pid;
 			}
 
 			muxMapPid->Release();
@@ -1307,8 +1311,35 @@ HRESULT Demux::ClearDemuxPin(IPin* pIPin)
 	return S_OK;
 }
 
-HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConnect)
+HRESULT Demux::CheckDemuxPids(void)
+{
+	HRESULT hr = S_OK;
 
+	if ((m_SelTelexPid != m_pPidParser->pids.txt) && m_bCreateTxtPinOnDemux)
+		return S_FALSE;
+
+	if (m_pPidParser->pids.aud | m_pPidParser->pids.ac3 | m_pPidParser->pids.aac)
+		if (((m_SelAudioPid != m_pPidParser->pids.aud)
+				&& (m_SelAudioPid != m_pPidParser->pids.aud2)
+				&& (m_SelAudioPid != m_pPidParser->pids.ac3)
+				&& (m_SelAudioPid != m_pPidParser->pids.ac3_2)
+				&& (m_SelAudioPid != m_pPidParser->pids.aac)
+				&& (m_SelAudioPid != m_pPidParser->pids.aac2))
+				|| !m_SelAudioPid)
+			return S_FALSE;
+
+	if (m_pPidParser->pids.vid | m_pPidParser->pids.h264 | m_pPidParser->pids.mpeg4)
+		if (((m_SelVideoPid != m_pPidParser->pids.vid)
+				&& (m_SelVideoPid != m_pPidParser->pids.h264)
+				&& (m_SelVideoPid != m_pPidParser->pids.mpeg4))
+				|| !m_SelVideoPid)
+			return S_FALSE;
+
+	return hr;
+
+}
+
+HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConnect)
 {
 	HRESULT hr = E_INVALIDARG;
 

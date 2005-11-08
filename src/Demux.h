@@ -79,6 +79,7 @@ public:
 	static  HRESULT GetNextFilter(IBaseFilter *pFilter, PIN_DIRECTION Dir, IBaseFilter **ppNext);
 	static  void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
 	static  HRESULT GetReferenceClock(IBaseFilter *pFilter, IReferenceClock **ppClock);
+	HRESULT CheckDemuxPids(void);
 
 protected:
 	HRESULT UpdateDemuxPins(IBaseFilter* pDemux);
@@ -144,6 +145,7 @@ public:
 	BOOL m_StreamAAC;
 	int  m_SelAudioPid;
 	int  m_SelVideoPid;
+	int  m_SelTelexPid;
 };
 
 #endif

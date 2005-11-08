@@ -131,6 +131,7 @@ protected:
 	__int64 m_BitRateStore[256];
 
 	REFERENCE_TIME m_rtLastCurrentTime;
+	REFERENCE_TIME m_rtTimeShiftPosition;
 	__int64 m_LastFileSize;
 
 	__int64 m_IntLastStreamTime;

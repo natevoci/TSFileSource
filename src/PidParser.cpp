@@ -439,14 +439,14 @@ HRESULT PidParser::RefreshPids()
 	__int64 filestartpointer = m_pFileReader->GetFilePointer();
 
 	//Check if file is being recorded
-	if((filesize) < 2100000)
+	if(filesize < 2100000)
 	{
 		int count = 0;
-		__int64 fileSizeSave = (filesize);
+		__int64 fileSizeSave = filesize;
 		while ((filesize) < 20000000 && count < 20)
 		{
 			m_pFileReader->GetFileSize(&start, &filesize);
-			while (((filesize) < fileSizeSave + 2000000) && (count < 20))
+			while ((filesize < fileSizeSave + 2000000) && (count < 20))
 			{
 				Sleep(100);
 				count++;
@@ -1963,8 +1963,13 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 
 				return S_OK; // File length matchs PCR time
 			}
+
 			//force match if program pin mode
-			if (m_ProgPinMode && pPids->end && pPids->start) {
+//			if (m_ProgPinMode && pPids->end && pPids->start) {
+			if (pPids->end && pPids->start
+				&& (__int64)midPCR > (__int64)pPids->start
+				&& (__int64)midPCR < (__int64)pPids->end){
+
 				m_fileLenOffset = (__int64)(m_fileLenOffset / 2); //Set file length offset for next search  
 				return S_OK; // File length matchs PCR time
 			}

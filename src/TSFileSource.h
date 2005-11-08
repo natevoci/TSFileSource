@@ -215,9 +215,11 @@ protected:
     DWORD m_dwGraphRegister;
 
 	FileReader *m_pFileDuration;
+	BOOL m_bThreadRunning;
     enum Command {CMD_INIT, CMD_PAUSE, CMD_RUN, CMD_STOP, CMD_EXIT};
     DWORD ThreadProc();
 	HRESULT DoProcessingLoop(void);
+	BOOL ThreadRunning(void);
     Command GetRequest(void) { return (Command) CAMThread::GetRequest(); }
     BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
 
