@@ -1868,8 +1868,10 @@ STDMETHODIMP CTSFileSourceFilter::RequestAllocator(
                       ALLOCATOR_PROPERTIES* pProps,
                       IMemAllocator ** ppActual)
 {
+	CAutoLock cObjectLock(m_pLock);
 	Pause();
 	Stop();
+
     return S_OK;
 }
 
@@ -1899,6 +1901,8 @@ STDMETHODIMP CTSFileSourceFilter::SyncRead(
                       LONG lLength,         // nr bytes required
                       BYTE* pBuffer)
 {
+    CheckPointer(pBuffer, E_POINTER);
+
 	HRESULT hr;
 	LONG dwBytesToRead = lLength;
     CAutoLock lck(&m_Lock);
@@ -1973,6 +1977,12 @@ STDMETHODIMP CTSFileSourceFilter::Length(
                       LONGLONG* pTotal,
                       LONGLONG* pAvailable)
 {
+    CAutoLock lck(&m_Lock);
+
+    CheckPointer(pTotal, E_POINTER);
+    CheckPointer(pAvailable, E_POINTER);
+
+
 	HRESULT hr;
 
 	__int64 fileStart;

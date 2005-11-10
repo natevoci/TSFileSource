@@ -135,6 +135,9 @@ STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void **
 
 STDMETHODIMP CTSFileSourcePin::IsFormatSupported(const GUID * pFormat)
 {
+	CAutoLock cAutoLock(m_pFilter->pStateLock());
+    CheckPointer(pFormat, E_POINTER);
+
 	if (*pFormat == TIME_FORMAT_MEDIA_TIME)
 		return S_OK;
 	else
@@ -143,6 +146,8 @@ STDMETHODIMP CTSFileSourcePin::IsFormatSupported(const GUID * pFormat)
 
 STDMETHODIMP CTSFileSourcePin::QueryPreferredFormat(GUID *pFormat)
 {
+	CAutoLock cAutoLock(m_pFilter->pStateLock());
+    CheckPointer(pFormat, E_POINTER);
 	*pFormat = TIME_FORMAT_MEDIA_TIME;
 	return S_OK;
 }
@@ -168,7 +173,9 @@ HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 
 HRESULT CTSFileSourcePin::GetMediaType(int iPosition, CMediaType *pMediaType)
 {
-    if(iPosition < 0)
+	CAutoLock cAutoLock(m_pFilter->pStateLock());
+    
+	if(iPosition < 0)
     {
         return E_INVALIDARG;
     }
@@ -197,6 +204,8 @@ HRESULT CTSFileSourcePin::GetMediaType(int iPosition, CMediaType *pMediaType)
 HRESULT CTSFileSourcePin::CheckMediaType(const CMediaType* pType)
 {
 	CAutoLock cAutoLock(m_pFilter->pStateLock());
+
+    CheckPointer(pType,E_POINTER);
 
 	if(MEDIATYPE_Stream == pType->majortype)
 	{
@@ -985,12 +994,21 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
 	m_rtTimeShiftPosition = seektime;
 
+	__int64 fileStart, filelength = 0;
+	m_pTSFileSourceFilter->m_pFileReader->GetFileSize(&fileStart, &filelength);
+
 	WORD bMultiMode;
 	m_pTSFileSourceFilter->m_pFileReader->get_ReaderMode(&bMultiMode);
 
 	//Do MultiFile timeshifting mode
 	if(bMultiMode)
 	{
+		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+
+		if (nFileIndex < 300000)
+			nFileIndex = 300000; //Skip head of file
+		m_pTSFileSourceFilter->m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
+		return S_OK;
 
 	}
 	else
@@ -1002,10 +1020,8 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		if (bTimeMode && ((__int64)(seektime + (__int64)40000000) > m_pTSFileSourceFilter->m_pPidParser->pids.dur))
 			seektime = max(0, m_pTSFileSourceFilter->m_pPidParser->pids.dur -(__int64)40000000);
 	}
-	__int64 fileStart, filelength = 0;
-	m_pTSFileSourceFilter->m_pFileReader->GetFileSize(&fileStart, &filelength);
 
-//***********************************************************************************************
+	//***********************************************************************************************
 //Old Capture format Additions
 
 	if (!m_pTSFileSourceFilter->m_pPidParser->pids.pcr && m_pTSFileSourceFilter->m_pPidParser->get_AsyncMode()) {
@@ -1193,7 +1209,7 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 {
 	HRESULT hr = E_FAIL;
 
-#define EC_DVB_DURATIONCHANGE  0x41E
+//#define EC_DVB_DURATIONCHANGE  0x41E
 
 
 //***********************************************************************************************
@@ -1248,8 +1264,8 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 				}
 			}
 			//Send a Custom Duration update for applications. 
-			if (!m_bSeeking)
-				m_pTSFileSourceFilter->NotifyEvent(EC_DVB_DURATIONCHANGE, NULL, NULL);
+//			if (!m_bSeeking)
+//				m_pTSFileSourceFilter->NotifyEvent(EC_DVB_DURATIONCHANGE, NULL, NULL);
 
 			Sleep(1000);
 		}
@@ -1370,7 +1386,8 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 			bool secondDelay = false;
 
 			//check for valid values
-			if (m_pTSFileSourceFilter->m_pPidParser->pids.pcr && m_pTSFileSourceFilter->m_pPidParser->pids.end){
+			if ((m_pTSFileSourceFilter->m_pPidParser->pids.pcr | m_pTSFileSourceFilter->m_pPidParser->get_ProgPinMode())
+				&& m_pTSFileSourceFilter->m_pPidParser->pids.end){
 				//check for duration every second of size change
 				if(((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime))
 				{

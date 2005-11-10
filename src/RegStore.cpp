@@ -204,7 +204,7 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		}
 		setStore->setROTModeReg(regROT);
 
-		int regClock = 0;
+		int regClock = 1; //TSFileSource clock
 		datalen = 4;
 		type = 0;
 
@@ -229,7 +229,7 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		setStore->setCreateTxtPinOnDemuxReg(regTxtPin);
 	}
 	
-	BOOL regAC3(TRUE);
+	BOOL regAC3(FALSE);//(TRUE)
 	datalen = 1;
 	type = 0;
 
