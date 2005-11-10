@@ -91,13 +91,13 @@ BOOL MultiFileReader::IsFileInvalid()
 	return m_TSBufferFile.IsFileInvalid();
 }
 
-HRESULT MultiFileReader::GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition)
+HRESULT MultiFileReader::GetFileSize(__int64 *pStartPosition, __int64 *pLength)
 {
 	RefreshTSBufferFile();
 	CheckPointer(pStartPosition,E_POINTER);
-	CheckPointer(pEndPosition,E_POINTER);
+	CheckPointer(pLength,E_POINTER);
 	*pStartPosition = m_startPosition;
-	*pEndPosition = m_endPosition;
+	*pLength = (__int64)(m_endPosition - m_startPosition);
 	return S_OK;
 }
 
@@ -139,6 +139,8 @@ HRESULT MultiFileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadByte
 	// If the file has already been closed, don't continue
 	if (m_TSBufferFile.IsFileInvalid())
 		return S_FALSE;
+
+	RefreshTSBufferFile();
 
 	if (m_currentPosition < m_startPosition)
 		m_currentPosition = m_startPosition;
@@ -402,19 +404,8 @@ HRESULT MultiFileReader::set_DelayMode(WORD DelayMode)
 	return S_OK;
 }
 
-HRESULT MultiFileReader::get_TimeMode(WORD *TimeMode)
+HRESULT MultiFileReader::get_ReaderMode(WORD *ReaderMode)
 {
-	*TimeMode = FALSE; //TRUE;
-	return S_OK;
-
-	__int64 startPos = 0;
-	GetStartPosition(&startPos);
-
-	if (m_bReadOnly && startPos > 0)
-		*TimeMode = TRUE;
-	else
-		*TimeMode = FALSE;
-
+	*ReaderMode = TRUE;
 	return S_OK;
 }
-

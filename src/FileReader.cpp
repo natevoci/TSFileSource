@@ -31,15 +31,8 @@ FileReader::FileReader() :
 	m_pFileName(0),
 	m_bReadOnly(FALSE),
 	m_fileSize(0),
-
-//*******************************************************************************************
-//TimeShift Additions
-
 	m_infoFileSize(0),
 	m_fileStartPos(0),
-
-//*******************************************************************************************
-
 	m_hInfoFile(INVALID_HANDLE_VALUE),
 	m_bDelay(FALSE)
 {
@@ -206,12 +199,13 @@ BOOL FileReader::IsFileInvalid()
 	return (m_hFile == INVALID_HANDLE_VALUE);
 }
 
-HRESULT FileReader::GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition)
+HRESULT FileReader::GetFileSize(__int64 *pStartPosition, __int64 *pLength)
 {
 	CheckPointer(pStartPosition,E_POINTER);
-	CheckPointer(pEndPosition,E_POINTER);
+	CheckPointer(pLength,E_POINTER);
 	
-	*pStartPosition = 0;
+	GetStartPosition(pStartPosition);
+
 	//Do not get file size if static file or first time 
 	if (m_bReadOnly || !m_fileSize) {
 		
@@ -227,7 +221,7 @@ HRESULT FileReader::GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition)
 			if(length > -1)
 			{
 				m_fileSize = length;
-				*pEndPosition = length;
+				*pLength = length;
 				return S_OK;
 			}
 		}
@@ -247,13 +241,9 @@ HRESULT FileReader::GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition)
 		li.HighPart = dwSizeHigh;
 		m_fileSize = li.QuadPart;
 	}
-	*pEndPosition = m_fileSize;
+	*pLength = m_fileSize;
 	return S_OK;
 }
-
-
-//*******************************************************************************************
-//TimeShift Additions
 
 HRESULT FileReader::GetInfoFileSize(__int64 *lpllsize)
 {
@@ -313,18 +303,12 @@ HRESULT FileReader::GetStartPosition(__int64 *lpllpos)
 	return S_OK;
 }
 
-//*******************************************************************************************
-
 DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 {
 	LARGE_INTEGER li;
 
 	if (dwMoveMethod == FILE_END && m_hInfoFile != INVALID_HANDLE_VALUE)
 	{
-
-//*******************************************************************************************
-//TimeShift Additions
-
 		__int64 startPos = 0;
 		GetStartPosition(&startPos);
 
@@ -344,8 +328,6 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 			return ::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, FILE_BEGIN);
 		}
 
-//*******************************************************************************************
-
 		__int64 start = 0;
 		__int64 length = 0;
 		GetFileSize(&start, &length);
@@ -358,10 +340,6 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 	}
 	else
 	{
-
-//*******************************************************************************************
-//TimeShift Additions
-
 		__int64 startPos = 0;
 		GetStartPosition(&startPos);
 
@@ -380,9 +358,6 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 
 			return ::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, dwMoveMethod);
 		}
-
-//*******************************************************************************************
-
 		li.QuadPart = llDistanceToMove;
 	}
 
@@ -394,9 +369,6 @@ __int64 FileReader::GetFilePointer()
 	LARGE_INTEGER li;
 	li.QuadPart = 0;
 	li.LowPart = ::SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
-
-//*******************************************************************************************
-//TimeShift Additions
 
 	__int64 start;
 	__int64 length = 0;
@@ -413,8 +385,6 @@ __int64 FileReader::GetFilePointer()
 			li.QuadPart = (__int64)((__int64)li.QuadPart - startPos);
 	}
 
-//*******************************************************************************************
-
 	return li.QuadPart;
 }
 
@@ -427,25 +397,13 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 		return S_FALSE;
 
 	//Get File Position
-
-//*******************************************************************************************
-//TimeShift Additions
-
 	LARGE_INTEGER li;
 	li.QuadPart = 0;
 	li.LowPart = ::SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
 	__int64 m_filecurrent = li.QuadPart;
 
-//Removed	__int64 m_filecurrent = GetFilePointer();
-
-//*******************************************************************************************
-
 	if (m_hInfoFile != INVALID_HANDLE_VALUE)
 	{
-
-//*******************************************************************************************
-//TimeShift Additions
-
 		__int64 startPos = 0;
 		GetStartPosition(&startPos);
 
@@ -491,8 +449,6 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 
 			return S_OK;
 		}
-
-//*******************************************************************************************
 
 		__int64 start = 0;
 		__int64 length = 0;
@@ -542,21 +498,8 @@ HRESULT FileReader::set_DelayMode(WORD DelayMode)
 	return S_OK;
 }
 
-//*******************************************************************************************
-//TimeShift Additions
-
-HRESULT FileReader::get_TimeMode(WORD *TimeMode)
+HRESULT FileReader::get_ReaderMode(WORD *ReaderMode)
 {
-	__int64 startPos = 0;
-	GetStartPosition(&startPos);
-
-	if (m_bReadOnly && startPos > 0)
-		*TimeMode = TRUE;
-	else
-		*TimeMode = FALSE;
-
+	*ReaderMode = FALSE;
 	return S_OK;
 }
-
-//*******************************************************************************************
-

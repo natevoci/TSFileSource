@@ -1,4 +1,9 @@
 bear:
+Added code to improve the Cyclic Timeshift mode, it can now handle pauses to the writer or the Source and the current time remains static or increases accordingly.
+Added code for the IMediaSeeking::GetAvailable() function.
+Added extra Update duration code for use with the MultiFileReader.
+Added a FileReader Mode function to indicate if we are using the MultiFileReader.
+Added some changes to the Getfilesize function of the MultifileReader.
 Fixed a problem with the update duration thread locking the file when stopped. 
 Fixed the high cpu usage problem that occurs at 0 file start.
 Fixed the problem where the filter would not update the demux from a 0 file start.

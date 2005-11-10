@@ -56,10 +56,10 @@ public:
 	virtual HRESULT get_ReadOnly(WORD *ReadOnly);
 	virtual HRESULT set_DelayMode(WORD DelayMode);
 	virtual HRESULT get_DelayMode(WORD *DelayMode);
-	virtual HRESULT get_TimeMode(WORD *TimeMode);
+	virtual HRESULT get_ReaderMode(WORD *ReaderMode);
 
 	//TODO: GetFileSize should go since get_FileSize should do the same thing.
-	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition);
+	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pLength);
 
 	virtual BOOL IsFileInvalid();
 

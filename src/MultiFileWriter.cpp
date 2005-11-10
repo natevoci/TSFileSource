@@ -34,10 +34,10 @@ MultiFileWriter::MultiFileWriter() :
 	m_filesAdded(0),
 	m_filesRemoved(0),
 	m_currentFilenameId(0),
-	m_minTSFiles(5),
-	m_maxTSFiles(50),
-	m_maxTSFileSize(200000000),	//200Mb
-	m_chunkReserve(20000000) //20Mb
+	m_minTSFiles(1),
+	m_maxTSFiles(4),
+	m_maxTSFileSize(100000000),	//200Mb
+	m_chunkReserve(10000000) //20Mb
 {
 	m_pCurrentTSFile = new FileWriter();
 	m_pCurrentTSFile->SetChunkReserve(TRUE, m_chunkReserve, m_maxTSFileSize);

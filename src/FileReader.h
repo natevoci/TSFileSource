@@ -47,22 +47,13 @@ public:
 	virtual HRESULT get_ReadOnly(WORD *ReadOnly);
 	virtual HRESULT get_DelayMode(WORD *DelayMode);
 	virtual HRESULT set_DelayMode(WORD DelayMode);
-	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition);
-
-//*******************************************************************************************
-//TimeShift Additions
-
+	virtual HRESULT get_ReaderMode(WORD *ReaderMode);
+	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pLength);
 	HRESULT GetInfoFileSize(__int64 *lpllsize);
 	HRESULT GetStartPosition(__int64 *lpllpos);
-	virtual HRESULT get_TimeMode(WORD *TimeMode);
-
-//*******************************************************************************************
-
 	virtual BOOL IsFileInvalid();
-
 	virtual DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual __int64 GetFilePointer();
-	//virtual __int64 get_FileSize(void);
 
 protected:
 	HANDLE   m_hFile; 				// Handle to file for streaming
@@ -71,15 +62,8 @@ protected:
 	BOOL     m_bReadOnly;
 	BOOL     m_bDelay;
 	__int64 m_fileSize;
-
-//*******************************************************************************************
-//TimeShift Additions
-
 	__int64 m_infoFileSize;
 	__int64 m_fileStartPos;
-
-//*******************************************************************************************
-
 };
 
 #endif

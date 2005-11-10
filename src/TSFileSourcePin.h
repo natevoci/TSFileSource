@@ -72,6 +72,7 @@ public:
 	STDMETHODIMP GetPositions(LONGLONG *pCurrent, LONGLONG *pStop);
 	STDMETHODIMP SetPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags);
+	STDMETHODIMP GetAvailable(LONGLONG *pEarliest, LONGLONG *pLatest);
 
 	// CSourcePosition
 	STDMETHODIMP get_CurrentPosition(REFTIME * pllTime);
@@ -83,6 +84,7 @@ public:
 	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
 	HRESULT UpdateDuration(FileReader *pFileReader);
 	HRESULT SetDuration(REFERENCE_TIME duration);
+	BOOL IsTimeShifting(FileReader *pFileReader, BOOL *timeMode);
 
 	HRESULT CTSFileSourcePin::DisconnectDemuxPins();
 	HRESULT SetDemuxClock(IReferenceClock *pClock);
@@ -92,6 +94,7 @@ public:
 
 	long get_BitRate();
 	void set_BitRate(long rate);
+	virtual void PrintTime(const char* lstring, __int64 value, __int64 divider);
 
 protected:
 
@@ -100,7 +103,6 @@ protected:
 	__int64 ConvertPCRtoRT(REFERENCE_TIME pcrtime);
 	void AddBitRateForAverage(__int64 bitratesample);
 	void Debug(LPCTSTR lpOutputString);
-	void PrintTime(const char* lstring, __int64 value, __int64 divider);
 
 protected:
 	CTSFileSourceFilter * const m_pTSFileSourceFilter;
@@ -133,9 +135,12 @@ protected:
 	REFERENCE_TIME m_rtLastCurrentTime;
 	REFERENCE_TIME m_rtTimeShiftPosition;
 	__int64 m_LastFileSize;
+	__int64 m_LastStartSize;
 
 	__int64 m_IntLastStreamTime;
 	__int64 m_DataRateSave;
+	__int64 m_LastMultiFileStart;
+	__int64 m_LastMultiFileLength;
 
 public:
 	BOOL	m_DemuxLock;

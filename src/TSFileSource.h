@@ -88,6 +88,7 @@ public:
 	int GetPinCount();
 	STDMETHODIMP FindPin(LPCWSTR Id, IPin ** ppPin);
 
+	void ResetStreamTime(void);
 	STDMETHODIMP Run(REFERENCE_TIME tStart);
 	STDMETHODIMP Pause();
 	STDMETHODIMP Stop();
