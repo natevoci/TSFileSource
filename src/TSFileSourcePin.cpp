@@ -822,8 +822,8 @@ STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 		//Do MultiFile timeshifting mode
 		if(bMultiMode)
 		{
-			*pCurrent = (__int64)ConvertPCRtoRT(m_llPrevPCR - m_pTSFileSourceFilter->m_pPidParser->pids.start);
-			*pStop = (__int64)ConvertPCRtoRT(m_pTSFileSourceFilter->m_pPidParser->pids.end - m_pTSFileSourceFilter->m_pPidParser->pids.start);
+			*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_llPrevPCR - m_pTSFileSourceFilter->m_pPidParser->pids.start));
+			*pStop = max(0, (__int64)ConvertPCRtoRT(m_pTSFileSourceFilter->m_pPidParser->pids.end - m_pTSFileSourceFilter->m_pPidParser->pids.start));
 			REFERENCE_TIME current, stop;
 			return CSourceSeeking::GetPositions(&current, &stop);
 		}
@@ -920,15 +920,22 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 STDMETHODIMP CTSFileSourcePin::GetAvailable(LONGLONG *pEarliest, LONGLONG *pLatest)
 {
 
+	CAutoLock seekLock(&m_SeekLock);
 	CheckPointer(pEarliest,E_POINTER);
 	CheckPointer(pLatest,E_POINTER);
 
+	//Get the FileReader Type
+	WORD bMultiMode;
+	m_pTSFileSourceFilter->m_pFileReader->get_ReaderMode(&bMultiMode);
+
+	//Do MultiFile timeshifting mode
+	if(bMultiMode)
+	{
+		*pEarliest = max(0,(__int64)(ConvertPCRtoRT(m_pTSFileSourceFilter->m_pPidParser->pids.end) - (__int64)m_rtDuration));
+		*pLatest = m_rtDuration;
+		return S_OK;
+	}
 	return CSourceSeeking::GetAvailable(pEarliest, pLatest);
-	*pEarliest = 0;
-	*pLatest = m_rtDuration;
-
-	return S_OK;
-
 }
 
 HRESULT CTSFileSourcePin::ChangeStart()
@@ -1003,13 +1010,13 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	//Do MultiFile timeshifting mode
 	if(bMultiMode)
 	{
-		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
-
-		if (nFileIndex < 300000)
-			nFileIndex = 300000; //Skip head of file
-		m_pTSFileSourceFilter->m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
-		return S_OK;
-
+		// Revert to old method
+		// shifting right by 14 rounds the seek and duration time down to the
+		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
+//		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+//		nFileIndex = max(300000, nFileIndex);
+//		m_pTSFileSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+//		return S_OK;
 	}
 	else
 	{
@@ -1026,15 +1033,12 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 
 	if (!m_pTSFileSourceFilter->m_pPidParser->pids.pcr && m_pTSFileSourceFilter->m_pPidParser->get_AsyncMode()) {
 //	if (!m_pPidParser->pids.pcr && !m_pPidParser->get_ProgPinMode()) {
-			// Revert to old method
-			// shifting right by 14 rounds the seek and duration time down to the
-			// nearest multiple 16.384 ms. More than accurate enough for our seeks.
-
+		// Revert to old method
+		// shifting right by 14 rounds the seek and duration time down to the
+		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
 		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
-
-		if (nFileIndex < 300000)
-			nFileIndex = 300000; //Skip head of file
-		m_pTSFileSourceFilter->m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
+		nFileIndex = max(300000, nFileIndex);
+		m_pTSFileSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 		return S_OK;
 	}
 //***********************************************************************************************
@@ -1076,10 +1080,9 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 			// shifting right by 14 rounds the seek and duration time down to the
 			// nearest multiple 16.384 ms. More than accurate enough for our seeks.
 			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+			nFileIndex = max(300000, nFileIndex);
+			m_pTSFileSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 
-			if (nFileIndex < 300000)
-				nFileIndex = 300000; //Skip head of file
-			m_pTSFileSourceFilter->m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
 			delete[] pData;
 			return S_OK;
 		}
@@ -1094,11 +1097,10 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	if ((__int64)(nFileIndex + (__int64)lDataLength) > filelength)
 		nFileIndex = (__int64)(filelength - (__int64)lDataLength);
 
-	if (nFileIndex < 0)
-		nFileIndex = 0;
 
 	//Set Pointer to the predicted file position to get end pcr
-	m_pTSFileSourceFilter->m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
+	nFileIndex = max(0, nFileIndex);
+	m_pTSFileSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 	m_pTSFileSourceFilter->m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
 	__int64 pcrPos;
 	pos = 0;
@@ -1126,11 +1128,8 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	if ((nFileIndex + lDataLength) > filelength)
 		nFileIndex = (__int64)(filelength - (__int64)lDataLength);
 
-	//shift buffer start to beginning of file if needed
-	if (nFileIndex < 0)
-		nFileIndex = 0;
-
-	m_pTSFileSourceFilter->m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
+	nFileIndex = max(0, nFileIndex);
+	m_pTSFileSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 	ulBytesRead = 0;
 	m_pTSFileSourceFilter->m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
 
@@ -1178,10 +1177,6 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		nFileIndex += (__int64)pos;
 
 //PrintTime("seekend", (__int64) pcrPos, 90);
-		if (nFileIndex < 300000)
-			nFileIndex = 300000;
-		else if (nFileIndex > filelength)
-			nFileIndex = filelength - 100000;
 	}
 	else
 	{
@@ -1189,15 +1184,9 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		// shifting right by 14 rounds the seek and duration time down to the
 		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
 		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
-
-//PrintTime("SEEK ERROR AT END", (__int64) pcrSeekTime, 90);
-		if (nFileIndex < 300000)
-			nFileIndex = 300000;
-		else if (nFileIndex > filelength)
-			nFileIndex = filelength - 100000;
 	}
-
-	m_pTSFileSourceFilter->m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
+		nFileIndex = max(300000, nFileIndex);
+		m_pTSFileSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 
 	delete[] pData;
 
@@ -1291,7 +1280,20 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 		//Do MultiFile timeshifting mode
 		if(bMultiMode)
 		{
+			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+			REFERENCE_TIME rtStop = 0;
+			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) > rtCurrentTime)
+				return hr;
+
+			//Get CSourceSeeking current time.
+			CSourceSeeking::GetPositions(&rtCurrentTime, &rtStop);
+			//Test if we had been seeking recently and wait 2sec if so.
+			if ((REFERENCE_TIME)(m_rtLastSeekStart + (REFERENCE_TIME)20000000) > rtCurrentTime)
+				return hr;
+
+
 			BOOL bLengthChanged = FALSE;
+			BOOL bStartChanged = FALSE;
 			ULONG ulBytesRead;
 			LONG lDataLength = 188000;
 			__int64 pcrPos;
@@ -1326,7 +1328,10 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 					m_pTSFileSourceFilter->m_pPidParser->pidArray[i].start += pcrDeltaTime;
 
 				m_LastMultiFileStart = fileStart;
-				bLengthChanged = TRUE;
+				bStartChanged = TRUE;
+				m_rtLastSeekStart = max(0, (__int64)ConvertPCRtoRT(m_llPrevPCR - m_pTSFileSourceFilter->m_pPidParser->pids.start));
+				m_rtStart = m_rtLastSeekStart;
+				m_pTSFileSourceFilter->ResetStreamTime();
 			}
 
 			if (filelength != m_LastMultiFileLength)
@@ -1358,7 +1363,7 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 				bLengthChanged = TRUE;
 			}
 
-			if (bLengthChanged)
+			if ((bLengthChanged | bStartChanged) && !m_bSeeking)
 			{
 				__int64	pcrDeltaTime = (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.end - m_pTSFileSourceFilter->m_pPidParser->pids.start);
 				m_pTSFileSourceFilter->m_pPidParser->pids.dur = (__int64)ConvertPCRtoRT(pcrDeltaTime);
@@ -1368,7 +1373,13 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 					m_pTSFileSourceFilter->m_pPidParser->pidArray[i].dur = m_pTSFileSourceFilter->m_pPidParser->pids.dur;
 
 				m_rtDuration = m_pTSFileSourceFilter->m_pPidParser->pids.dur;
-				m_rtStop = m_pTSFileSourceFilter->m_pPidParser->pids.dur;
+
+				__int64 offset = max(0, (__int64)((__int64)m_rtStart - (__int64)m_rtDuration));
+				if (offset)
+					m_rtStop = ConvertPCRtoRT(m_llPrevPCR - m_pTSFileSourceFilter->m_pPidParser->pids.start);
+				else
+					m_rtStop = m_pTSFileSourceFilter->m_pPidParser->pids.dur;
+
 				m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
 				return S_OK;
 			}

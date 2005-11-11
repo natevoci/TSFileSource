@@ -295,8 +295,8 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 
 			if (count)
 				hr = m_pPin->UpdateDuration(m_pFileDuration);
-			if (hr == E_FAIL)
-				return hr;
+//			if (hr == E_FAIL)
+//				return hr;
 
 			Sleep(100);
         }

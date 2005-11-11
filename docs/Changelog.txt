@@ -1,4 +1,7 @@
 bear:
+Made improvments the Update duration code to correctly update the filtergraph time for MultiFileReader Mode.
+Made changes to the SetAccuratePos function to correctly seek relative to the file end position, seems to improve the MultiFileReader seeking now.
+
 Changed the default clock reference option to select the TSFileSource Internal clock.
 Changed the AC3 Preference Option Default setting to disabled so that UK users don't loose audio if a private stream is detected as AC3 and is chosen.
 Fixed a bug with the Program Pin Mode where it was not updating the duration.
