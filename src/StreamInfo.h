@@ -28,7 +28,6 @@
 #define STREAMINFO_H
 
 #include <vector>
-#include <streams.h>
 
 class StreamInfo
 {

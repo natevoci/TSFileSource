@@ -34,7 +34,8 @@ FileReader::FileReader() :
 	m_infoFileSize(0),
 	m_fileStartPos(0),
 	m_hInfoFile(INVALID_HANDLE_VALUE),
-	m_bDelay(FALSE)
+	m_bDelay(FALSE),
+	m_bDebugOutput(FALSE)
 {
 }
 
@@ -502,4 +503,9 @@ HRESULT FileReader::get_ReaderMode(WORD *ReaderMode)
 {
 	*ReaderMode = FALSE;
 	return S_OK;
+}
+
+void FileReader::SetDebugOutput(BOOL bDebugOutput)
+{
+	m_bDebugOutput = bDebugOutput;
 }

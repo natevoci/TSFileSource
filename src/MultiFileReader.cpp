@@ -83,6 +83,7 @@ HRESULT MultiFileReader::CloseFile()
 	HRESULT hr;
 	hr = m_TSBufferFile.CloseFile();
 	hr = m_TSFile.CloseFile();
+	m_TSFileId = 0;
 	return hr;
 }
 
@@ -164,6 +165,14 @@ HRESULT MultiFileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadByte
 			m_TSFile.OpenFile();
 
 			m_TSFileId = file->filePositionId;
+
+			if (m_bDebugOutput)
+			{
+				USES_CONVERSION;
+				TCHAR sz[MAX_PATH+128];
+				wsprintf(sz, TEXT("Current File Changed to %s\n"), W2T(file->filename));
+				::OutputDebugString(sz);
+			}
 		}
 
 		__int64 seekPosition = m_currentPosition - file->startPosition;
@@ -240,20 +249,52 @@ HRESULT MultiFileReader::RefreshTSBufferFile()
 	{
 		long filesToRemove = filesRemoved - m_filesRemoved;
 		long filesToAdd = filesAdded - m_filesAdded;
+		long fileID = filesRemoved;
+		__int64 nextStartPosition = 0;
+
+		if (m_bDebugOutput)
+		{
+			TCHAR sz[128];
+			wsprintf(sz, TEXT("Files Added %i, Removed %i\n"), filesToAdd, filesToRemove);
+			::OutputDebugString(sz);
+		}
 
 		// Removed files that aren't present anymore.
-		while (filesToRemove > 0)
+		while ((filesToRemove > 0) && (m_tsFiles.size() > 0))
 		{
-			if (m_tsFiles.size() == 0)
-			{
-				::OutputDebugString(TEXT("there should be items to remove here. Something went wrong\n"));
-				return E_FAIL;
-			}
-
 			MultiFileReaderFile *file = m_tsFiles.at(0);
+
+			if (m_bDebugOutput)
+			{
+				USES_CONVERSION;
+				TCHAR sz[MAX_PATH+128];
+				wsprintf(sz, TEXT("Removing file %s\n"), W2T(file->filename));
+				::OutputDebugString(sz);
+			}
+			
 			delete file;
 			m_tsFiles.erase(m_tsFiles.begin());
+
 			filesToRemove--;
+		}
+
+
+		// Figure out what the start position of the next new file will be
+		if (m_tsFiles.size() > 0)
+		{
+			file = m_tsFiles.back();
+
+			if (filesToAdd > 0)
+			{
+				// If we're adding files the changes are the one at the back has a partial length
+				// so we need update it.
+				if (m_bDebugOutput)
+					GetFileLength(file->filename, file->length);
+				else
+					GetFileLength(file->filename, file->length);
+			}
+
+			nextStartPosition = file->startPosition + file->length;
 		}
 
 		__int64 remainingLength = fileLength - sizeof(__int64) - sizeof(long) - sizeof(long);
@@ -283,55 +324,52 @@ HRESULT MultiFileReader::RefreshTSBufferFile()
 		delete[] pBuffer;
 
 		// Go through files
-
 		std::vector<MultiFileReaderFile *>::iterator itFiles = m_tsFiles.begin();
 		std::vector<LPWSTR>::iterator itFilenames = filenames.begin();
-
-		__int64 startPosition = 0;
 
 		while (itFiles < m_tsFiles.end())
 		{
 			file = *itFiles;
-			startPosition = file->startPosition + file->length;
-
-			filesToAdd--;
 
 			itFiles++;
+			fileID++;
 
 			if (itFilenames < filenames.end())
 			{
+				// TODO: Check that the filenames match
 				itFilenames++;
 			}
 			else
 			{
-				::OutputDebugString(TEXT("Missing files!!"));
+				::OutputDebugString(TEXT("Missing files!!\n"));
 			}
-		}
-
-		if ((filesToAdd > 0) && (m_tsFiles.size() > 0))
-		{
-			// If we're adding files the changes are the one at the back has a partial length
-			// so we need update it.
-			file = m_tsFiles.back();
-			GetFileLength(file->filename, file->length);
 		}
 
 		while (itFilenames < filenames.end())
 		{
 			LPWSTR pFilename = *itFilenames;
 
+			if (m_bDebugOutput)
+			{
+				USES_CONVERSION;
+				TCHAR sz[MAX_PATH+128];
+				int nextStPos = nextStartPosition;
+				wsprintf(sz, TEXT("Adding file %s (%i)\n"), W2T(pFilename), nextStPos);
+				::OutputDebugString(sz);
+			}
+
 			file = new MultiFileReaderFile();
 			file->filename = pFilename;
-			file->startPosition = startPosition;
+			file->startPosition = nextStartPosition;
 
-			m_filesAdded++;
-			file->filePositionId = m_filesAdded;
+			fileID++;
+			file->filePositionId = fileID;
 
 			GetFileLength(pFilename, file->length);
 
 			m_tsFiles.push_back(file);
 
-			startPosition = file->startPosition + file->length;
+			nextStartPosition = file->startPosition + file->length;
 
 			itFilenames++;
 		}
@@ -348,6 +386,17 @@ HRESULT MultiFileReader::RefreshTSBufferFile()
 		file = m_tsFiles.back();
 		file->length = currentPosition;
 		m_endPosition = file->startPosition + currentPosition;
+
+	
+		/*if (m_bDebugOutput)
+		{
+			TCHAR sz[128];
+			int stPos = m_startPosition;
+			int endPos = m_endPosition;
+			int curPos = m_currentPosition;
+			wsprintf(sz, TEXT("StartPosition %i, EndPosition %i, CurrentPosition %i\n"), stPos, endPos, curPos);
+			::OutputDebugString(sz);
+		}*/
 	}
 	else
 	{
@@ -367,7 +416,8 @@ HRESULT MultiFileReader::GetFileLength(LPWSTR pFilename, __int64 &length)
 	// Try to open the file
 	HANDLE hFile = CreateFile(W2T(pFilename),   // The filename
 						 GENERIC_READ,          // File access
-						 FILE_SHARE_READ,       // Share access
+						 FILE_SHARE_READ |
+						 FILE_SHARE_WRITE,       // Share access
 						 NULL,                  // Security
 						 OPEN_EXISTING,         // Open flags
 						 (DWORD) 0,             // More flags

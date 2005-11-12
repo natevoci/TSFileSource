@@ -395,9 +395,9 @@ BOOL CRegStore::removeOld()
 		return false;
 	}
 
-	std::vector <std::string> toRemove;
+	std::vector <LPTSTR> toRemove;
 
-	char buff[256];
+	TCHAR buff[256];
 	int index = 0;
 
 	while(RegEnumKey(settingsKey, index++, buff, 256) == ERROR_SUCCESS)
@@ -424,7 +424,9 @@ BOOL CRegStore::removeOld()
 				__int64 now = time(NULL);
 				if(lastUsed < (now - (3600 * 24 * 30)))
 				{
-                    toRemove.push_back(buff);
+					LPTSTR pStr = new TCHAR[256];
+					lstrcpy(pStr, buff);
+                    toRemove.push_back(pStr);
 				}
 			}
 
@@ -435,11 +437,12 @@ BOOL CRegStore::removeOld()
 	//
 	// Now remove old items
 	//
-	std::string name = "";
+	LPTSTR pName = "";
 	for(int x = 0; x < toRemove.size(); x++)
 	{
-		name = toRemove.at(x);
-		RegDeleteKey(settingsKey, name.c_str());
+		pName = toRemove.at(x);
+		RegDeleteKey(settingsKey, pName);
+		delete[] pName;
 	}
 
 	RegCloseKey(settingsKey);

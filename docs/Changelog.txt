@@ -1,3 +1,16 @@
+nate:
+Changes to MultiFileReader
+- Fixed problem preventing second time play.
+- Fixed problem of new files added having the wrong file ID.
+- Fixed problem of not working when file was opened with files Removed > 0
+- Fixed GetFileLength to work with files being written to.
+- Added some debugging that can be turned on for a specific file reader.
+Changed UpdateDuration to keep working if there's a PCR rollover.
+Fixed some build warnings
+- made MultiFileReader inherit FileReader publicly
+- changed RegStore to use LPTSTR instead of std::string
+- removed all #include <streams.h> from .h files.
+
 bear:
 Made improvments the Update duration code to correctly update the filtergraph time for MultiFileReader Mode.
 Made changes to the SetAccuratePos function to correctly seek relative to the file end position, seems to improve the MultiFileReader seeking now.

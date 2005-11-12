@@ -28,7 +28,7 @@
 *    http://forums.dvbowners.com/
 */
 
-//#include <streams.h>
+#include <streams.h>
 #include "StreamParser.h"
 
 //////////////////////////////////////////////////////////////////////

@@ -55,6 +55,8 @@ public:
 	virtual DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual __int64 GetFilePointer();
 
+	void SetDebugOutput(BOOL bDebugOutput);
+
 protected:
 	HANDLE   m_hFile; 				// Handle to file for streaming
 	HANDLE   m_hInfoFile;           // Handle to Infofile for filesize from FileWriter
@@ -64,6 +66,8 @@ protected:
 	__int64 m_fileSize;
 	__int64 m_infoFileSize;
 	__int64 m_fileStartPos;
+
+	BOOL     m_bDebugOutput;
 };
 
 #endif

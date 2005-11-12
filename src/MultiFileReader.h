@@ -38,7 +38,7 @@ public:
 	long filePositionId;
 };
 
-class MultiFileReader : FileReader
+class MultiFileReader : public FileReader
 {
 public:
 

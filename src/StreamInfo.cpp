@@ -23,9 +23,9 @@
 *    http://forums.dvbowners.com/
 */
 
+#include <streams.h>
 #include "StreamInfo.h"
 #include <crtdbg.h>
-//#include <streams.h>
 
 StreamInfo::StreamInfo()
 {

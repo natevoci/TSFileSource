@@ -94,7 +94,8 @@ public:
 
 	long get_BitRate();
 	void set_BitRate(long rate);
-	virtual void PrintTime(const char* lstring, __int64 value, __int64 divider);
+	virtual void PrintTime(LPCTSTR lstring, __int64 value, __int64 divider);
+	virtual void PrintLongLong(LPCTSTR lstring, __int64 value);
 
 protected:
 
@@ -140,7 +141,7 @@ protected:
 	__int64 m_IntLastStreamTime;
 	__int64 m_DataRateSave;
 	__int64 m_LastMultiFileStart;
-	__int64 m_LastMultiFileLength;
+	__int64 m_LastMultiFileEnd;
 
 public:
 	BOOL	m_DemuxLock;

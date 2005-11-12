@@ -525,8 +525,8 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 {
 	CAutoLock cObjectLock(m_pLock);
 
-	if(!IsActive()){
-
+	if(!IsActive())
+	{
 		if (m_pFileReader->IsFileInvalid())
 		{
 			HRESULT hr = m_pFileReader->OpenFile();
@@ -678,9 +678,12 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	}
 	else
 	{
-		m_pFileReader = (FileReader *)new MultiFileReader();
-		m_pFileDuration = (FileReader *)new MultiFileReader();
+		m_pFileReader = new MultiFileReader();
+		m_pFileDuration = new MultiFileReader();
 	}
+	//m_pFileReader->SetDebugOutput(TRUE);
+	//m_pFileDuration->SetDebugOutput(TRUE);
+
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
