@@ -21,6 +21,44 @@ LANGUAGE LANG_GERMAN, SUBLANG_GERMAN
 #pragma code_page(1252)
 #endif //_WIN32
 
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+#endif    // German (Germany) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (Australia) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENA)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_AUS
+#pragma code_page(1252)
+#endif //_WIN32
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // Dialog
@@ -116,6 +154,45 @@ BEGIN
                     WS_GROUP,215,154,65,8
 END
 
+IDD_SINKPROPPAGE DIALOG DISCARDABLE  0, 0, 239, 166
+STYLE DS_MODALFRAME | WS_CHILD
+FONT 8, "MS Sans Serif"
+BEGIN
+    GROUPBOX        "Regestry Infomation",IDC_STATIC,7,7,111,138,BS_CENTER
+    LTEXT           "Chunk Reserve",IDC_STATIC,13,16,77,10
+    PUSHBUTTON      "&Save Registry Settings",IDC_SAVE,13,148,96,13
+    EDITTEXT        IDC_CHKRES,14,26,39,12,ES_AUTOHSCROLL
+    LTEXT           "Max Buffer File Size",IDC_STATIC,13,41,77,10
+    EDITTEXT        IDC_MAXSIZE,13,51,40,12,ES_AUTOHSCROLL
+    LTEXT           "Min Numb Buffer Files",IDC_STATIC,13,67,70,10
+    EDITTEXT        IDC_MINNUMB,13,76,27,12,ES_AUTOHSCROLL
+    LTEXT           "Max Numb Buffer Files",IDC_STATIC,13,91,77,10
+    EDITTEXT        IDC_MAXNUMB,14,100,26,12,ES_AUTOHSCROLL
+    LTEXT           "MBytes",IDC_STATIC,56,27,24,10
+    LTEXT           "MBytes",IDC_STATIC,56,52,24,10
+    PUSHBUTTON      "&Change",IDC_CHKRESCHG,84,25,30,12,WS_GROUP
+    PUSHBUTTON      "&Change",IDC_MAXSIZECHG,84,50,30,12,WS_GROUP
+    PUSHBUTTON      "&Change",IDC_MINNUMBCHG,84,76,30,12,WS_GROUP
+    PUSHBUTTON      "&Change",IDC_MAXNUMBCHG,84,101,30,12,WS_GROUP
+    LTEXT           "Default File Name",IDC_STATIC,13,115,77,10
+    EDITTEXT        IDC_DEFNAME,13,124,65,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "&Change",IDC_DEFNAMECHG,83,125,30,12,WS_GROUP
+    GROUPBOX        "Status Infomation",IDC_STATIC,121,7,111,137,BS_CENTER
+    EDITTEXT        IDC_CURNUMB,205,26,20,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Current File Number",IDC_STATIC,127,27,68,10
+    EDITTEXT        IDC_CURNAME,127,102,66,12,ES_AUTOHSCROLL
+    LTEXT           "Current File Name",IDC_STATIC,127,91,77,10
+    EDITTEXT        IDC_NUMBADD,205,42,20,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Number Added",IDC_STATIC,127,42,67,10
+    EDITTEXT        IDC_NUMBREM,205,58,20,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Number Removed",IDC_STATIC,127,59,66,10
+    PUSHBUTTON      "&Change",IDC_CURNAMECHG,197,102,29,12,WS_GROUP
+    PUSHBUTTON      "&Refresh Page",IDC_REFRESH,128,148,96,13
+    EDITTEXT        IDC_CURSIZE,127,124,66,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Current Buffer Size",IDC_STATIC,127,115,77,10
+    LTEXT           "MBytes",IDC_STATIC,197,126,24,10
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -131,33 +208,15 @@ BEGIN
         RIGHTMARGIN, 295
         TOPMARGIN, 7
     END
+
+    IDD_SINKPROPPAGE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 232
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 162
+    END
 END
-#endif    // APSTUDIO_INVOKED
-
-
-#ifdef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// TEXTINCLUDE
-//
-
-1 TEXTINCLUDE DISCARDABLE 
-BEGIN
-    "resource.h\0"
-END
-
-2 TEXTINCLUDE DISCARDABLE 
-BEGIN
-    "#include ""afxres.h""\r\n"
-    "\0"
-END
-
-3 TEXTINCLUDE DISCARDABLE 
-BEGIN
-    "\r\n"
-    "\0"
-END
-
 #endif    // APSTUDIO_INVOKED
 
 
@@ -215,9 +274,10 @@ END
 STRINGTABLE DISCARDABLE 
 BEGIN
     IDS_PROPPAGE_TITLE      "TSFileSource Filter Properties"
+    IDS_SINKPROPPAGE_TITLE  "TSFileSink Filter Properties"
 END
 
-#endif    // German (Germany) resources
+#endif    // English (Australia) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

@@ -59,6 +59,7 @@ PidParser::PidParser(FileReader *pFileReader)
 	m_fileEndOffset = 0;
 	m_fileStartOffset = 0;
 	m_FileStartPointer = 0;
+	m_ParsingLock = FALSE;
 }
 
 PidParser::~PidParser()
@@ -68,8 +69,6 @@ PidParser::~PidParser()
 
 HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 {
-	ULONG a;
-
 	HRESULT hr = S_OK;
 
 	if (m_pFileReader->IsFileInvalid())
@@ -77,44 +76,50 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		return NOERROR;
 	}
 
-	//Store file pointer so we can reset it before leaving this method
-	__int64 originalFilePointer = m_pFileReader->GetFilePointer();
 
+	//Store file pointer so we can reset it before leaving this method
+//	__int64 originalFilePointer = m_pFileReader->GetFilePointer();
 	FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
 	LPOLESTR fileName;
 	m_pFileReader->GetFileName(&fileName);
 	pFileReader->SetFileName(fileName);
 
 	hr = pFileReader->OpenFile();
-	if (FAILED(hr))
+	if (FAILED(hr)){
+		pFileReader->~FileReader();
 		return VFW_E_INVALIDMEDIATYPE;
+	}
+
+
+	//Check if we are locked out
+	int count = 0;
+	while (m_ParsingLock)
+	{
+		Sleep(100);
+		count++;
+		if (count > 10)
+		{
+			pFileReader->~FileReader();
+			return S_FALSE;
+		}
+	}
+	//Lock the parser
+	m_ParsingLock = TRUE;
 
 	int iterations = 0;
 	m_FileStartPointer = fileStartPointer;
-	__int64 start = 0;
-	__int64 filesize = 0;
-	pFileReader->GetFileSize(&start, &filesize);
-
-	iterations = ((filesize - m_FileStartPointer) / 2000000); 
-	if (iterations >= 8)
-	{
-		iterations = 8;
-	}
-	else
-	{
-		m_FileStartPointer = m_FileStartPointer - (16000000);
-		if (m_FileStartPointer < 0)
-			m_FileStartPointer = 0;
-	}
-
+	__int64 start, fileSize = 0;
+	pFileReader->GetFileSize(&start, &fileSize);
 	// Access the sample's data buffer
-	a = 0;
+	ULONG a = 0;
 //	ULONG ulDataLength = 2000000;
 	ULONG ulDataLength = 4000000;
 	ULONG ulDataRead = 0;
 	PBYTE pData = new BYTE[ulDataLength];
 
-	pFileReader->SetFilePointer(m_FileStartPointer, FILE_BEGIN);
+	m_FileStartPointer = max(300000, m_FileStartPointer);
+	pFileReader->SetFilePointer((__int64)max((__int64)((__int64)ulDataLength - fileSize),(__int64)(m_FileStartPointer - fileSize)), FILE_END);
+//	pFileReader->SetFilePointer(m_FileStartPointer, FILE_BEGIN);
 	pFileReader->Read(pData, ulDataLength, &ulDataRead);
 
 	pids.Clear();
@@ -417,12 +422,11 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		hr = E_FAIL;
 	}
 
+	//UnLock the parser
+	m_ParsingLock = FALSE;
 	delete[] pData;
-
 	pFileReader->CloseFile();
 	pFileReader->~FileReader();
-//	delete pFileReader;
-
 	return hr;
 }
 
@@ -433,27 +437,39 @@ HRESULT PidParser::RefreshPids()
 		return NOERROR;
 	}
 
-	__int64 start;
-	__int64 filesize;
-	m_pFileReader->GetFileSize(&start, &filesize);
+	__int64 fileStart, fileSize = 0;
+	m_pFileReader->GetFileSize(&fileStart, &fileSize);
 	__int64 filestartpointer = m_pFileReader->GetFilePointer();
+	//Get the FileReader Type
+	WORD bMultiMode;
+	m_pFileReader->get_ReaderMode(&bMultiMode);
+
+	//Do MultiFile timeshifting mode
+	if(bMultiMode)
+	{
+		filestartpointer = (__int64)max(fileStart, (__int64)(filestartpointer));
+		filestartpointer = (__int64)min((__int64)(fileSize + fileStart - (__int64)4000000), filestartpointer);
+
+//		filestartpointer = (__int64)max(fileStart, (__int64)(filestartpointer - fileStart));
+////		filestartpointer = (__int64)max(0,(__int64)(fileSize - (__int64)5000000));
+	}
 
 	//Check if file is being recorded
-	if(filesize < 2100000)
+	if(fileSize < 2100000)
 	{
 		int count = 0;
-		__int64 fileSizeSave = filesize;
-		while ((filesize) < 20000000 && count < 20)
+		__int64 fileSizeSave = fileSize;
+		while ((fileSize) < 20000000 && count < 20)
 		{
-			m_pFileReader->GetFileSize(&start, &filesize);
-			while ((filesize < fileSizeSave + 2000000) && (count < 20))
+			m_pFileReader->GetFileSize(&fileStart, &fileSize);
+			while ((fileSize < fileSizeSave + 2000000) && (count < 20))
 			{
 				Sleep(100);
 				count++;
 			}
 			count++;
-			m_pFileReader->GetFileSize(&start, &filesize);
-			fileSizeSave = filesize;
+			m_pFileReader->GetFileSize(&fileStart, &fileSize);
+			fileSizeSave = fileSize;
 			ParseFromFile(filestartpointer); 
 			if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0)
 				return S_OK;
@@ -470,15 +486,14 @@ HRESULT PidParser::RefreshPids()
 
 HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 {
+	__int64 start, filelength;
+	pFileReader->GetFileSize(&start, &filelength);
+
 //*********************************************************************************************
 //Old Capture format Additions
 
 	if (!pids.pcr && !m_ProgPinMode) {
 		//Set our fake duration
-		__int64 start;
-		__int64 filelength;
-		pFileReader->GetFileSize(&start, &filelength);
-
 		__int64 calcDuration = (REFERENCE_TIME)(filelength / (__int64)((__int64)pids.bitrate / (__int64)8000));
 		pids.dur = (REFERENCE_TIME)(calcDuration * (__int64)10000);
 		
@@ -511,7 +526,9 @@ HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 //		SetPidArray(m_pgmnumb);
 
 	//Restore original file pointer
-	pFileReader->SetFilePointer(originalFilePointer, FILE_BEGIN);
+	originalFilePointer = min(filelength, originalFilePointer);
+	pFileReader->SetFilePointer((__int64)(originalFilePointer - filelength), FILE_END);
+//	pFileReader->SetFilePointer(originalFilePointer, FILE_BEGIN);
 
 	return S_OK;
 }
@@ -1229,18 +1246,27 @@ HRESULT PidParser::CheckEPGFromFile()
 		iterations = 0;
 		epgfound = false;
 
-		__int64 start;
-		__int64 filesize;
-		pFileReader->GetFileSize(&start, &filesize);
+		__int64 start, fileSize;
+		pFileReader->GetFileSize(&start, &fileSize);
 
 		__int64 filestartpointer = m_pFileReader->GetFilePointer();
-		iterations = ((filesize - filestartpointer) / 2000000); 
+		//Get the FileReader Type
+		WORD bMultiMode;
+		m_pFileReader->get_ReaderMode(&bMultiMode);
+
+		//Do MultiFile timeshifting mode
+		if(bMultiMode)
+		{
+			filestartpointer -= start;
+		}
+
+		iterations = ((fileSize - filestartpointer) / 2000000); 
 		if (iterations >= 64)
 			iterations = 64;
 		else if (iterations < 32)
 		{
 			iterations = 32;
-			filestartpointer = filesize - (iterations * 2000000);
+			filestartpointer = fileSize - (iterations * 2000000);
 			if (filestartpointer < 100000)
 				filestartpointer = 100000;
 		}
@@ -1251,7 +1277,9 @@ HRESULT PidParser::CheckEPGFromFile()
 
 		while(sidCount < pidArray.Count())
 		{
-			pFileReader->SetFilePointer(filestartpointer, FILE_BEGIN);
+			filestartpointer = min(fileSize, filestartpointer);
+			pFileReader->SetFilePointer((__int64)(filestartpointer - fileSize), FILE_END);
+//			pFileReader->SetFilePointer(filestartpointer, FILE_BEGIN);
 			pFileReader->Read(pData, ulDataLength, &ulDataRead);
 
 			hr = FindSyncByte(pData, ulDataLength, &pos, 1);
@@ -1442,7 +1470,21 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 		ULONG ulDataRead = 0;
 		PBYTE pData = new BYTE[ulDataLength];
 
-		pFileReader->SetFilePointer(m_FileStartPointer, FILE_BEGIN);
+		__int64 fileStart, fileSize;
+		pFileReader->GetFileSize(&fileStart, &fileSize);
+		__int64 filestartpointer = pFileReader->GetFilePointer();
+		//Get the FileReader Type
+		WORD bMultiMode;
+		pFileReader->get_ReaderMode(&bMultiMode);
+
+		//Do MultiFile timeshifting mode
+		if(bMultiMode)
+		{
+			filestartpointer = (__int64)max(fileStart, (__int64)(filestartpointer - fileStart));
+		}
+		m_FileStartPointer = min(fileSize, m_FileStartPointer);
+		pFileReader->SetFilePointer((__int64)(m_FileStartPointer - fileSize), FILE_END);
+//		pFileReader->SetFilePointer(m_FileStartPointer, FILE_BEGIN);
 		pFileReader->Read(pData, ulDataLength, &ulDataRead);
 
 		hr = FindSyncByte(pData, ulDataLength, &pos, 1);
@@ -1587,7 +1629,21 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 		ULONG ulDataRead = 0;
 		PBYTE pData = new BYTE[ulDataLength];
 
-		pFileReader->SetFilePointer(m_FileStartPointer, FILE_BEGIN);
+		__int64 fileStart, fileSize;
+		pFileReader->GetFileSize(&fileStart, &fileSize);
+		__int64 filestartpointer = pFileReader->GetFilePointer();
+		//Get the FileReader Type
+		WORD bMultiMode;
+		pFileReader->get_ReaderMode(&bMultiMode);
+
+		//Do MultiFile timeshifting mode
+		if(bMultiMode)
+		{
+			filestartpointer = (__int64)max(fileStart, (__int64)(filestartpointer - fileStart));
+		}
+		m_FileStartPointer = min(fileSize, m_FileStartPointer);
+		pFileReader->SetFilePointer((__int64)(m_FileStartPointer - fileSize), FILE_END);
+//		pFileReader->SetFilePointer(m_FileStartPointer, FILE_BEGIN);
 		pFileReader->Read(pData, ulDataLength, &ulDataRead);
 
 		hr = FindSyncByte(pData, ulDataLength, &pos, 1);
@@ -1897,7 +1953,11 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 	ULONG ulBytesRead = 0;
 	pos = 0; 
 
-	pFileReader->SetFilePointer(m_fileStartOffset, FILE_BEGIN);
+	__int64 start, fileSize;
+	pFileReader->GetFileSize(&start, &fileSize);
+	m_fileStartOffset = min(fileSize, m_fileStartOffset);
+	pFileReader->SetFilePointer((__int64)(m_fileStartOffset - fileSize), FILE_END);
+//	pFileReader->SetFilePointer(m_fileStartOffset, FILE_BEGIN);
 	pFileReader->Read(pData, lDataLength, &ulBytesRead);
 
 	hr = FindNextPCR(pData, lDataLength, pPids, &pPids->start, &pos, 1); //Get the PCR

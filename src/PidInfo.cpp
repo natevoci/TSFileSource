@@ -106,6 +106,37 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 
 void PidInfo::CopyTo(PidInfo *pidInfo)
 {
+	pidInfo->vid = vid;
+	pidInfo->h264 = h264;
+	pidInfo->mpeg4 = mpeg4;
+	pidInfo->aud = aud;
+	pidInfo->aud2 = aud2;
+	pidInfo->aac = aac;
+	pidInfo->aac2 = aac2;
+	pidInfo->ac3 = ac3;
+	pidInfo->ac3_2 = ac3_2;
+	pidInfo->chnumb = chnumb;
+	memcpy(pidInfo->onetname, onetname, 128);
+	memcpy(pidInfo->chname, chname, 128);
+	memcpy(pidInfo->sdesc, sdesc, 128);
+	memcpy(pidInfo->edesc, edesc, 600);
+	memcpy(pidInfo->sndesc, sndesc, 128);
+	memcpy(pidInfo->endesc, endesc, 600);
+
+	pidInfo->txt = txt;
+	pidInfo->sid = sid;
+	pidInfo->pmt = pmt;
+	pidInfo->pcr = pcr;
+	pidInfo->opcr = opcr;
+	pidInfo->start = start;
+	pidInfo->end = end;
+	pidInfo->dur = dur;
+	pidInfo->bitrate = bitrate;
+
+	for (int i = 0 ; i < 16 ; i++ )
+	{
+		pidInfo->TsArray[i] = TsArray[i];
+	}
 }
 
 PidInfoArray::PidInfoArray()

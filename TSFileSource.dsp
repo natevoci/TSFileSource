@@ -99,7 +99,15 @@ SOURCE=.\src\PropPage.rc
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\RegSinkStore.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\RegStore.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\SettingsSinkStore.cpp
 # End Source File
 # Begin Source File
 
@@ -117,10 +125,6 @@ SOURCE=.\src\StreamInfo.cpp
 
 SOURCE=.\src\StreamParser.cpp
 # End Source File
-# Begin Source File
-
-SOURCE=.\src\TSFileSource.def
-# End Source File
 # End Group
 # Begin Group "Header Files"
 
@@ -131,11 +135,19 @@ SOURCE=.\src\DvbFormats.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\RegSinkStore.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\RegStore.h
 # End Source File
 # Begin Source File
 
 SOURCE=.\src\resource.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\SettingsSinkStore.h
 # End Source File
 # Begin Source File
 
@@ -148,6 +160,10 @@ SOURCE=.\src\StreamInfo.h
 # Begin Source File
 
 SOURCE=.\src\StreamParser.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSource.def
 # End Source File
 # End Group
 # Begin Group "Resource Files"
@@ -236,6 +252,14 @@ SOURCE=.\src\TSFileSinkPin.cpp
 # Begin Source File
 
 SOURCE=.\src\TSFileSinkPin.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSinkProp.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSFileSinkProp.h
 # End Source File
 # End Group
 # Begin Group "File Handling"

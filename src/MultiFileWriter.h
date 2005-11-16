@@ -42,6 +42,23 @@ public:
 	
 	HRESULT Write(PBYTE pbData, ULONG lDataLength);
 
+	LPTSTR getRegFileName(void);
+	void setRegFileName(LPTSTR fileName);
+	LPWSTR getBufferFileName(void);
+	void setBufferFileName(LPWSTR fileName);
+	FileWriter* getCurrentTSFile(void);
+	long getNumbFilesAdded(void);
+	long getNumbFilesRemoved(void);
+	long getCurrentFileId(void);
+	long getMinTSFiles(void);
+	void setMinTSFiles(long minFiles);
+	long getMaxTSFiles(void);
+	void setMaxTSFiles(long maxFiles);
+	__int64 getMaxTSFileSize(void);
+	void setMaxTSFileSize(__int64 maxSize);
+	__int64 getChunkReserve(void);
+	void setChunkReserve(__int64 chunkSize);
+
 protected:
 	HRESULT PrepareTSFile();
 	HRESULT CreateNewTSFile();
@@ -53,6 +70,7 @@ protected:
 
 	HANDLE m_hTSBufferFile;
 	LPWSTR m_pTSBufferFileName;
+	LPTSTR m_pTSRegFileName;
 
 	CCritSec m_Lock;
 

@@ -49,6 +49,7 @@ CTSFileSink::CTSFileSink(IUnknown *pUnk, HRESULT *phr) :
 	m_pPosition(NULL),
 	m_pRegStore(NULL),
 	m_pFileName(0),
+	m_pRegFileName(NULL),
 	m_pFileWriter(NULL)
 {
 	ASSERT(phr);
@@ -70,8 +71,37 @@ CTSFileSink::CTSFileSink(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
-	m_pRegStore = new CRegStore();
-	// TODO: Load Registry Settings data
+	m_pSettingsStore = new CSettingsSinkStore();
+	m_pRegStore = new CRegSinkStore();
+
+	m_pRegFileName = new char[MAX_PATH];
+	if (m_pRegFileName != 0)
+		sprintf(m_pRegFileName, "MyBufferFile");
+	
+	// Load Registry Settings data
+	GetRegStore("default");
+
+	if(m_pRegFileName && strlen(m_pRegFileName) > 0 && strlen(m_pRegFileName) <= MAX_PATH)
+	{
+		if (m_pFileName)
+			delete[] m_pFileName;
+
+		long length = lstrlen(m_pRegFileName);
+
+		// Check that the filename ends with .tsbuffer. If it doesn't we'll add it
+		if ((length < 9) || (stricmp(m_pRegFileName+length-9, ".tsbuffer") != 0))
+		{
+			m_pFileName = new wchar_t[1+length+9];
+			if (m_pFileName != 0)
+				swprintf(m_pFileName, L"%S.tsbuffer", m_pRegFileName);
+		}
+		else
+		{
+			m_pFileName = new WCHAR[1+length];
+			if (m_pFileName != 0)
+				swprintf(m_pFileName, L"%S", m_pRegFileName);
+		}
+	}
 }
 
 CTSFileSink::~CTSFileSink()
@@ -84,6 +114,7 @@ CTSFileSink::~CTSFileSink()
 	if (m_pPosition) delete m_pPosition;
 	if (m_pFileName) delete m_pFileName;
 	if (m_pRegStore) delete m_pRegStore;
+	if (m_pSettingsStore) delete m_pSettingsStore;
 }
 
 STDMETHODIMP CTSFileSink::NonDelegatingQueryInterface(REFIID riid, void ** ppv)
@@ -91,10 +122,18 @@ STDMETHODIMP CTSFileSink::NonDelegatingQueryInterface(REFIID riid, void ** ppv)
     CheckPointer(ppv,E_POINTER);
     CAutoLock lock(&m_Lock);
 
+	if (riid == IID_ITSFileSink)
+	{
+		return GetInterface((ITSFileSink*)this, ppv);
+	}
     if (riid == IID_IFileSinkFilter)
 	{
         return GetInterface((IFileSinkFilter *) this, ppv);
     } 
+	else if (riid == IID_ISpecifyPropertyPages)
+	{
+		return GetInterface((ISpecifyPropertyPages*)this, ppv);
+	}
     else if (riid == IID_IBaseFilter || riid == IID_IMediaFilter || riid == IID_IPersist)
 	{
         return m_pFilter->NonDelegatingQueryInterface(riid, ppv);
@@ -169,27 +208,62 @@ STDMETHODIMP CTSFileSink::SetFileName(LPCWSTR pszFileName, const AM_MEDIA_TYPE *
 {
     CheckPointer(pszFileName,E_POINTER);
 
-    if(wcslen(pszFileName) > MAX_PATH)
-        return ERROR_FILENAME_EXCED_RANGE;
-
-	long length = lstrlenW(pszFileName);
-
-	// Check that the filename ends with .tsbuffer. If it doesn't we'll add it
-	if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
+    if(wcslen(pszFileName) == 0 && strlen(m_pRegFileName) > 0)
 	{
-		m_pFileName = new wchar_t[1+length+9];
-		if (m_pFileName == 0)
-			return E_OUTOFMEMORY;
+		if(strlen(m_pRegFileName) > MAX_PATH)
+			return ERROR_FILENAME_EXCED_RANGE;
 
-		swprintf(m_pFileName, L"%s.tsbuffer", pszFileName);
+		if (m_pFileName)
+			delete[] m_pFileName;
+
+		long length = lstrlen(m_pRegFileName);
+
+		// Check that the filename ends with .tsbuffer. If it doesn't we'll add it
+		if ((length < 9) || (stricmp(m_pRegFileName+length-9, ".tsbuffer") != 0))
+		{
+			m_pFileName = new wchar_t[1+length+9];
+			if (m_pFileName == 0)
+				return E_OUTOFMEMORY;
+
+			swprintf(m_pFileName, L"%S.tsbuffer", m_pRegFileName);
+		}
+		else
+		{
+			m_pFileName = new WCHAR[1+length];
+			if (m_pFileName == 0)
+				return E_OUTOFMEMORY;
+
+			swprintf(m_pFileName, L"%S", m_pRegFileName);
+		}
 	}
 	else
 	{
-	    m_pFileName = new WCHAR[1+length];
-		if (m_pFileName == 0)
-			return E_OUTOFMEMORY;
 
-		wcscpy(m_pFileName, pszFileName);
+		if(wcslen(pszFileName) > MAX_PATH)
+			return ERROR_FILENAME_EXCED_RANGE;
+
+		if (m_pFileName)
+			delete[] m_pFileName;
+
+		long length = lstrlenW(pszFileName);
+
+		// Check that the filename ends with .tsbuffer. If it doesn't we'll add it
+		if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
+		{
+			m_pFileName = new wchar_t[1+length+9];
+			if (m_pFileName == 0)
+				return E_OUTOFMEMORY;
+
+			swprintf(m_pFileName, L"%s.tsbuffer", pszFileName);
+		}
+		else
+		{
+			m_pFileName = new WCHAR[1+length];
+			if (m_pFileName == 0)
+				return E_OUTOFMEMORY;
+
+			wcscpy(m_pFileName, pszFileName);
+		}
 	}
 	HRESULT hr = S_OK;
 
@@ -221,5 +295,241 @@ STDMETHODIMP CTSFileSink::GetCurFile(LPOLESTR * ppszFileName, AM_MEDIA_TYPE *pmt
 
     return S_OK;
 
+}
+
+STDMETHODIMP CTSFileSink::GetPages(CAUUID *pPages)
+{
+	if (pPages == NULL) return E_POINTER;
+	pPages->cElems = 1;
+	pPages->pElems = (GUID*)CoTaskMemAlloc(sizeof(GUID));
+	if (pPages->pElems == NULL)
+	{
+		return E_OUTOFMEMORY;
+	}
+	pPages->pElems[0] = CLSID_TSFileSinkProp;
+	return S_OK;
+}
+
+
+STDMETHODIMP CTSFileSink::SetRegStore(LPTSTR nameReg)
+{
+	char name[128] = "";
+	sprintf(name, "%s", nameReg);
+
+	char filename[MAX_PATH] = "";
+//	sprintf(filename, "%s", m_pFileWriter->getRegFileName());
+	sprintf(filename, "%s", m_pRegFileName);
+	m_pSettingsStore->setRegFileNameReg(filename);
+	m_pSettingsStore->setMinTSFilesReg(m_pFileWriter->getMinTSFiles());
+	m_pSettingsStore->setMaxTSFilesReg(m_pFileWriter->getMaxTSFiles());
+	m_pSettingsStore->setMaxTSFileSizeReg(m_pFileWriter->getMaxTSFileSize());
+	m_pSettingsStore->setChunkReserveReg(m_pFileWriter->getChunkReserve());
+
+	m_pRegStore->setSettingsInfo(m_pSettingsStore);
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetRegStore(LPTSTR nameReg)
+{
+    CheckPointer(nameReg, E_POINTER);
+	char name[128] = "";
+	sprintf(name, "%s", nameReg);
+
+	std::string saveName = m_pSettingsStore->getName();
+
+	// Load Registry Settings data
+	m_pSettingsStore->setName(nameReg);
+
+	if(m_pRegStore->getSettingsInfo(m_pSettingsStore))
+	{
+//		m_pFileWriter->setRegFileName((char*)m_pSettingsStore->getRegFileNameReg().c_str());
+		SetRegFileName((char*)m_pSettingsStore->getRegFileNameReg().c_str());
+		m_pFileWriter->setMinTSFiles(m_pSettingsStore->getMinTSFilesReg());
+		m_pFileWriter->setMaxTSFiles(m_pSettingsStore->getMaxTSFilesReg());
+		m_pFileWriter->setMaxTSFileSize(m_pSettingsStore->getMaxTSFileSizeReg());
+		m_pFileWriter->setChunkReserve(m_pSettingsStore->getChunkReserveReg());
+	}
+
+    return NOERROR;
+}
+
+
+STDMETHODIMP CTSFileSink::SetRegSettings()
+{
+	CAutoLock lock(&m_Lock);
+	SetRegStore("user");
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetRegSettings()
+{
+	CAutoLock lock(&m_Lock);
+	GetRegStore("user");
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetRegFileName(LPTSTR fileName)
+{
+    CheckPointer(fileName, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	sprintf((char *)fileName, "%s", m_pRegFileName);
+//	sprintf((char *)fileName, "%s", m_pFileWriter->getRegFileName());
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::SetRegFileName(LPTSTR fileName)
+{
+	CAutoLock lock(&m_Lock);
+//	m_pFileWriter->setRegFileName(fileName);
+
+	if(strlen(fileName) > MAX_PATH)
+		return ERROR_FILENAME_EXCED_RANGE;
+
+	// Take a copy of the filename
+	if (m_pRegFileName)
+	{
+		delete[] m_pRegFileName;
+		m_pRegFileName = NULL;
+	}
+	m_pRegFileName = new CHAR[1+strlen(fileName)];
+	if (m_pRegFileName == NULL)
+		return E_OUTOFMEMORY;
+
+	strcpy(m_pRegFileName, fileName);
+
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetBufferFileName(LPWSTR fileName)
+{
+    CheckPointer(fileName, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	sprintf((char *)fileName, "%S", m_pFileName);
+//	sprintf((char *)fileName, "%S", m_pFileWriter->getBufferFileName());
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::SetBufferFileName(LPWSTR fileName)
+{
+//	m_pFileWriter->setBufferFileName(fileName);
+	CAutoLock lock(&m_Lock);
+
+	if(wcslen(fileName) > MAX_PATH)
+		return ERROR_FILENAME_EXCED_RANGE;
+
+	// Take a copy of the filename
+	if (m_pFileName)
+	{
+		delete[] m_pFileName;
+		m_pFileName = NULL;
+	}
+	m_pFileName = new WCHAR[1+lstrlenW(fileName)];
+	if (m_pFileName == NULL)
+		return E_OUTOFMEMORY;
+
+	lstrcpyW(m_pFileName, fileName);
+
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetCurrentTSFile(FileWriter** fileWriter)
+{
+    CheckPointer(fileWriter, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	*fileWriter = m_pFileWriter->getCurrentTSFile();
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetNumbFilesAdded(WORD *numbAdd)
+{
+    CheckPointer(numbAdd, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	*numbAdd = (WORD)m_pFileWriter->getNumbFilesAdded();
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetNumbFilesRemoved(WORD *numbRem)
+{
+    CheckPointer(numbRem, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	*numbRem = (WORD)m_pFileWriter->getNumbFilesRemoved();
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetCurrentFileId(WORD *fileID)
+{
+    CheckPointer(fileID, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	*fileID = (WORD)m_pFileWriter->getCurrentFileId();
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetMinTSFiles(WORD *minFiles)
+{
+    CheckPointer(minFiles, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	*minFiles = (WORD) m_pFileWriter->getMinTSFiles();
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::SetMinTSFiles(WORD minFiles)
+{
+	CAutoLock lock(&m_Lock);
+	m_pFileWriter->setMinTSFiles((long)minFiles);
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetMaxTSFiles(WORD *maxFiles)
+{
+    CheckPointer(maxFiles, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	*maxFiles = (WORD) m_pFileWriter->getMaxTSFiles();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::SetMaxTSFiles(WORD maxFiles)
+{
+	CAutoLock lock(&m_Lock);
+	m_pFileWriter->setMaxTSFiles((long)maxFiles);
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetMaxTSFileSize(__int64 *maxSize)
+{
+    CheckPointer(maxSize, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	*maxSize = m_pFileWriter->getMaxTSFileSize();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::SetMaxTSFileSize(__int64 maxSize)
+{
+	CAutoLock lock(&m_Lock);
+	m_pFileWriter->setMaxTSFileSize(maxSize);
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetChunkReserve(__int64 *chunkSize)
+{
+    CheckPointer(chunkSize, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	*chunkSize = m_pFileWriter->getChunkReserve();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::SetChunkReserve(__int64 chunkSize)
+{
+	CAutoLock lock(&m_Lock);
+
+	m_pFileWriter->setChunkReserve(chunkSize);
+    return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::GetFileBufferSize(__int64 *lpllsize)
+{
+    CheckPointer(lpllsize, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	m_pFileWriter->GetFileSize(lpllsize);
+	return NOERROR;
 }
 

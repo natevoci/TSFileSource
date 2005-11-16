@@ -31,7 +31,24 @@ DEFINE_GUID(IID_ITSFileSink,
 DECLARE_INTERFACE_(ITSFileSink, IUnknown)
 {
 	STDMETHOD(GetBufferSize) (THIS_ long * size) PURE;
-
-
+	STDMETHOD(SetRegSettings) (void) PURE;
+	STDMETHOD(GetRegSettings) (void) PURE;
+	STDMETHOD(GetRegFileName) (THIS_ LPTSTR fileName) PURE;
+	STDMETHOD(SetRegFileName) (THIS_ LPTSTR fileName) PURE;
+	STDMETHOD(GetBufferFileName) (THIS_ LPWSTR fileName) PURE;
+	STDMETHOD(SetBufferFileName) (THIS_ LPWSTR fileName) PURE;
+//	STDMETHOD(GetCurrentTSFile) (THIS_ FileWriter* fileWriter) PURE;
+	STDMETHOD(GetNumbFilesAdded) (THIS_ WORD *numbAdd) PURE;
+	STDMETHOD(GetNumbFilesRemoved) (THIS_ WORD *numbRem) PURE;
+	STDMETHOD(GetCurrentFileId) (THIS_ WORD *fileID) PURE;
+	STDMETHOD(GetMinTSFiles) (THIS_ WORD *minFiles) PURE;
+	STDMETHOD(SetMinTSFiles) (THIS_ WORD minFiles) PURE;
+	STDMETHOD(GetMaxTSFiles) (THIS_ WORD *maxFiles) PURE;
+	STDMETHOD(SetMaxTSFiles) (THIS_ WORD maxFiles) PURE;
+	STDMETHOD(GetMaxTSFileSize) (THIS_ __int64 *maxSize) PURE;
+	STDMETHOD(SetMaxTSFileSize) (THIS_ __int64 maxSize) PURE;
+	STDMETHOD(GetChunkReserve) (THIS_ __int64 *chunkSize) PURE;
+	STDMETHOD(SetChunkReserve) (THIS_ __int64 chunkSize) PURE;
+	STDMETHOD(GetFileBufferSize) (THIS_ __int64 *lpllsize) PURE;
 };
 

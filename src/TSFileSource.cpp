@@ -230,73 +230,64 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 {
     Command com;
 
+	__int64 llLastMultiFileStart, llLastMultiFileLength;
+	m_pFileReader->GetFileSize(&llLastMultiFileStart, &llLastMultiFileLength);
+
 	int count = 1;
+
     do
     {
         while(!CheckRequest(&com))
         {
+           HRESULT hr = S_OK;// if an error occurs.
 
-
-/*
-			if(m_State == State_Running && 1 == 0)
+			//Reparse the file for service change	
+			if(m_State == State_Running
+				&& 1 == 1)
 			{
-				if (count > 50)
+
+				__int64 fileStart, filelength;
+				m_pFileReader->GetFileSize(&fileStart, &filelength);
+
+				//Get the FileReader Type
+				WORD bMultiMode;
+				m_pFileReader->get_ReaderMode(&bMultiMode);
+				//Do MultiFile timeshifting mode
+				if((bMultiMode & (fileStart < llLastMultiFileStart))
+					|| (!bMultiMode & (filelength < llLastMultiFileLength))
+					&& 1 == 1)
 				{
-
-					__int64	start, fileSize = 0;
-					m_pFileDuration->GetFileSize(&start, &fileSize);
-
-					TCHAR sz[128];
-					sprintf(sz, "%lu", (__int64)(fileSize - start));
-					MessageBox(NULL, sz,"test", NULL);
-					count = 0;
+//TCHAR sz[128];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz,"UpdatePidParser", NULL);
+					UpdatePidParser();
 				}
 				else
-					count++;
-			}
-		
-*/
-
-            // if an error occurs.
-            HRESULT hr = S_OK;
-
-			if (m_pDemux->CheckDemuxPids() == S_FALSE)
-				m_pDemux->AOnConnect();
-
-			if(m_State == State_Running && 1 == 0)
-			{
-				if (count > 50) {
-				
-					int sid = m_pPidParser->pids.sid;
-					int sidsave = m_pPidParser->m_ProgramSID;
-
-					if (m_pPidParser->RefreshPids() == S_OK)
-					{
+				{
+					//check pids every 5sec
+					if (count > 50) {
+						//update the parser
+						UpdatePidParser();
 						count = 0;
-
-						if (m_pPidParser->m_TStreamID) 
-						{
-							m_pPidParser->set_SIDPid(sid); //Setup for search
-							m_pPidParser->set_ProgramSID(); //set to same sid as before
-							m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
-						}
-
-						if (m_pDemux->CheckDemuxPids() == S_FALSE)
-							m_pDemux->AOnConnect();
-						
-						m_pStreamParser->ParsePidArray();
-						m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 					}
-
+					else
+						count++;
 				}
-				else
-					count++;
+					llLastMultiFileStart = fileStart;
+					llLastMultiFileLength = filelength;
 			}
 
-			if (count)
+
+			if (count && !m_pPidParser->m_ParsingLock) {
+				
 				hr = m_pPin->UpdateDuration(m_pFileDuration);
-//			if (hr == E_FAIL)
-//				return hr;
+				//park the Pointer to end of file 
+				m_pFileDuration->SetFilePointer(0, FILE_END);
+
+				if (m_pDemux->CheckDemuxPids() == S_FALSE)
+					m_pDemux->AOnConnect();
+
+			}
 
 			Sleep(100);
         }
@@ -320,8 +311,6 @@ BOOL CTSFileSourceFilter::ThreadRunning(void)
 { 
 	return m_bThreadRunning;
 }
-
-
 
 STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void ** ppv)
 {
@@ -622,7 +611,10 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
 		__int64 nFileIndex;
 		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pPidParser->pids.dur>>14);
-		m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
+		nFileIndex = min(filelength, nFileIndex);
+		nFileIndex = max(300000, nFileIndex);
+		m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+//		m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
 	}
 	return S_OK;
 }
@@ -635,7 +627,6 @@ HRESULT CTSFileSourceFilter::OnConnect()
 		CAMThread::CallWorker(CMD_STOP);
 		wasThreadRunning = TRUE;
 	}
-
 
 	HRESULT hr = m_pDemux->AOnConnect();
 
@@ -664,11 +655,15 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 {
 	HRESULT hr;
 
-	delete m_pStreamParser;
+	m_pStreamParser->~StreamParser();
+//	delete m_pStreamParser;
 	delete m_pDemux;
-	delete m_pPidParser;
-	delete m_pFileReader;
-	delete m_pFileDuration;
+	m_pPidParser->~PidParser();
+//	delete m_pPidParser;
+	m_pFileReader->~FileReader();
+	m_pFileDuration->~FileReader();
+//	delete m_pFileReader;
+//	delete m_pFileDuration;
 
 	long length = lstrlenW(pszFileName);
 	if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
@@ -715,7 +710,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 		return hr;
 	}
 
-	m_pFileReader->SetFilePointer(300000, FILE_BEGIN);
+	m_pFileReader->SetFilePointer(max((__int64)-fileSize, (__int64)((__int64)300000 - fileSize)), FILE_END);
+//	m_pFileReader->SetFilePointer(300000, FILE_BEGIN);
 
 	RefreshPids();
 
@@ -755,24 +751,74 @@ HRESULT CTSFileSourceFilter::LoadPgmReg(void)
 
 HRESULT CTSFileSourceFilter::Refresh()
 {
+	CAutoLock lock(&m_Lock);
+	UpdatePidParser();
+
+	return S_OK;
+}
+
+HRESULT CTSFileSourceFilter::UpdatePidParser(void)
+{
+	CAutoLock lock(&m_Lock);
+	HRESULT hr = S_OK;// if an error occurs.
+
+	PidParser *pPidParser = new PidParser(m_pFileReader);
+	
 	int sid = m_pPidParser->pids.sid;
 	int sidsave = m_pPidParser->m_ProgramSID;
 
-	CAutoLock lock(&m_Lock);
-	m_pPidParser->RefreshPids();
-
-	if (m_pPidParser->m_TStreamID) // && m_pPidParser->pidArray.Count() >= 2)
+	int count = 0;
+	while(m_pDemux->m_bConnectBusyFlag && count < 20)
 	{
-		m_pPidParser->set_SIDPid(sid); //Setup for search
-		m_pPidParser->set_ProgramSID(); //set to same sid as before
-		m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
+		Sleep(100);
+		count++;
 	}
+	m_pDemux->m_bConnectBusyFlag = TRUE;
 
-	m_pStreamParser->ParsePidArray();
+	if (pPidParser->RefreshPids() == S_OK)
+	{
 
-	OnConnect();
+		if (pPidParser->pidArray.Count())
+		{	//Lock the parser out
+			m_pPidParser->m_ParsingLock	= TRUE;
+			m_pPidParser->m_TStreamID = pPidParser->m_TStreamID;
+			m_pPidParser->m_NetworkID = pPidParser->m_NetworkID;
+			m_pPidParser->m_ONetworkID = pPidParser->m_ONetworkID;
+//			m_pPidParser->m_ProgramSID = pPidParser->m_ProgramSID;
+			m_pPidParser->m_ProgPinMode = pPidParser->m_ProgPinMode;
+			m_pPidParser->m_AsyncMode = pPidParser->m_AsyncMode;
+			m_pPidParser->m_PacketSize = pPidParser->m_PacketSize;
+			m_pPidParser->m_ATSCFlag = pPidParser->m_ATSCFlag;
+			memcpy(m_pPidParser->m_NetworkName, pPidParser->m_NetworkName, 128);
+			m_pPidParser->pids.CopyFrom(&pPidParser->pids);
+			m_pPidParser->pidArray.Clear();
 
-	return S_OK;
+			m_pPin->WaitPinLock();
+			for (int i = 0; i < pPidParser->pidArray.Count(); i++){
+				PidInfo *pPids = new PidInfo;
+				pPids->CopyFrom(&pPidParser->pidArray[i]);
+				m_pPidParser->pidArray.Add(pPids);
+			}
+			//UnLock the parser
+			m_pPidParser->m_ParsingLock	= FALSE;
+		}
+
+		if (m_pPidParser->m_TStreamID) 
+		{
+			m_pPidParser->set_SIDPid(sid); //Setup for search
+			m_pPidParser->set_ProgramSID(); //set to same sid as before
+			m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
+		}
+						
+		m_pStreamParser->ParsePidArray();
+		m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+		m_pDemux->m_bConnectBusyFlag = FALSE;
+		if (m_pDemux->CheckDemuxPids() == S_FALSE)
+			m_pDemux->AOnConnect();
+	}
+	pPidParser->~PidParser();
+	m_pDemux->m_bConnectBusyFlag = FALSE;
+	return hr;
 }
 
 HRESULT CTSFileSourceFilter::RefreshPids()
@@ -780,7 +826,19 @@ HRESULT CTSFileSourceFilter::RefreshPids()
 	HRESULT hr;
 
 	CAutoLock lock(&m_Lock);
-	hr = m_pPidParser->ParseFromFile(m_pFileReader->GetFilePointer());
+	WORD bMultiMode;
+	m_pFileReader->get_ReaderMode(&bMultiMode);
+
+	//Do MultiFile timeshifting mode
+	if(bMultiMode)
+	{
+		__int64 fileStart, filelength;
+		m_pFileReader->GetFileSize(&fileStart, &filelength);
+		hr = m_pPidParser->ParseFromFile((__int64)(m_pFileReader->GetFilePointer() - fileStart));
+	}
+	else
+		hr = m_pPidParser->ParseFromFile(m_pFileReader->GetFilePointer());
+
 	m_pStreamParser->ParsePidArray();
 	return hr;
 }
@@ -1918,8 +1976,7 @@ STDMETHODIMP CTSFileSourceFilter::SyncRead(
 			return E_FAIL;
 
 		int count = 0;
-		__int64 fileStart;
-		__int64	fileSize = 0;
+		__int64 fileStart, fileSize = 0;
 		m_pFileReader->GetFileSize(&fileStart, &fileSize);
 
 		//If this a file start then return null.
@@ -1931,8 +1988,13 @@ STDMETHODIMP CTSFileSourceFilter::SyncRead(
 		}
 	}
 
+	__int64 fileStart, fileSize = 0;
+	m_pFileReader->GetFileSize(&fileStart, &fileSize);
 	// Read the data from the file
-	hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
+	llPosition = min(fileSize, llPosition);
+	llPosition = max(0, llPosition);
+	hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, (__int64)(llPosition - fileSize), FILE_END);
+//	hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
 	if (FAILED(hr))
 		return hr;
 
@@ -1952,8 +2014,13 @@ STDMETHODIMP CTSFileSourceFilter::SyncRead(
 				else
 					Sleep(100);
 
+				__int64 start, filelength;
+				m_pFileReader->GetFileSize(&start, &filelength);
 				ULONG ulNextBytesRead = 0;				
-				HRESULT hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
+				llPosition = min(filelength, llPosition);
+				llPosition = max(0, llPosition);
+				HRESULT hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, (__int64)(llPosition - filelength), FILE_END);
+//				HRESULT hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
 				if (FAILED(hr))
 					return hr;
 

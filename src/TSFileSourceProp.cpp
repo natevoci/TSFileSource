@@ -102,6 +102,16 @@ void CTSFileSourceProp::SetDirty()
 	}
 }
 
+void CTSFileSourceProp::SetClean()
+{
+	m_bDirty = FALSE;
+
+	if(m_pPageSite)
+	{
+		m_pPageSite->OnStatusChange(PROPPAGESTATUS_CLEAN);
+	}
+}
+
 BOOL CTSFileSourceProp::OnRefreshProgram()
 {
 	PopulateDialog();
@@ -325,6 +335,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					// Save Registry settings
 					m_pProgram->SetRegSettings();
 					m_pProgram->SetRegProgram();
+					SetClean();
 					OnRefreshProgram () ;
 					break ;
 				}

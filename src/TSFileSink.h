@@ -36,7 +36,8 @@ class CTSFileSink;
 
 #include "MultiFileWriter.h"
 
-#include "RegStore.h"
+#include "RegSinkStore.h"
+#include "SettingsSinkStore.h"
 
 /**********************************************
  *
@@ -46,8 +47,8 @@ class CTSFileSink;
 
 class CTSFileSink : public CUnknown,
 					public ITSFileSink,
-					public IFileSinkFilter//,
-					//public ISpecifyPropertyPages
+					public IFileSinkFilter,
+					public ISpecifyPropertyPages
 {
 	friend class CTSFileSinkFilter;
 	friend class CTSFileSinkPin;
@@ -76,7 +77,32 @@ protected:
     STDMETHODIMP GetCurFile(LPWSTR * ppszFileName,AM_MEDIA_TYPE *pmt);
 
 	// ISpecifyPropertyPages
-	//STDMETHODIMP GetPages(CAUUID *pPages);
+	STDMETHODIMP GetPages(CAUUID *pPages);
+
+	//ITSFileSink
+	STDMETHODIMP GetRegSettings();
+	STDMETHODIMP SetRegSettings();
+	STDMETHODIMP SetRegStore(LPTSTR nameReg);
+	STDMETHODIMP GetRegStore(LPTSTR nameReg);
+	STDMETHODIMP GetRegFileName(LPTSTR fileName);
+	STDMETHODIMP SetRegFileName(LPTSTR fileName);
+	STDMETHODIMP GetBufferFileName(LPWSTR fileName);
+	STDMETHODIMP SetBufferFileName(LPWSTR fileName);
+	STDMETHODIMP GetCurrentTSFile(FileWriter** fileWriter);
+	STDMETHODIMP GetNumbFilesAdded(WORD *numbAdd);
+	STDMETHODIMP GetNumbFilesRemoved(WORD *numbRem);
+	STDMETHODIMP GetCurrentFileId(WORD *fileID);
+	STDMETHODIMP GetMinTSFiles(WORD *minFiles);
+	STDMETHODIMP SetMinTSFiles(WORD minFiles);
+	STDMETHODIMP GetMaxTSFiles(WORD *maxFiles);
+	STDMETHODIMP SetMaxTSFiles(WORD maxFiles);
+	STDMETHODIMP GetMaxTSFileSize(__int64 *maxSize);
+	STDMETHODIMP SetMaxTSFileSize(__int64 maxSize);
+	STDMETHODIMP GetChunkReserve(__int64 *chunkSize);
+	STDMETHODIMP SetChunkReserve(__int64 chunkSize);
+	STDMETHODIMP GetFileBufferSize(__int64 *lpllsize);
+
+
 
 protected:
 
@@ -89,10 +115,12 @@ protected:
     CPosPassThru *m_pPosition;
 
     LPOLESTR m_pFileName;
+	LPTSTR m_pRegFileName;
+
 	MultiFileWriter *m_pFileWriter;
 
-	CRegStore *m_pRegStore;
-
+	CRegSinkStore *m_pRegStore;
+	CSettingsSinkStore *m_pSettingsStore;
 };
 
 #endif

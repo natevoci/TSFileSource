@@ -3,7 +3,9 @@
 // Used by PropPage.rc
 //
 #define IDS_PROPPAGE_TITLE              1
+#define IDS_SINKPROPPAGE_TITLE          2
 #define IDD_PROPPAGE                    101
+#define IDD_SINKPROPPAGE                105
 #define IDC_VIDEO                       1000
 #define IDC_AUDIO2                      1001
 #define IDC_AUDIO                       1002
@@ -37,32 +39,48 @@
 #define IDC_ONID                        1024
 #define IDC_CREATETSPIN                 1025
 #define IDC_DATARATE                    1026
+#define IDC_CHKRES                      1026
 #define IDC_PREV                        1027
 #define IDC_AUDIO2MODE                  1028
 #define IDC_NPCTRL                      1029
+#define IDC_MAXSIZE                     1029
 #define IDC_NPSLAVE                     1030
 #define IDC_REFRESH                     1031
 #define IDC_EPGINFO                     1032
+#define IDC_MINNUMB                     1032
 #define IDC_ONETID                      1033
 #define IDC_CHID                        1034
+#define IDC_MAXNUMB                     1034
 #define IDC_NETID                       1035
+#define IDC_CHKRESCHG                   1035
 #define IDC_ROTMODE                     1036
+#define IDC_MAXSIZECHG                  1036
 #define IDC_VIDEOTYPE                   1037
+#define IDC_MINNUMBCHG                  1037
 #define IDC_AAC                         1038
+#define IDC_MAXNUMBCHG                  1038
 #define IDC_AAC2                        1039
+#define IDC_DEFNAME                     1039
 #define IDC_DEFCLOCK                    1040
 #define IDC_DEMCLOCK                    1041
+#define IDC_DEFNAMECHG                  1041
 #define IDC_RENCLOCK                    1042
+#define IDC_CURNAMECHG                  1042
 #define IDC_CREATETXTPIN                1043
 #define IDC_TSFSCLOCK                   1044
+#define IDC_CURNUMB                     1048
+#define IDC_CURNAME                     1049
+#define IDC_NUMBADD                     1050
+#define IDC_NUMBREM                     1051
+#define IDC_CURSIZE                     1052
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        104
+#define _APS_NEXT_RESOURCE_VALUE        105
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1030
+#define _APS_NEXT_CONTROL_VALUE         1049
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

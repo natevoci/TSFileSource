@@ -1,5 +1,5 @@
 /**
-*  TSFileSourceProp.h
+*  TSFileSinkProp.h
 *  Copyright (C) 2003      bisswanger
 *  Copyright (C) 2004-2005 bear
 *  Copyright (C) 2005      nate
@@ -28,17 +28,17 @@
 *    http://forums.dvbowners.com/
 */
 
-#ifndef TSFILESOURCEPROP_H
-#define TSFILESOURCEPROP_H
+#ifndef TSFILESINKPROP_H
+#define TSFILESINKPROP_H
 
-#include "TSFileSource.h"
+#include "TSFileSink.h"
 
-class CTSFileSourceProp : public CBasePropertyPage
+class CTSFileSinkProp : public CBasePropertyPage
 {
 public:
 	static CUnknown * WINAPI CreateInstance(LPUNKNOWN pUnk, HRESULT *pHr);
-	CTSFileSourceProp(IUnknown *pUnk);
-	virtual ~CTSFileSourceProp(void);
+	CTSFileSinkProp(IUnknown *pUnk);
+	virtual ~CTSFileSinkProp(void);
 
 	HRESULT OnConnect(IUnknown *pUnk);
 	HRESULT OnDisconnect(void);
@@ -53,7 +53,7 @@ public:
 
 
 private:
-	ITSFileSource   *m_pProgram;    // Pointer to the filter's custom interface.
+	ITSFileSink   *m_pProgram;    // Pointer to the filter's custom interface.
 };
 
 #endif

@@ -30,14 +30,15 @@
 MultiFileWriter::MultiFileWriter() :
 	m_hTSBufferFile(INVALID_HANDLE_VALUE),
 	m_pTSBufferFileName(NULL),
+	m_pTSRegFileName(NULL),
 	m_pCurrentTSFile(NULL),
 	m_filesAdded(0),
 	m_filesRemoved(0),
 	m_currentFilenameId(0),
-	m_minTSFiles(1),
-	m_maxTSFiles(4),
-	m_maxTSFileSize(100000000),	//200Mb
-	m_chunkReserve(10000000) //20Mb
+	m_minTSFiles(6),
+	m_maxTSFiles(60),
+	m_maxTSFileSize((__int64) ((__int64)1048576 *(__int64)250)),	//250Mb
+	m_chunkReserve((__int64) ((__int64)1048576 *(__int64)250)) //250Mb
 {
 	m_pCurrentTSFile = new FileWriter();
 	m_pCurrentTSFile->SetChunkReserve(TRUE, m_chunkReserve, m_maxTSFileSize);
@@ -48,6 +49,9 @@ MultiFileWriter::~MultiFileWriter()
 	CloseFile();
 	if (m_pTSBufferFileName)
 		delete m_pTSBufferFileName;
+
+	if (m_pTSRegFileName)
+		delete m_pTSRegFileName;
 }
 
 HRESULT MultiFileWriter::GetFileName(LPOLESTR *lpszFileName)
@@ -128,7 +132,11 @@ HRESULT MultiFileWriter::CloseFile()
 
 HRESULT MultiFileWriter::GetFileSize(__int64 *lpllsize)
 {
-	*lpllsize = 0;
+	if (m_hTSBufferFile == INVALID_HANDLE_VALUE)
+		*lpllsize = 0;
+	else
+		*lpllsize = (__int64)(((__int64)(m_filesAdded - m_filesRemoved - 1) * m_maxTSFileSize) + m_pCurrentTSFile->GetFilePointer());
+
 	return S_OK;
 }
 
@@ -426,4 +434,112 @@ BOOL MultiFileWriter::IsFileLocked(LPWSTR pFilename)
 
 	CloseHandle(hFile);
 	return FALSE;
+}
+
+LPTSTR MultiFileWriter::getRegFileName(void)
+{
+	return 	m_pTSRegFileName;
+}
+
+void MultiFileWriter::setRegFileName(LPTSTR fileName)
+{
+//	CheckPointer(fileName,E_POINTER);
+
+	if(strlen(fileName) > MAX_PATH)
+		return;// ERROR_FILENAME_EXCED_RANGE;
+
+	// Take a copy of the filename
+	if (m_pTSRegFileName)
+	{
+		delete[] m_pTSRegFileName;
+		m_pTSRegFileName = NULL;
+	}
+	m_pTSRegFileName = new TCHAR[1+lstrlen(fileName)];
+	if (m_pTSRegFileName == NULL)
+		return;// E_OUTOFMEMORY;
+	lstrcpy(m_pTSRegFileName, fileName);
+}
+
+LPWSTR MultiFileWriter::getBufferFileName(void)
+{
+	return 	m_pTSBufferFileName;
+}
+
+void MultiFileWriter::setBufferFileName(LPWSTR fileName)
+{
+//	CheckPointer(fileName,E_POINTER);
+
+	if(wcslen(fileName) > MAX_PATH)
+		return;// ERROR_FILENAME_EXCED_RANGE;
+
+	// Take a copy of the filename
+	if (m_pTSBufferFileName)
+	{
+		delete[] m_pTSBufferFileName;
+		m_pTSBufferFileName = NULL;
+	}
+	m_pTSBufferFileName = new WCHAR[1+lstrlenW(fileName)];
+	if (m_pTSBufferFileName == NULL)
+		return;// E_OUTOFMEMORY;
+	lstrcpyW(m_pTSBufferFileName, fileName);
+}
+
+FileWriter* MultiFileWriter::getCurrentTSFile(void)
+{
+	return m_pCurrentTSFile;
+}
+
+long MultiFileWriter::getNumbFilesAdded(void)
+{
+	return m_filesAdded;
+}
+
+long MultiFileWriter::getNumbFilesRemoved(void)
+{
+	return m_filesRemoved;
+}
+
+long MultiFileWriter::getCurrentFileId(void)
+{
+	return m_currentFilenameId;
+}
+
+long MultiFileWriter::getMinTSFiles(void)
+{
+	return m_minTSFiles;
+}
+
+void MultiFileWriter::setMinTSFiles(long minFiles)
+{
+	m_minTSFiles = minFiles;
+}
+
+long MultiFileWriter::getMaxTSFiles(void)
+{
+	return m_maxTSFiles;
+}
+
+void MultiFileWriter::setMaxTSFiles(long maxFiles)
+{
+	m_maxTSFiles = maxFiles;
+}
+
+__int64 MultiFileWriter::getMaxTSFileSize(void)
+{
+	return m_maxTSFileSize;
+}
+
+void MultiFileWriter::setMaxTSFileSize(__int64 maxSize)
+{
+	m_maxTSFileSize = maxSize;
+}
+
+__int64 MultiFileWriter::getChunkReserve(void)
+{
+	return m_chunkReserve;
+}
+
+void MultiFileWriter::setChunkReserve(__int64 chunkSize)
+{
+	m_chunkReserve = chunkSize;
 }

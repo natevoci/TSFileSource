@@ -43,7 +43,7 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_bMPEG2Audio2Mode(FALSE),
 	m_bNPControl(FALSE),
 	m_bNPSlave(FALSE),
-	m_bConnectBusyFlag(false),
+	m_bConnectBusyFlag(FALSE),
 	m_WasPlaying(FALSE),
 	m_WasPaused(FALSE),
 	m_bAC3Mode(FALSE),//(TRUE),
@@ -194,14 +194,14 @@ HRESULT Demux::GetNextFilter(
 
 HRESULT Demux::AOnConnect()
 {
-	if (m_bConnectBusyFlag)
+	if (m_bConnectBusyFlag || m_pPidParser->m_ParsingLock)
 		return S_FALSE;
 
 	// Check if Enabled
 	if (!m_bAuto && !m_bNPControl && !m_bNPSlave)
 		return S_FALSE;
 
-	m_bConnectBusyFlag = true;
+	m_bConnectBusyFlag = TRUE;
 	m_WasPlaying = FALSE;
 	m_WasPaused = FALSE;
 	m_TimeOut[0] = 0;
@@ -298,7 +298,7 @@ HRESULT Demux::AOnConnect()
 			if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
 	}
 
-	m_bConnectBusyFlag = false;
+	m_bConnectBusyFlag = FALSE;
 
 	return NOERROR;
 }

@@ -196,6 +196,7 @@ HRESULT StreamParser::ParsePidArray()
 		}
 		count++;
 	}
+
 	return S_OK;
 }
 	

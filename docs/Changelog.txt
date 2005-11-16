@@ -1,3 +1,11 @@
+bear:
+Added a property page to the TSFileSink Filter.
+Added settings to the registry for the TSFileSink filter.
+
+Added locking code to the pidparser to prevent the pid array from being accessed while its being updated.
+changed the setpointer calls from FILE_BEGIN to FILE_END.
+Enabled the auto pid reparsing code to check pids every 5sec.
+
 nate:
 Changes to MultiFileReader
 - Fixed problem preventing second time play.

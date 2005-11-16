@@ -121,7 +121,6 @@ protected:
 	PidParser *m_pPidParser;
 
 	BOOL m_bAuto;
-	bool m_bConnectBusyFlag;
 	BOOL m_bNPControl;
 	BOOL m_bNPSlave;
 	BOOL m_bAC3Mode;
@@ -136,6 +135,7 @@ protected:
 
 public:
 
+	BOOL m_bConnectBusyFlag;
 	BOOL m_StreamH264;
 	BOOL m_StreamMpeg4;
 	BOOL m_StreamVid;

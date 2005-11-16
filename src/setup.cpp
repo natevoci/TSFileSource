@@ -37,14 +37,14 @@
 
 #include "TSFileSinkGuids.h"
 #include "TSFileSink.h"
-//#include "TSFileSinkProp.h"
+#include "TSFileSinkProp.h"
 
 #define TSFILESOURCENAME		L"TS File Source"
 #define TSFILESOURCEPROPERTIES	L"TS File Source Properties"
 #define TSFILESOURCEINTERFACE	L"TS File Source Interface"
 
 #define TSFILESINKNAME			L"TS File Sink"
-//#define TSFILESINKPROPERTIES	L"TS File Sink Properties"
+#define TSFILESINKPROPERTIES	L"TS File Sink Properties"
 #define TSFILESINKINTERFACE		L"TS File Sink Interface"
 
 // Filter setup data
@@ -137,13 +137,13 @@ CFactoryTemplate g_Templates[] =
 		NULL,
 		&sudTSFileSinkFilter
 	},
-/*	{
+	{
 		TSFILESINKPROPERTIES,
 		&CLSID_TSFileSinkProp,
 		CTSFileSinkProp::CreateInstance,
 		NULL,
 		NULL
-	},*/
+	},
 };
 
 int g_cTemplates = sizeof(g_Templates) / sizeof(g_Templates[0]);

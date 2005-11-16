@@ -104,6 +104,7 @@ public:
 	STDMETHODIMP ShowFilterProperties();
 	STDMETHODIMP SetTunerEvent(void);
 	STDMETHODIMP Refresh();
+	HRESULT UpdatePidParser(void);
 	BOOL get_AutoMode();
 	BOOL get_PinMode();
 

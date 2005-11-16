@@ -83,6 +83,7 @@ public:
 
 	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
 	HRESULT UpdateDuration(FileReader *pFileReader);
+	void WaitPinLock(void);
 	HRESULT SetDuration(REFERENCE_TIME duration);
 	BOOL IsTimeShifting(FileReader *pFileReader, BOOL *timeMode);
 
@@ -108,6 +109,7 @@ protected:
 protected:
 	CTSFileSourceFilter * const m_pTSFileSourceFilter;
 	CTSBuffer *m_pTSBuffer;
+	PidInfo *m_pPids;
 	
 	CCritSec  m_FillLock;
 	CCritSec  m_SeekLock;
@@ -142,6 +144,11 @@ protected:
 	__int64 m_DataRateSave;
 	__int64 m_LastMultiFileStart;
 	__int64 m_LastMultiFileEnd;
+
+	BOOL m_bASyncModeSave;
+	int m_PacketSave;
+	int m_TSIDSave;
+	int m_PinTypeSave;
 
 public:
 	BOOL	m_DemuxLock;
