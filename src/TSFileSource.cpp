@@ -243,7 +243,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 
 			//Reparse the file for service change	
 			if(m_State == State_Running
-				&& 1 == 1)
+				&& 1 == 0)
 			{
 
 				__int64 fileStart, filelength;
@@ -655,15 +655,15 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 {
 	HRESULT hr;
 
-	m_pStreamParser->~StreamParser();
-//	delete m_pStreamParser;
+//	m_pStreamParser->~StreamParser();
+	delete m_pStreamParser;
 	delete m_pDemux;
-	m_pPidParser->~PidParser();
-//	delete m_pPidParser;
-	m_pFileReader->~FileReader();
-	m_pFileDuration->~FileReader();
-//	delete m_pFileReader;
-//	delete m_pFileDuration;
+//	m_pPidParser->~PidParser();
+	delete m_pPidParser;
+//	m_pFileReader->~FileReader();
+//	m_pFileDuration->~FileReader();
+	delete m_pFileReader;
+	delete m_pFileDuration;
 
 	long length = lstrlenW(pszFileName);
 	if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
@@ -722,6 +722,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	m_pFileReader->CloseFile();
 
 	set_ROTMode();
+
+	m_pPidParser->pids.base = m_pPidParser->pids.start;
 
 	return hr;
 }

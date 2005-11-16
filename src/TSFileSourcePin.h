@@ -149,6 +149,7 @@ protected:
 	int m_PacketSave;
 	int m_TSIDSave;
 	int m_PinTypeSave;
+	BOOL m_bGetAvailableMode;
 
 public:
 	BOOL	m_DemuxLock;

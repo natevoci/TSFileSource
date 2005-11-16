@@ -55,14 +55,10 @@ public:
 	int pcr;
 	int opcr;
 	long bitrate;
-//	int async;
-//	int nid;
-//	int onid;
-//	int tsid;
-//	int pintype;
 	__int64 start;
 	__int64 end;
 	__int64 dur;
+	__int64 base;
 	unsigned char chname[128];
 	unsigned char onetname[128];
 	unsigned char sdesc[128];

@@ -63,6 +63,7 @@ void PidInfo::Clear()
 	start = 0;
 	end   = 0;
 	dur   = 0;
+	base  = 0;
 	bitrate = 10000000; //Set reasonable value
 	for (int i = 0 ; i < 16 ; i++ )
 	{
@@ -97,6 +98,8 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 	start = pidInfo->start;
 	end   = pidInfo->end;
 	dur   = pidInfo->dur;
+	base   = pidInfo->base;
+
 	bitrate = pidInfo->bitrate; 
 	for (int i = 0 ; i < 16 ; i++ )
 	{
@@ -131,6 +134,7 @@ void PidInfo::CopyTo(PidInfo *pidInfo)
 	pidInfo->start = start;
 	pidInfo->end = end;
 	pidInfo->dur = dur;
+	pidInfo->base = base;
 	pidInfo->bitrate = bitrate;
 
 	for (int i = 0 ; i < 16 ; i++ )
