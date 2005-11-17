@@ -95,16 +95,12 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_LastMultiFileStart = 0;
 	m_LastMultiFileEnd = 0;
 	m_bGetAvailableMode = FALSE;
-
-
-
 }
 
 CTSFileSourcePin::~CTSFileSourcePin()
 {
-	m_pTSBuffer->~CTSBuffer();
 	delete m_pPids;
-//	delete m_pTSBuffer;
+	delete m_pTSBuffer;
 }
 
 STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void ** ppv )

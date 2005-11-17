@@ -125,11 +125,11 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	delete	m_pDemux;
 	delete 	m_pRegStore;
 	delete  m_pSettingsStore;
-	m_pPidParser->~PidParser();
-	m_pStreamParser->~StreamParser();
-	m_pPin->~CTSFileSourcePin();
-	m_pFileReader->~FileReader();
-	m_pFileDuration->~FileReader();
+	delete  m_pPidParser;
+	delete	m_pStreamParser;
+	delete	m_pPin;
+	delete	m_pFileReader;
+	delete  m_pFileDuration;
 }
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
@@ -254,13 +254,16 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				m_pFileReader->get_ReaderMode(&bMultiMode);
 				//Do MultiFile timeshifting mode
 				if((bMultiMode & (fileStart < llLastMultiFileStart))
-					|| (!bMultiMode & (filelength < llLastMultiFileLength))
+					|| (!bMultiMode & (filelength < llLastMultiFileLength) & (filelength < 5000000))
 					&& 1 == 1)
 				{
-//TCHAR sz[128];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz,"UpdatePidParser", NULL);
-					UpdatePidParser();
+					count = 0;
+					while (UpdatePidParser() != S_OK && count < 5)
+					{
+						Sleep(1000);
+						count++;
+					}
+					count = 0;
 				}
 				else
 				{
@@ -541,6 +544,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 			m_pPin->m_DemuxLock = TRUE;
 			m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 			m_pPin->m_DemuxLock = FALSE;
+			m_pPidParser->pids.base = m_pPidParser->pids.start;
 		}
 
 		SetTunerEvent();
@@ -655,13 +659,9 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 {
 	HRESULT hr;
 
-//	m_pStreamParser->~StreamParser();
 	delete m_pStreamParser;
 	delete m_pDemux;
-//	m_pPidParser->~PidParser();
 	delete m_pPidParser;
-//	m_pFileReader->~FileReader();
-//	m_pFileDuration->~FileReader();
 	delete m_pFileReader;
 	delete m_pFileDuration;
 
@@ -762,7 +762,7 @@ HRESULT CTSFileSourceFilter::Refresh()
 HRESULT CTSFileSourceFilter::UpdatePidParser(void)
 {
 	CAutoLock lock(&m_Lock);
-	HRESULT hr = S_OK;// if an error occurs.
+	HRESULT hr = S_FALSE;// if an error occurs.
 
 	PidParser *pPidParser = new PidParser(m_pFileReader);
 	
@@ -779,9 +779,11 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(void)
 
 	if (pPidParser->RefreshPids() == S_OK)
 	{
-
 		if (pPidParser->pidArray.Count())
-		{	//Lock the parser out
+		{
+			hr = S_OK;
+
+			//Lock the parser out
 			m_pPidParser->m_ParsingLock	= TRUE;
 			m_pPidParser->m_TStreamID = pPidParser->m_TStreamID;
 			m_pPidParser->m_NetworkID = pPidParser->m_NetworkID;
@@ -818,8 +820,10 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(void)
 		if (m_pDemux->CheckDemuxPids() == S_FALSE)
 			m_pDemux->AOnConnect();
 	}
-	pPidParser->~PidParser();
+	delete  pPidParser;
+
 	m_pDemux->m_bConnectBusyFlag = FALSE;
+
 	return hr;
 }
 

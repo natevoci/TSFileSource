@@ -86,7 +86,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 	hr = pFileReader->OpenFile();
 	if (FAILED(hr)){
-		pFileReader->~FileReader();
+		delete pFileReader;
 		return VFW_E_INVALIDMEDIATYPE;
 	}
 
@@ -99,7 +99,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		count++;
 		if (count > 10)
 		{
-			pFileReader->~FileReader();
+			delete pFileReader;
 			return S_FALSE;
 		}
 	}
@@ -426,7 +426,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	m_ParsingLock = FALSE;
 	delete[] pData;
 	pFileReader->CloseFile();
-	pFileReader->~FileReader();
+	delete pFileReader;
 	return hr;
 }
 
@@ -1226,8 +1226,7 @@ HRESULT PidParser::CheckEPGFromFile()
 		hr = pFileReader->OpenFile();
 		if (FAILED(hr)) {
 
-			pFileReader->~FileReader();
-//			delete pFileReader;
+			delete pFileReader;
 			return VFW_E_INVALIDMEDIATYPE;
 		}
 
@@ -1335,8 +1334,7 @@ HRESULT PidParser::CheckEPGFromFile()
 
 		pFileReader->CloseFile();
 		delete[] pData;
-		pFileReader->~FileReader();
-//		delete pFileReader;
+		delete pFileReader;
 	}
 	return S_OK;
 }

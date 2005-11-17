@@ -1,4 +1,7 @@
 bear:
+Replaced the class Destructor calls in all the code with delete.
+Added CAMThreads to both prop pages for regular updating.
+
 Fixed the GetAvailable function to return correct times.
 Replaced the class Destructors in the load() function with delete.
 Disabled the auto pid parse code as its still buggy for Timeshifting.

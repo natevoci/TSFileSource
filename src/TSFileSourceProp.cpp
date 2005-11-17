@@ -51,8 +51,127 @@ CTSFileSourceProp::CTSFileSourceProp(IUnknown *pUnk) :
 
 CTSFileSourceProp::~CTSFileSourceProp(void)
 {
+	//Make sure the worker thread is stopped before we exit.
+	//Also closes the files.m_hThread
+	if (ThreadExists())
+	{
+		CAMThread::CallWorker(CMD_STOP);
+		CAMThread::CallWorker(CMD_EXIT);
+		CAMThread::Close();
+	}
+
 	if (m_pProgram)
 		m_pProgram->Release();
+}
+
+DWORD CTSFileSourceProp::ThreadProc(void)
+{
+    HRESULT hr;  // the return code from calls
+    Command com;
+
+    do
+    {
+        com = GetRequest();
+        if(com != CMD_INIT)
+        {
+			m_bThreadRunning = FALSE;
+            DbgLog((LOG_ERROR, 1, TEXT("Thread expected init command")));
+            Reply((DWORD) E_UNEXPECTED);
+        }
+
+    } while(com != CMD_INIT);
+
+    DbgLog((LOG_TRACE, 1, TEXT("Worker thread initializing")));
+
+	hr = S_OK;
+	if (FAILED(hr))
+    {
+		m_bThreadRunning = FALSE;
+		DbgLog((LOG_ERROR, 1, TEXT("ThreadCreate failed. Aborting thread.")));
+
+        Reply(hr);  // send failed return code from ThreadCreate
+        return 1;
+    }
+
+    // Initialisation suceeded
+    Reply(NOERROR);
+
+    Command cmd;
+    do
+    {
+        cmd = GetRequest();
+
+        switch(cmd)
+        {
+            case CMD_EXIT:
+				m_bThreadRunning = FALSE;
+                Reply(NOERROR);
+                break;
+
+            case CMD_RUN:
+                DbgLog((LOG_ERROR, 1, TEXT("CMD_RUN received before a CMD_PAUSE???")));
+                // !!! fall through
+
+            case CMD_PAUSE:
+				m_bThreadRunning = TRUE;
+                Reply(NOERROR);
+                DoProcessingLoop();
+                break;
+
+            case CMD_STOP:
+				m_bThreadRunning = FALSE;
+                Reply(NOERROR);
+                break;
+
+            default:
+                DbgLog((LOG_ERROR, 1, TEXT("Unknown command %d received!"), cmd));
+                Reply((DWORD) E_NOTIMPL);
+                break;
+        }
+
+    } while(cmd != CMD_EXIT);
+
+	m_bThreadRunning = FALSE;
+    DbgLog((LOG_TRACE, 1, TEXT("Worker thread exiting")));
+    return 0;
+}
+
+//
+// DoProcessingLoop
+//
+HRESULT CTSFileSourceProp::DoProcessingLoop(void)
+{
+    Command com;
+
+    do
+    {
+        while(!CheckRequest(&com))
+        {
+           HRESULT hr = S_OK;// if an error occurs.
+
+			RefreshDialog();
+
+			Sleep(500);
+        }
+
+        // For all commands sent to us there must be a Reply call!
+        if(com == CMD_RUN || com == CMD_PAUSE)
+        {
+            Reply(NOERROR);
+        }
+        else if(com != CMD_STOP)
+        {
+            Reply((DWORD) E_UNEXPECTED);
+            DbgLog((LOG_ERROR, 1, TEXT("Unexpected command!!!")));
+        }
+    } while(com != CMD_STOP);
+
+    return S_FALSE;
+}
+
+BOOL CTSFileSourceProp::ThreadRunning(void)
+{ 
+	return m_bThreadRunning;
 }
 
 HRESULT CTSFileSourceProp::OnConnect(IUnknown *pUnk)
@@ -71,11 +190,22 @@ HRESULT CTSFileSourceProp::OnConnect(IUnknown *pUnk)
 	}
 	ASSERT(m_pProgram);
 
+	CAMThread::Create();			 //Create our update thread
+	if (ThreadExists())
+		CAMThread::CallWorker(CMD_INIT); //Initalize our update thread
+
 	return NOERROR;
 }
 
 HRESULT CTSFileSourceProp::OnDisconnect(void)
 {
+	if (ThreadExists())
+	{
+		CAMThread::CallWorker(CMD_STOP);
+		CAMThread::CallWorker(CMD_EXIT);
+		CAMThread::Close();
+	}
+
 	if (m_pProgram)
 	{
 		m_pProgram->Release();
@@ -89,6 +219,9 @@ HRESULT CTSFileSourceProp::OnActivate(void)
 	ASSERT(m_pProgram != NULL);
 	PopulateDialog();
 	HRESULT hr = S_OK;
+
+	CAMThread::CallWorker(CMD_RUN);
+
 	return hr;
 }
 
@@ -120,7 +253,12 @@ BOOL CTSFileSourceProp::OnRefreshProgram()
 
 BOOL CTSFileSourceProp::PopulateDialog()
 {
+	ASSERT(m_pProgram != NULL);
+	return 	RefreshDialog();
+}
 
+BOOL CTSFileSourceProp::RefreshDialog()
+{
 	ASSERT(m_pProgram != NULL);
 
 	TCHAR sz[60];
@@ -247,11 +385,6 @@ BOOL CTSFileSourceProp::PopulateDialog()
 
 	m_pProgram->GetAutoMode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_AUTOMODE,PidNr);
-//	EnableWindow(GetDlgItem(m_hwnd, IDC_DEFCLOCK), PidNr);
-//	EnableWindow(GetDlgItem(m_hwnd, IDC_DEMCLOCK), PidNr);
-//	EnableWindow(GetDlgItem(m_hwnd, IDC_RENCLOCK), PidNr);
-//	EnableWindow(GetDlgItem(m_hwnd, IDC_NPCTRL), PidNr);
-//	EnableWindow(GetDlgItem(m_hwnd, IDC_NPSLAVE), PidNr);
 
 	m_pProgram->GetNPControl(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_NPCTRL,PidNr);
@@ -288,8 +421,6 @@ BOOL CTSFileSourceProp::PopulateDialog()
 		CheckDlgButton(m_hwnd,IDC_DEMCLOCK,FALSE);
 		CheckDlgButton(m_hwnd,IDC_RENCLOCK,FALSE);
 	}
-
-
 
 	m_pProgram->GetReadOnly(&PidNr);
 	if (PidNr)
@@ -589,7 +720,6 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					break;
 				}
 
-				
 			};
 			return TRUE;
 		}

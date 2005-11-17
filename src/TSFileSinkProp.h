@@ -33,7 +33,8 @@
 
 #include "TSFileSink.h"
 
-class CTSFileSinkProp : public CBasePropertyPage
+class CTSFileSinkProp :		protected CAMThread,
+							public CBasePropertyPage
 {
 public:
 	static CUnknown * WINAPI CreateInstance(LPUNKNOWN pUnk, HRESULT *pHr);
@@ -49,11 +50,20 @@ public:
 
 	BOOL OnRefreshProgram();
 	BOOL PopulateDialog();
+	BOOL RefreshDialog();
 	BOOL OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 
 private:
 	ITSFileSink   *m_pProgram;    // Pointer to the filter's custom interface.
+	BOOL m_bThreadRunning;
+    enum Command {CMD_INIT, CMD_PAUSE, CMD_RUN, CMD_STOP, CMD_EXIT};
+    DWORD ThreadProc();
+	HRESULT DoProcessingLoop(void);
+	BOOL ThreadRunning(void);
+    Command GetRequest(void) { return (Command) CAMThread::GetRequest(); }
+    BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
+
 };
 
 #endif
