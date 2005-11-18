@@ -243,7 +243,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 
 			//Reparse the file for service change	
 			if(m_State == State_Running
-				&& 1 == 0)
+				&& 1 == 1)
 			{
 
 				__int64 fileStart, filelength;
@@ -253,8 +253,9 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				WORD bMultiMode;
 				m_pFileReader->get_ReaderMode(&bMultiMode);
 				//Do MultiFile timeshifting mode
-				if((bMultiMode & (fileStart < llLastMultiFileStart))
-					|| (!bMultiMode & (filelength < llLastMultiFileLength) & (filelength < 5000000))
+				if((bMultiMode & ((__int64)(fileStart + (__int64)5000000) < llLastMultiFileStart))
+					|| (bMultiMode & (fileStart == 0) & ((__int64)(filelength + (__int64)5000000) < llLastMultiFileLength))
+					|| (!bMultiMode & ((__int64)(filelength + (__int64)5000000) < llLastMultiFileLength))
 					&& 1 == 1)
 				{
 					count = 0;
@@ -264,6 +265,10 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 						count++;
 					}
 					count = 0;
+					NotifyEvent(EC_NEED_RESTART, NULL, NULL);
+//TCHAR sz[128];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz,"EC_NEED_RESTART", NULL);
 				}
 				else
 				{
@@ -285,7 +290,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				
 				hr = m_pPin->UpdateDuration(m_pFileDuration);
 				//park the Pointer to end of file 
-				m_pFileDuration->SetFilePointer(0, FILE_END);
+				m_pFileDuration->setFilePointer(0, FILE_END);
 
 				if (m_pDemux->CheckDemuxPids() == S_FALSE)
 					m_pDemux->AOnConnect();
@@ -526,7 +531,6 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 				return hr;
 		}
 
-//Refresh();
 		//Set our StreamTime Reference offset to zero
 		m_tStart = tStart;
 
@@ -544,7 +548,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 			m_pPin->m_DemuxLock = TRUE;
 			m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 			m_pPin->m_DemuxLock = FALSE;
-			m_pPidParser->pids.base = m_pPidParser->pids.start;
+			m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
 		}
 
 		SetTunerEvent();
@@ -617,8 +621,7 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pPidParser->pids.dur>>14);
 		nFileIndex = min(filelength, nFileIndex);
 		nFileIndex = max(300000, nFileIndex);
-		m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
-//		m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
+		m_pFileReader->setFilePointer(nFileIndex, FILE_BEGIN);
 	}
 	return S_OK;
 }
@@ -710,8 +713,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 		return hr;
 	}
 
-	m_pFileReader->SetFilePointer(max((__int64)-fileSize, (__int64)((__int64)300000 - fileSize)), FILE_END);
-//	m_pFileReader->SetFilePointer(300000, FILE_BEGIN);
+	m_pFileReader->setFilePointer(300000, FILE_BEGIN);
 
 	RefreshPids();
 
@@ -723,7 +725,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 
 	set_ROTMode();
 
-	m_pPidParser->pids.base = m_pPidParser->pids.start;
+	m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
 
 	return hr;
 }
@@ -832,19 +834,7 @@ HRESULT CTSFileSourceFilter::RefreshPids()
 	HRESULT hr;
 
 	CAutoLock lock(&m_Lock);
-	WORD bMultiMode;
-	m_pFileReader->get_ReaderMode(&bMultiMode);
-
-	//Do MultiFile timeshifting mode
-	if(bMultiMode)
-	{
-		__int64 fileStart, filelength;
-		m_pFileReader->GetFileSize(&fileStart, &filelength);
-		hr = m_pPidParser->ParseFromFile((__int64)(m_pFileReader->GetFilePointer() - fileStart));
-	}
-	else
-		hr = m_pPidParser->ParseFromFile(m_pFileReader->GetFilePointer());
-
+	hr = m_pPidParser->ParseFromFile(m_pFileReader->getFilePointer());
 	m_pStreamParser->ParsePidArray();
 	return hr;
 }
@@ -2020,8 +2010,8 @@ STDMETHODIMP CTSFileSourceFilter::SyncRead(
 				else
 					Sleep(100);
 
-				__int64 start, filelength;
-				m_pFileReader->GetFileSize(&start, &filelength);
+				__int64 fileStart, filelength;
+				m_pFileReader->GetFileSize(&fileStart, &filelength);
 				ULONG ulNextBytesRead = 0;				
 				llPosition = min(filelength, llPosition);
 				llPosition = max(0, llPosition);

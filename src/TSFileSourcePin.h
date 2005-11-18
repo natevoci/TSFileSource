@@ -153,6 +153,7 @@ protected:
 
 public:
 	BOOL	m_DemuxLock;
+	__int64 m_IntBaseTimePCR;
 
 };
 

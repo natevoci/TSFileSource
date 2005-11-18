@@ -94,7 +94,7 @@ BOOL MultiFileReader::IsFileInvalid()
 
 HRESULT MultiFileReader::GetFileSize(__int64 *pStartPosition, __int64 *pLength)
 {
-	RefreshTSBufferFile();
+//	RefreshTSBufferFile();
 	CheckPointer(pStartPosition,E_POINTER);
 	CheckPointer(pLength,E_POINTER);
 	*pStartPosition = m_startPosition;
@@ -104,7 +104,7 @@ HRESULT MultiFileReader::GetFileSize(__int64 *pStartPosition, __int64 *pLength)
 
 DWORD MultiFileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 {
-	RefreshTSBufferFile();
+//	RefreshTSBufferFile();
 
 	if (dwMoveMethod == FILE_END)
 	{
@@ -125,11 +125,13 @@ DWORD MultiFileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMeth
 	if (m_currentPosition > m_endPosition)
 		m_currentPosition = m_endPosition;
 
+	RefreshTSBufferFile();
 	return S_OK;
 }
 
 __int64 MultiFileReader::GetFilePointer()
 {
+//	RefreshTSBufferFile();
 	return m_currentPosition;
 }
 
@@ -141,7 +143,7 @@ HRESULT MultiFileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadByte
 	if (m_TSBufferFile.IsFileInvalid())
 		return S_FALSE;
 
-	RefreshTSBufferFile();
+//	RefreshTSBufferFile();
 
 	if (m_currentPosition < m_startPosition)
 		m_currentPosition = m_startPosition;
@@ -154,7 +156,7 @@ HRESULT MultiFileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadByte
 		file = *it;
 		if (m_currentPosition < (file->startPosition + file->length))
 			break;
-	}
+	};
 
 	if (m_currentPosition < (file->startPosition + file->length))
 	{
@@ -458,4 +460,25 @@ HRESULT MultiFileReader::get_ReaderMode(WORD *ReaderMode)
 {
 	*ReaderMode = TRUE;
 	return S_OK;
+}
+
+DWORD MultiFileReader::setFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
+{
+	//Get the file information
+	__int64 fileStart, fileEnd, fileLength;
+	GetFileSize(&fileStart, &fileLength);
+	fileEnd = (__int64)(fileLength + fileStart);
+	if (dwMoveMethod == FILE_BEGIN)
+		return SetFilePointer((__int64)min(fileEnd,(__int64)(llDistanceToMove + fileStart)), FILE_BEGIN);
+	else
+		return SetFilePointer((__int64)max((__int64)-fileLength, llDistanceToMove), FILE_END);
+}
+
+__int64 MultiFileReader::getFilePointer()
+{
+	__int64 fileStart, fileEnd, fileLength;
+	GetFileSize(&fileStart, &fileLength);
+	fileEnd = fileLength + fileStart;
+	return (__int64)(GetFilePointer() - fileStart);
+		
 }

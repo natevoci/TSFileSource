@@ -1,4 +1,8 @@
 bear:
+Fixed the auto pid parsing problem with the MultiFileWriter.
+Removed the extra RefreshTSBufferFile() calls from the MulitfileWriter as they seem to be causing problems.
+Added a seperate getFilePointer() & setFilePointer() calls to the fileWriters to reduce the need for special code for the different filewriters.
+
 Replaced the class Destructor calls in all the code with delete.
 Added CAMThreads to both prop pages for regular updating.
 

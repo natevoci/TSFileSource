@@ -509,3 +509,21 @@ void FileReader::SetDebugOutput(BOOL bDebugOutput)
 {
 	m_bDebugOutput = bDebugOutput;
 }
+
+DWORD FileReader::setFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
+{
+	//Get the file information
+	__int64 fileStart, fileEnd, fileLength;
+	GetFileSize(&fileStart, &fileLength);
+	fileEnd = fileLength;
+	if (dwMoveMethod == FILE_BEGIN)
+		return SetFilePointer((__int64)min(fileEnd, llDistanceToMove), FILE_BEGIN);
+	else
+		return SetFilePointer((__int64)max((__int64)-fileLength, llDistanceToMove), FILE_END);
+}
+
+__int64 FileReader::getFilePointer()
+{
+	return GetFilePointer();
+}
+

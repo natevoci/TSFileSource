@@ -54,6 +54,8 @@ public:
 	virtual BOOL IsFileInvalid();
 	virtual DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual __int64 GetFilePointer();
+	virtual DWORD setFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
+	virtual __int64 getFilePointer();
 
 	void SetDebugOutput(BOOL bDebugOutput);
 

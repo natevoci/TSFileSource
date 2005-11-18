@@ -57,6 +57,8 @@ public:
 	virtual HRESULT set_DelayMode(WORD DelayMode);
 	virtual HRESULT get_DelayMode(WORD *DelayMode);
 	virtual HRESULT get_ReaderMode(WORD *ReaderMode);
+	virtual DWORD setFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
+	virtual __int64 getFilePointer();
 
 	//TODO: GetFileSize should go since get_FileSize should do the same thing.
 	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pLength);
