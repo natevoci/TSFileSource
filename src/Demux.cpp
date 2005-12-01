@@ -223,7 +223,7 @@ HRESULT Demux::AOnConnect()
 	// in the filter graph, we do this by looking for filters
 	// that implement the ITuner interface while
 	// the count is still active.
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IEnumFilters* EnumFilters;
@@ -1869,7 +1869,7 @@ HRESULT Demux::IsStopped()
 
 	FILTER_STATE state;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
@@ -1895,7 +1895,7 @@ HRESULT Demux::IsPlaying()
 
 	FILTER_STATE state;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
@@ -1921,7 +1921,7 @@ HRESULT Demux::IsPaused()
 
 	FILTER_STATE state;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
@@ -1948,7 +1948,7 @@ HRESULT Demux::DoStop()
 {
 	HRESULT hr = S_OK;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
@@ -1969,7 +1969,7 @@ HRESULT Demux::DoStart()
 {
 	HRESULT hr = S_OK;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
@@ -1990,7 +1990,7 @@ HRESULT Demux::DoPause()
 {
 	HRESULT hr = S_OK;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IMediaControl *pMediaControl;
@@ -2127,7 +2127,7 @@ HRESULT Demux::RemoveFilterChain(IBaseFilter *pStartFilter, IBaseFilter *pEndFil
 {
 	HRESULT hr = E_FAIL;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IFilterChain *pFilterChain;
@@ -2145,7 +2145,7 @@ HRESULT Demux::RenderFilterPin(IPin *pIPin)
 {
 	HRESULT hr = E_FAIL;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		IGraphBuilder *pGraphBuilder;
@@ -2163,7 +2163,7 @@ HRESULT Demux::ReconnectFilterPin(IPin *pIPin)
 {
 	HRESULT hr = E_FAIL;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		hr = Info.pGraph->Reconnect(pIPin);
@@ -2177,7 +2177,7 @@ HRESULT Demux::GetReferenceClock(IBaseFilter *pFilter, IReferenceClock **ppClock
 {
 	HRESULT hr;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(pFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		// Get IMediaFilter interface
@@ -2199,7 +2199,7 @@ HRESULT Demux::SetReferenceClock(IBaseFilter *pFilter)
 {
 	HRESULT hr;
 
-	FILTER_INFO Info;
+	FILTER_INFO Info; Info.pGraph = NULL;
 	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		if (pFilter != NULL)

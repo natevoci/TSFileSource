@@ -254,6 +254,14 @@ BOOL CTSFileSourceProp::OnRefreshProgram()
 BOOL CTSFileSourceProp::PopulateDialog()
 {
 	ASSERT(m_pProgram != NULL);
+
+	TCHAR sz[60];
+	WORD PidNr = 0x00;
+	m_pProgram->GetPgmNumb(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_PGM), sz);
+
+
 	return 	RefreshDialog();
 }
 
@@ -359,9 +367,9 @@ BOOL CTSFileSourceProp::RefreshDialog()
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_TXT), sz);
 
-	m_pProgram->GetPgmNumb(&PidNr);
-	wsprintf(sz, TEXT("%u"), PidNr);
-	Edit_SetText(GetDlgItem(m_hwnd, IDC_PGM), sz);
+//	m_pProgram->GetPgmNumb(&PidNr);
+//	wsprintf(sz, TEXT("%u"), PidNr);
+//	Edit_SetText(GetDlgItem(m_hwnd, IDC_PGM), sz);
 
 	m_pProgram->GetPgmCount(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);

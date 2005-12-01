@@ -1,4 +1,6 @@
 bear:
+Fixed a problem with the property page updating while the pidparser was restarting.
+
 Added a File Load feature to the ITSFileSource Interface as well as a button to the TSFileSource Property page. You can now change the file being played on the fly.
 Added a auto reload feature for Timeshifting files where the TSFileSource fiiter will restart if the timeshift file changes size shuch as in a restart of the fileWriter filter.
 Isolated the pidArray from the TSFileSourcePin class functions so it would reduce accessing conflicts.

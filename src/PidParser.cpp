@@ -2036,17 +2036,20 @@ void PidParser::get_ChannelNumber(BYTE *pointer)
 
 void PidParser::get_NetworkName(BYTE *pointer)
 {
-		memcpy(pointer, m_NetworkName, 128);
+	memcpy(pointer, m_NetworkName, 128);
+	memcpy(pointer + 127, "\0", 1);
 }
 
 void PidParser::get_ONetworkName(BYTE *pointer)
 {
-		memcpy(pointer, pids.onetname, 128);
+	memcpy(pointer, pids.onetname, 128);
+	memcpy(pointer + 127, "\0", 1);
 }
 
 void PidParser::get_ChannelName(BYTE *pointer)
 {
-		memcpy(pointer, pids.chname, 128);
+	memcpy(pointer, pids.chname, 128);
+	memcpy(pointer + 127, "\0", 1);
 }
 
 HRESULT PidParser::get_EPGFromFile()
@@ -2057,21 +2060,25 @@ HRESULT PidParser::get_EPGFromFile()
 void PidParser::get_ShortDescr(BYTE *pointer)
 {
 	memcpy(pointer, pids.sdesc, 128);
+	memcpy(pointer + 127, "\0", 1);
 }
 
 void PidParser::get_ExtendedDescr(BYTE *pointer)
 {
 	memcpy(pointer, pids.edesc, 600);
+	memcpy(pointer + 599, "\0", 1);
 }
 
 void PidParser::get_ShortNextDescr(BYTE *pointer)
 {
 	memcpy(pointer, pids.sndesc, 128);
+	memcpy(pointer + 127, "\0", 1);
 }
 
 void PidParser::get_ExtendedNextDescr(BYTE *pointer)
 {
 	memcpy(pointer, pids.endesc, 600);
+	memcpy(pointer + 599, "\0", 1);
 }
 
 void PidParser::get_CurrentTSArray(ULONG *pPidArray)

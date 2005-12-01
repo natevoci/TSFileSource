@@ -270,6 +270,9 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							LPOLESTR pFileName = new WCHAR[1+lstrlenW(pszFileName)];
 							if (pFileName != NULL)
 							{
+								m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+								llLastMultiFileStart = fileStart;
+								llLastMultiFileLength = filelength;
 								lstrcpyW(pFileName,pszFileName);
 								ReLoad(pFileName, NULL);
 								delete pFileName;
@@ -974,6 +977,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(void)
 			m_pPidParser->m_PacketSize = pPidParser->m_PacketSize;
 			m_pPidParser->m_ATSCFlag = pPidParser->m_ATSCFlag;
 			memcpy(m_pPidParser->m_NetworkName, pPidParser->m_NetworkName, 128);
+			memcpy(m_pPidParser->m_NetworkName + 127, "\0", 1);
 			m_pPidParser->pids.CopyFrom(&pPidParser->pids);
 			m_pPidParser->pidArray.Clear();
 
