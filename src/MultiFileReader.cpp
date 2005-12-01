@@ -143,11 +143,10 @@ HRESULT MultiFileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadByte
 	if (m_TSBufferFile.IsFileInvalid())
 		return S_FALSE;
 
-//	RefreshTSBufferFile();
-
 	if (m_currentPosition < m_startPosition)
 		m_currentPosition = m_startPosition;
 
+//	RefreshTSBufferFile();
 	// Find out which file the currentPosition is in.
 	MultiFileReaderFile *file = NULL;
 	std::vector<MultiFileReaderFile *>::iterator it = m_tsFiles.begin();
@@ -482,3 +481,4 @@ __int64 MultiFileReader::getFilePointer()
 	return (__int64)(GetFilePointer() - fileStart);
 		
 }
+

@@ -99,6 +99,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pPin->SetMediaType(&cmt);
 
 	m_bThreadRunning = FALSE;
+	m_bReload = FALSE;
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
@@ -232,6 +233,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 
 	__int64 llLastMultiFileStart, llLastMultiFileLength;
 	m_pFileReader->GetFileSize(&llLastMultiFileStart, &llLastMultiFileLength);
+	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
 	int count = 1;
 
@@ -239,62 +241,65 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
     {
         while(!CheckRequest(&com))
         {
-           HRESULT hr = S_OK;// if an error occurs.
+			HRESULT hr = S_OK;// if an error occurs.
+
+			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
 			//Reparse the file for service change	
-			if(m_State == State_Running
-				&& 1 == 1)
+			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime)
 			{
-
-				__int64 fileStart, filelength;
-				m_pFileReader->GetFileSize(&fileStart, &filelength);
-
-				//Get the FileReader Type
-				WORD bMultiMode;
-				m_pFileReader->get_ReaderMode(&bMultiMode);
-				//Do MultiFile timeshifting mode
-				if((bMultiMode & ((__int64)(fileStart + (__int64)5000000) < llLastMultiFileStart))
-					|| (bMultiMode & (fileStart == 0) & ((__int64)(filelength + (__int64)5000000) < llLastMultiFileLength))
-					|| (!bMultiMode & ((__int64)(filelength + (__int64)5000000) < llLastMultiFileLength))
+				count++;
+				if(m_State == State_Running
 					&& 1 == 1)
 				{
-					count = 0;
-					while (UpdatePidParser() != S_OK && count < 5)
+					__int64 fileStart, filelength;
+					m_pFileReader->GetFileSize(&fileStart, &filelength);
+
+					//Get the FileReader Type
+					WORD bMultiMode;
+					m_pFileReader->get_ReaderMode(&bMultiMode);
+					//Do MultiFile timeshifting mode
+					if((bMultiMode & ((__int64)(fileStart + (__int64)5000000) < llLastMultiFileStart))
+						|| (bMultiMode & (fileStart == 0) & ((__int64)(filelength + (__int64)5000000) < llLastMultiFileLength))
+						|| (!bMultiMode & ((__int64)(filelength + (__int64)5000000) < llLastMultiFileLength))
+						&& 1 == 1)
 					{
-						Sleep(1000);
-						count++;
+						LPOLESTR pszFileName;
+						if (m_pFileReader->GetFileName(&pszFileName) == S_OK)
+						{
+							LPOLESTR pFileName = new WCHAR[1+lstrlenW(pszFileName)];
+							if (pFileName != NULL)
+							{
+								lstrcpyW(pFileName,pszFileName);
+								ReLoad(pFileName, NULL);
+								delete pFileName;
+							}
+						}
 					}
-					count = 0;
-					NotifyEvent(EC_NEED_RESTART, NULL, NULL);
-//TCHAR sz[128];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz,"EC_NEED_RESTART", NULL);
-				}
-				else
-				{
-					//check pids every 5sec
-					if (count > 50) {
+					//check pids every 5sec or quicker if no pids parsed
+					else if (count > 5 && !m_pPidParser->pidArray.Count())
+					{
 						//update the parser
-						UpdatePidParser();
-						count = 0;
+							UpdatePidParser();
+							count = 0;
 					}
-					else
-						count++;
-				}
+					
 					llLastMultiFileStart = fileStart;
 					llLastMultiFileLength = filelength;
+				}
+				m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 			}
 
-
-			if (count && !m_pPidParser->m_ParsingLock) {
-				
+			if(!m_pPidParser->m_ParsingLock && m_State != State_Stopped
+				&& 1 == 1)
+			{
 				hr = m_pPin->UpdateDuration(m_pFileDuration);
-				//park the Pointer to end of file 
-				m_pFileDuration->setFilePointer(0, FILE_END);
 
 				if (m_pDemux->CheckDemuxPids() == S_FALSE)
+				{
 					m_pDemux->AOnConnect();
-
+					m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+				}
 			}
 
 			Sleep(100);
@@ -522,7 +527,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 {
 	CAutoLock cObjectLock(m_pLock);
 
-	if(!IsActive())
+	if(IsActive() == State_Stopped)
 	{
 		if (m_pFileReader->IsFileInvalid())
 		{
@@ -535,7 +540,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		m_tStart = tStart;
 
 		REFERENCE_TIME start, stop;
-		m_pPin->GetCurrentPosition(&start);
+		m_pPin->GetPositions(&start, &stop);
 
 		//Start at least 100ms into file to skip header
 		if (start == 0)
@@ -546,9 +551,12 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		if (m_pPidParser->pids.pcr){ 
 //***********************************************************************************************
 			m_pPin->m_DemuxLock = TRUE;
-			m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+			m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 			m_pPin->m_DemuxLock = FALSE;
 			m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
+			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
+			m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
+			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 		}
 
 		SetTunerEvent();
@@ -557,7 +565,6 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 			CAMThread::CallWorker(CMD_RUN);
 	}
 	return CSource::Run(tStart);
-
 }
 
 HRESULT CTSFileSourceFilter::Pause()
@@ -571,6 +578,26 @@ HRESULT CTSFileSourceFilter::Pause()
 			HRESULT hr = m_pFileReader->OpenFile();
 			if (FAILED(hr))
 				return hr;
+		}
+
+		REFERENCE_TIME start, stop;
+		m_pPin->GetPositions(&start, &stop);
+
+		//Start at least 100ms into file to skip header
+		if (start == 0)
+			start += 1000000;
+
+//***********************************************************************************************
+//Old Capture format Additions
+		if (m_pPidParser->pids.pcr){ 
+//***********************************************************************************************
+			m_pPin->m_DemuxLock = TRUE;
+			m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+			m_pPin->m_DemuxLock = FALSE;
+			m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
+			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
+			m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
+			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 		}
 
 		SetTunerEvent();
@@ -587,8 +614,8 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 	CAutoLock cObjectLock(m_pLock);
 	CAutoLock lock(&m_Lock);
 
-	if (ThreadRunning() && ThreadExists())
-		CAMThread::CallWorker(CMD_STOP);
+//	if (ThreadRunning() && ThreadExists())
+//		CAMThread::CallWorker(CMD_STOP);
 
 	HRESULT hr = CSource::Stop();
 
@@ -660,6 +687,12 @@ STDMETHODIMP CTSFileSourceFilter::GetPages(CAUUID *pPages)
 
 STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE *pmt)
 {
+	// Is this a valid filename supplied
+	CheckPointer(pszFileName,E_POINTER);
+
+	if (ThreadExists() || IsActive())
+		return ReLoad(pszFileName, pmt);
+			
 	HRESULT hr;
 
 	delete m_pStreamParser;
@@ -701,6 +734,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	if (ThreadExists())
 		CAMThread::CallWorker(CMD_INIT); //Initalize our GetDuration thread
 
+	set_ROTMode();
 
 	__int64 fileStart;
 	__int64	fileSize = 0;
@@ -723,9 +757,153 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	CAutoLock lock(&m_Lock);
 	m_pFileReader->CloseFile();
 
-	set_ROTMode();
 
 	m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
+	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
+	m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
+	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
+
+	return hr;
+}
+
+STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt)
+{
+	HRESULT hr;
+
+	{
+		CAutoLock cObjectLock(m_pLock);
+		CAutoLock lock(&m_Lock);
+		hr = CSource::Stop();
+	}
+
+	BOOL pinModeSave = m_pPidParser->get_ProgPinMode();
+	delete m_pStreamParser;
+	delete m_pDemux;
+	delete m_pPidParser;
+	delete m_pFileReader;
+	delete m_pFileDuration;
+
+	long length = lstrlenW(pszFileName);
+	if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
+	{
+		m_pFileReader = new FileReader();
+		m_pFileDuration = new FileReader();//Get Live File Duration Thread
+	}
+	else
+	{
+		m_pFileReader = new MultiFileReader();
+		m_pFileDuration = new MultiFileReader();
+	}
+	//m_pFileReader->SetDebugOutput(TRUE);
+	//m_pFileDuration->SetDebugOutput(TRUE);
+
+	m_pPidParser = new PidParser(m_pFileReader);
+	m_pDemux = new Demux(m_pPidParser, this);
+	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
+
+	// Load Registry Settings data
+	GetRegStore("default");
+
+	hr = m_pFileReader->SetFileName(pszFileName);
+	if (FAILED(hr))
+		return hr;
+
+	hr = m_pFileReader->OpenFile();
+	if (FAILED(hr))
+		return VFW_E_INVALIDMEDIATYPE;
+
+	hr = m_pFileDuration->SetFileName(pszFileName);
+	if (FAILED(hr))
+		return hr;
+
+	hr = m_pFileDuration->OpenFile();
+	if (FAILED(hr))
+		return VFW_E_INVALIDMEDIATYPE;
+
+	set_ROTMode();
+
+	__int64 fileStart;
+	__int64	fileSize = 0;
+	m_pFileReader->GetFileSize(&fileStart, &fileSize);
+
+	int count = 0;
+	__int64 filsSizeSave = fileSize;
+	while(fileSize < 5000000 && count < 10)
+	{
+		count++;
+		Sleep(500);
+		m_pFileReader->GetFileSize(&fileStart, &fileSize);
+		if (fileSize <= filsSizeSave)
+		{
+			NotifyEvent(EC_NEED_RESTART, NULL, NULL);
+			Sleep(1000);
+			break;
+		}
+
+		filsSizeSave = fileSize;
+	};
+
+	m_pFileReader->setFilePointer(300000, FILE_BEGIN);
+	m_pPidParser->RefreshPids();
+	LoadPgmReg();
+	m_pStreamParser->ParsePidArray();
+	RefreshDuration();
+	m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
+	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
+	m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
+	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
+
+	// Reconnect Demux if pin mode has changed
+	if (m_pPidParser->get_ProgPinMode() != pinModeSave)
+	{
+		//Get the demux input pin
+		PIN_INFO PinInfo;
+		IPin *pIPin = m_pPin;
+		(IPin*)m_pPin->ConnectedTo(&pIPin);
+
+		// Get the demux filter
+		pIPin->QueryPinInfo(&PinInfo);
+		if(PinInfo.pFilter != NULL)
+		{
+			//Stop the graph
+			IMediaControl *pMediaControl;
+			if (SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+			{
+				hr = pMediaControl->Stop(); 
+				pMediaControl->Release();
+			}
+
+			//remove the old demux
+			hr = GetFilterGraph()->Disconnect(m_pPin);
+			pIPin->Release();
+			PinInfo.pFilter->Release();
+			GetFilterGraph()->RemoveFilter(PinInfo.pFilter);
+
+			//Replace the Demux Filter
+			IGraphBuilder *pGraphBuilder;
+			if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
+			{
+				hr = pGraphBuilder->Render(m_pPin);
+				pGraphBuilder->Release();
+			}
+
+			//Restart the graph
+			if (SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+			{
+				hr = pMediaControl->Pause(); 
+				hr = pMediaControl->Run(); 
+				pMediaControl->Release();
+			}
+		}
+	}
+	else
+	{
+		CAutoLock lock(&m_Lock);
+		hr = CSource::Run(timeGetTime()*10000);
+	}
+	m_pDemux->AOnConnect();
+	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+	NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);	
 
 	return hr;
 }
@@ -817,10 +995,13 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(void)
 		}
 						
 		m_pStreamParser->ParsePidArray();
-		m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 		m_pDemux->m_bConnectBusyFlag = FALSE;
 		if (m_pDemux->CheckDemuxPids() == S_FALSE)
+		{
 			m_pDemux->AOnConnect();
+			m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+		}
+
 	}
 	delete  pPidParser;
 
@@ -1212,8 +1393,8 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	if (m_pPidParser->pidArray.Count() < 1)
 		return NOERROR;
 
-	REFERENCE_TIME start;
-	m_pPin->GetCurrentPosition(&start);
+	REFERENCE_TIME start, stop;
+	m_pPin->GetPositions(&start, &stop);
 
 	int PgmNumber = PgmNumb;
 	PgmNumber --;
@@ -1236,10 +1417,12 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
+	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
+	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
 	Sleep(200);
 	ResetStreamTime();
-	m_pPin->SetPositions(&start,AM_SEEKING_AbsolutePositioning, NULL, NULL);
+	m_pPin->setPositions(&start,AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
 	m_pPin->m_DemuxLock = FALSE;
 
@@ -1257,8 +1440,8 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	if (m_pPidParser->pidArray.Count() < 2)
 		return NOERROR;
 
-	REFERENCE_TIME start;
-	m_pPin->GetCurrentPosition(&start);
+	REFERENCE_TIME start, stop;
+	m_pPin->GetPositions(&start, &stop);
 
 	WORD PgmNumb = m_pPidParser->get_ProgramNumber();
 	PgmNumb++;
@@ -1277,10 +1460,12 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
+	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
+	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
 	Sleep(200);
 	ResetStreamTime();
-	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
+	m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
 	m_pPin->m_DemuxLock = FALSE;
 
@@ -1298,8 +1483,8 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	if (m_pPidParser->pidArray.Count() < 2)
 		return NOERROR;
 
-	REFERENCE_TIME start;
-	m_pPin->GetCurrentPosition(&start);
+	REFERENCE_TIME start, stop;
+	m_pPin->GetPositions(&start, &stop);
 
 	int PgmNumb = m_pPidParser->get_ProgramNumber();
 	PgmNumb--;
@@ -1318,10 +1503,12 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
+	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
+	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
 	Sleep(200);
 	ResetStreamTime();
-	m_pPin->SetPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
+	m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
 	m_pPin->m_DemuxLock = FALSE;
 

@@ -604,11 +604,38 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				}
 
 				case IDC_REFRESH:
+				{
+					m_pProgram->Refresh();
+					OnRefreshProgram();
+					break;
+				}
+
+				case IDC_LOAD:
+				{
+					TCHAR tmpFile[MAX_PATH];
+					LPTSTR ptFilename = (LPTSTR)&tmpFile;
+					ptFilename[0] = '\0';
+
+					// Setup the OPENFILENAME structure
+					OPENFILENAME ofn = { sizeof(OPENFILENAME), hwnd, NULL,
+							 TEXT("Transport Stream Files (*.mpg, *.ts, *.tsbuffer)\0*.mpg;*.ts;*.tsbuffer\0All Files\0*.*\0\0"), NULL,
+							 0, 1,
+							 ptFilename, MAX_PATH,
+							 NULL, 0,
+							 NULL,
+							 TEXT("Load File"),
+							 OFN_FILEMUSTEXIST|OFN_HIDEREADONLY, 0, 0,
+							 NULL, 0, NULL, NULL };
+
+					// Display the SaveFileName dialog.
+					if( GetOpenFileName( &ofn ) != FALSE )
 					{
-						m_pProgram->Refresh();
-						OnRefreshProgram();
-						break;
+						USES_CONVERSION;
+						m_pProgram->Load(T2W(ptFilename), NULL);
 					}
+					OnRefreshProgram();
+					break;
+				}
 
 				case IDC_ROTMODE:
 				{

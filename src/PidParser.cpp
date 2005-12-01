@@ -437,10 +437,13 @@ HRESULT PidParser::RefreshPids()
 
 	__int64 fileStart, fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
-	__int64 filestartpointer = max((__int64)(fileSize - (__int64)5000000), m_pFileReader->getFilePointer());
+	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getFilePointer());
+	filestartpointer = max((__int64)300000, filestartpointer);
 
+	WORD readonly = 0;;
+	m_pFileReader->get_ReadOnly(&readonly);
 	//Check if file is being recorded
-	if(fileSize < 2100000)
+	if(fileSize < 2100000 && readonly)
 	{
 		int count = 0;
 		__int64 fileSizeSave = fileSize;
@@ -1784,8 +1787,8 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 	PBYTE pData = new BYTE[lDataLength];
 
 	pFileReader->GetFileSize(&fileStart, &filelength);
-
-	filelength = filelength;
+	filelength -= 100000;
+	
 	__int64 endFilePos = filelength;
 	m_fileLenOffset = filelength;
 	m_fileStartOffset = 300000;// skip faulty header 

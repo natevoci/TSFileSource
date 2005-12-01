@@ -79,8 +79,11 @@ public:
 	HRESULT ChangeStart();
 	HRESULT ChangeStop();
 	HRESULT ChangeRate();
+	void ClearBuffer(void);
 	void UpdateFromSeek(BOOL updateStartPosition = FALSE);
 
+	HRESULT setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
+			     , LONGLONG *pStop, DWORD StopFlags);
 	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
 	HRESULT UpdateDuration(FileReader *pFileReader);
 	void WaitPinLock(void);
@@ -154,6 +157,9 @@ protected:
 public:
 	BOOL	m_DemuxLock;
 	__int64 m_IntBaseTimePCR;
+	__int64 m_IntStartTimePCR;
+	__int64 m_IntCurrentTimePCR;
+	__int64 m_IntEndTimePCR;
 
 };
 

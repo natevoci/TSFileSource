@@ -148,8 +148,6 @@ HRESULT FileReader::OpenFile()
 		m_bReadOnly = TRUE;
 	}
 
-	SetFilePointer(0, FILE_BEGIN);
-
 	TCHAR infoName[512];
 	strcpy(infoName, pFileName);
 	strcat(infoName, ".info");
@@ -161,7 +159,11 @@ HRESULT FileReader::OpenFile()
 			NULL,      // Security
 			OPEN_EXISTING,    // Open flags
 			FILE_ATTRIBUTE_NORMAL, // More flags
+//			FILE_ATTRIBUTE_NORMAL |
+//			FILE_FLAG_RANDOM_ACCESS,	// More flags
 			NULL);
+
+	SetFilePointer(0, FILE_BEGIN);
 
 	return S_OK;
 
@@ -272,7 +274,7 @@ HRESULT FileReader::GetInfoFileSize(__int64 *lpllsize)
 
 HRESULT FileReader::GetStartPosition(__int64 *lpllpos)
 {
-	//Do not get file size if static file or first time 
+	//Do not get file size if static file unless first time 
 	if (m_bReadOnly || !m_fileStartPos) {
 		
 		if (m_hInfoFile != INVALID_HANDLE_VALUE)

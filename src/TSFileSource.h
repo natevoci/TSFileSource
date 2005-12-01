@@ -199,6 +199,7 @@ protected:
 	STDMETHODIMP GetAAC2Pid(WORD *pAac2Pid);
 	STDMETHODIMP GetCreateTxtPinOnDemux(WORD *pbCreatePin);
 	STDMETHODIMP SetCreateTxtPinOnDemux(WORD bCreatePin);
+	STDMETHODIMP ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt);
 
 protected:
 
@@ -217,7 +218,9 @@ protected:
     DWORD m_dwGraphRegister;
 
 	FileReader *m_pFileDuration;
+	REFERENCE_TIME m_rtLastCurrentTime;
 	BOOL m_bThreadRunning;
+	BOOL m_bReload;
     enum Command {CMD_INIT, CMD_PAUSE, CMD_RUN, CMD_STOP, CMD_EXIT};
     DWORD ThreadProc();
 	HRESULT DoProcessingLoop(void);

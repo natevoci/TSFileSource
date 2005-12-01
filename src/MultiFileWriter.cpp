@@ -192,7 +192,7 @@ HRESULT MultiFileWriter::Write(PBYTE pbData, ULONG lDataLength)
 	}
 
 	WriteTSBufferFile();
-
+	
 	return S_OK;
 }
 
@@ -317,6 +317,10 @@ HRESULT MultiFileWriter::ReuseTSFile()
 		return hr;
 	}
 
+	TCHAR sz[MAX_PATH];
+	sprintf(sz, "%S", pFilename);
+	DeleteFile(sz);
+		
 	if FAILED(hr = m_pCurrentTSFile->OpenFile())
 	{
 		return hr;

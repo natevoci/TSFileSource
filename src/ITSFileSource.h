@@ -72,8 +72,8 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 
 	STDMETHOD(GetReadOnly) (THIS_ WORD * pFileMode) PURE;
 
-	STDMETHOD (GetBitRate) (THIS_ long *pRate) PURE;
-	STDMETHOD (SetBitRate) (THIS_ long Rate) PURE;
+	STDMETHOD(GetBitRate) (THIS_ long *pRate) PURE;
+	STDMETHOD(SetBitRate) (THIS_ long Rate) PURE;
 
 //New interfaces added after 2.0.1.7 official release
 	STDMETHOD(GetAC3_2Pid) (THIS_ WORD * ac3_2pid) PURE;
@@ -112,18 +112,19 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 	STDMETHOD(ShowFilterProperties)(void) PURE;
 	STDMETHOD(Refresh)(void) PURE;
 
-	STDMETHOD (GetROTMode) (THIS_ WORD *ROTMode) PURE;
-	STDMETHOD (SetROTMode) (THIS_ WORD ROTMode) PURE;
-	STDMETHOD (GetClockMode) (THIS_ WORD *ClockMode) PURE;
-	STDMETHOD (SetClockMode) (THIS_ WORD ClockMode) PURE;
+	STDMETHOD(GetROTMode) (THIS_ WORD *ROTMode) PURE;
+	STDMETHOD(SetROTMode) (THIS_ WORD ROTMode) PURE;
+	STDMETHOD(GetClockMode) (THIS_ WORD *ClockMode) PURE;
+	STDMETHOD(SetClockMode) (THIS_ WORD ClockMode) PURE;
 
 //New method added after 2.0.1.8
 	STDMETHOD(GetVideoPidType) (THIS_ BYTE * pointer) PURE;
-	STDMETHOD (ShowEPGInfo)(void) PURE;
+	STDMETHOD(ShowEPGInfo)(void) PURE;
 	STDMETHOD(GetAACPid) (THIS_ WORD * pAacPid) PURE;
 	STDMETHOD(GetAAC2Pid) (THIS_ WORD * pAac2Pid) PURE;
 	STDMETHOD(GetCreateTxtPinOnDemux) (THIS_ WORD * pbCreatePin) PURE;
 	STDMETHOD(SetCreateTxtPinOnDemux) (THIS_ WORD bCreatePin) PURE;
+	STDMETHOD(Load) (THIS_ LPCOLESTR pszFileName,const AM_MEDIA_TYPE *pmt) PURE;
 
 };
 

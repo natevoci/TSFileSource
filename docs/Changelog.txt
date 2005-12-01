@@ -1,4 +1,9 @@
 bear:
+Added a File Load feature to the ITSFileSource Interface as well as a button to the TSFileSource Property page. You can now change the file being played on the fly.
+Added a auto reload feature for Timeshifting files where the TSFileSource fiiter will restart if the timeshift file changes size shuch as in a restart of the fileWriter filter.
+Isolated the pidArray from the TSFileSourcePin class functions so it would reduce accessing conflicts.
+added in some delete code in the MultiFileWriter class to delete the file before it is reused. This eliminates any delay issues due to Read/Write conflicts. 
+
 Fixed the auto pid parsing problem with the MultiFileWriter.
 Removed the extra RefreshTSBufferFile() calls from the MulitfileWriter as they seem to be causing problems.
 Added a seperate getFilePointer() & setFilePointer() calls to the fileWriters to reduce the need for special code for the different filewriters.
