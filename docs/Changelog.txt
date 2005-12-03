@@ -1,4 +1,7 @@
 bear:
+Fixed a problem with double starting after a file change.
+Added a windows load feature to the Load Function, if you call it with a null filename it will now open a Browse window.
+Improved the method of changing files, can now change files when paused and stopped. 
 Fixed a problem with the property page updating while the pidparser was restarting.
 
 Added a File Load feature to the ITSFileSource Interface as well as a button to the TSFileSource Property page. You can now change the file being played on the fly.

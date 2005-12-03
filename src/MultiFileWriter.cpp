@@ -317,9 +317,13 @@ HRESULT MultiFileWriter::ReuseTSFile()
 		return hr;
 	}
 
-	TCHAR sz[MAX_PATH];
-	sprintf(sz, "%S", pFilename);
-	DeleteFile(sz);
+	// Check if file is being read by something.
+	if (IsFileLocked(pFilename) != TRUE)
+	{
+		TCHAR sz[MAX_PATH];
+		sprintf(sz, "%S", pFilename);
+		DeleteFile(sz);
+	}
 		
 	if FAILED(hr = m_pCurrentTSFile->OpenFile())
 	{

@@ -71,6 +71,7 @@
 #define IDC_LOAD                        1045
 #define IDC_CURNUMB                     1048
 #define IDC_CURNAME                     1049
+#define IDC_CURR                        1049
 #define IDC_NUMBADD                     1050
 #define IDC_NUMBREM                     1051
 #define IDC_CURSIZE                     1052
@@ -81,7 +82,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        105
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1049
+#define _APS_NEXT_CONTROL_VALUE         1050
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

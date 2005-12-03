@@ -1778,6 +1778,10 @@ HRESULT CTSFileSourcePin::SetDuration(REFERENCE_TIME duration)
     return S_OK;
 }
 
+REFERENCE_TIME CTSFileSourcePin::getPCRPosition(void)
+{
+	return ConvertPCRtoRT(m_IntCurrentTimePCR);
+}
 
 BOOL CTSFileSourcePin::IsTimeShifting(FileReader *pFileReader, BOOL *timeMode)
 {

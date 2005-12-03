@@ -358,6 +358,17 @@ BOOL CTSFileSourceProp::RefreshDialog()
 	wsprintf(sz, TEXT("%02i:%02i:%02i.%03i"), hours, mins, secs, ms);
 	SetWindowText(GetDlgItem(m_hwnd, IDC_DURATION), sz);
 
+	m_pProgram->GetPCRPosition(&dur);
+	ms = (LONG)(dur/(LONGLONG)10000);
+	secs = ms / 1000;
+	mins = secs / 60;
+	hours = mins / 60;
+	ms -= (secs*1000);
+	secs -= (mins*60);
+	mins -= (hours*60);
+	wsprintf(sz, TEXT("%02i:%02i:%02i.%03i"), hours, mins, secs, ms);
+	SetWindowText(GetDlgItem(m_hwnd, IDC_CURR), sz);
+
 	long rate;
 	m_pProgram->GetBitRate(&rate);
     wsprintf(sz, TEXT("%lu"), rate);
@@ -620,27 +631,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 				case IDC_LOAD:
 				{
-					TCHAR tmpFile[MAX_PATH];
-					LPTSTR ptFilename = (LPTSTR)&tmpFile;
-					ptFilename[0] = '\0';
-
-					// Setup the OPENFILENAME structure
-					OPENFILENAME ofn = { sizeof(OPENFILENAME), hwnd, NULL,
-							 TEXT("Transport Stream Files (*.mpg, *.ts, *.tsbuffer)\0*.mpg;*.ts;*.tsbuffer\0All Files\0*.*\0\0"), NULL,
-							 0, 1,
-							 ptFilename, MAX_PATH,
-							 NULL, 0,
-							 NULL,
-							 TEXT("Load File"),
-							 OFN_FILEMUSTEXIST|OFN_HIDEREADONLY, 0, 0,
-							 NULL, 0, NULL, NULL };
-
-					// Display the SaveFileName dialog.
-					if( GetOpenFileName( &ofn ) != FALSE )
-					{
-						USES_CONVERSION;
-						m_pProgram->Load(T2W(ptFilename), NULL);
-					}
+					m_pProgram->Load(L"", NULL);
 					OnRefreshProgram();
 					break;
 				}

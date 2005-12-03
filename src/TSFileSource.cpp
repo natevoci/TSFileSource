@@ -100,6 +100,8 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 
 	m_bThreadRunning = FALSE;
 	m_bReload = FALSE;
+	m_llLastMultiFileStart = 0;
+	m_llLastMultiFileLength = 0;
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
@@ -231,8 +233,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 {
     Command com;
 
-	__int64 llLastMultiFileStart, llLastMultiFileLength;
-	m_pFileReader->GetFileSize(&llLastMultiFileStart, &llLastMultiFileLength);
+	m_pFileReader->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
 	int count = 1;
@@ -259,9 +260,9 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 					WORD bMultiMode;
 					m_pFileReader->get_ReaderMode(&bMultiMode);
 					//Do MultiFile timeshifting mode
-					if((bMultiMode & ((__int64)(fileStart + (__int64)5000000) < llLastMultiFileStart))
-						|| (bMultiMode & (fileStart == 0) & ((__int64)(filelength + (__int64)5000000) < llLastMultiFileLength))
-						|| (!bMultiMode & ((__int64)(filelength + (__int64)5000000) < llLastMultiFileLength))
+					if((bMultiMode & ((__int64)(fileStart + (__int64)5000000) < m_llLastMultiFileStart))
+						|| (bMultiMode & (fileStart == 0) & ((__int64)(filelength + (__int64)5000000) < m_llLastMultiFileLength))
+						|| (!bMultiMode & ((__int64)(filelength + (__int64)5000000) < m_llLastMultiFileLength))
 						&& 1 == 1)
 					{
 						LPOLESTR pszFileName;
@@ -270,11 +271,8 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							LPOLESTR pFileName = new WCHAR[1+lstrlenW(pszFileName)];
 							if (pFileName != NULL)
 							{
-								m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-								llLastMultiFileStart = fileStart;
-								llLastMultiFileLength = filelength;
 								lstrcpyW(pFileName,pszFileName);
-								ReLoad(pFileName, NULL);
+								Load(pFileName, NULL);
 								delete pFileName;
 							}
 						}
@@ -287,8 +285,8 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							count = 0;
 					}
 					
-					llLastMultiFileStart = fileStart;
-					llLastMultiFileLength = filelength;
+					m_llLastMultiFileStart = fileStart;
+					m_llLastMultiFileLength = filelength;
 				}
 				m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 			}
@@ -693,6 +691,33 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 	// Is this a valid filename supplied
 	CheckPointer(pszFileName,E_POINTER);
 
+	if (_wcsicmp(pszFileName, L"") == 0)
+	{
+		TCHAR tmpFile[MAX_PATH];
+		LPTSTR ptFilename = (LPTSTR)&tmpFile;
+		ptFilename[0] = '\0';
+
+		// Setup the OPENFILENAME structure
+		OPENFILENAME ofn = { sizeof(OPENFILENAME), NULL, NULL,
+							 TEXT("Transport Stream Files (*.mpg, *.ts, *.tsbuffer)\0*.mpg;*.ts;*.tsbuffer\0All Files\0*.*\0\0"), NULL,
+							 0, 1,
+							 ptFilename, MAX_PATH,
+							 NULL, 0,
+							 NULL,
+							 TEXT("Load File"),
+							 OFN_FILEMUSTEXIST|OFN_HIDEREADONLY, 0, 0,
+							 NULL, 0, NULL, NULL };
+
+		// Display the SaveFileName dialog.
+		if( GetOpenFileName( &ofn ) != FALSE )
+		{
+			USES_CONVERSION;
+			pszFileName = T2W(ptFilename); 
+		}
+		else
+			return NO_ERROR;
+	}
+
 	if (ThreadExists() || IsActive())
 		return ReLoad(pszFileName, pmt);
 			
@@ -773,10 +798,13 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 {
 	HRESULT hr;
 
+	BOOL bState_Running = FALSE;
+	if (m_State == State_Running)
 	{
 		CAutoLock cObjectLock(m_pLock);
 		CAutoLock lock(&m_Lock);
 		hr = CSource::Stop();
+		bState_Running = TRUE;
 	}
 
 	BOOL pinModeSave = m_pPidParser->get_ProgPinMode();
@@ -828,6 +856,8 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	__int64 fileStart;
 	__int64	fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
+	m_llLastMultiFileStart = fileStart;
+	m_llLastMultiFileLength = fileSize;
 
 	int count = 0;
 	__int64 filsSizeSave = fileSize;
@@ -855,6 +885,15 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
+
+	IMediaSeeking *pMediaSeeking;
+	if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+	{
+		REFERENCE_TIME stop, start = 1000000;
+		stop = m_pPidParser->pids.dur;
+		hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_AbsolutePositioning);
+		pMediaSeeking->Release();
+	}
 
 	// Reconnect Demux if pin mode has changed
 	if (m_pPidParser->get_ProgPinMode() != pinModeSave)
@@ -899,13 +938,14 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 			}
 		}
 	}
-	else
+	else if (bState_Running == TRUE)
 	{
 		CAutoLock lock(&m_Lock);
 		hr = CSource::Run(timeGetTime()*10000);
 	}
 	m_pDemux->AOnConnect();
 	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 	NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);	
 
 	return hr;
@@ -2107,6 +2147,19 @@ HRESULT CTSFileSourceFilter::ShowEPGInfo()
 	}
 	return hr;
 }
+
+STDMETHODIMP CTSFileSourceFilter::GetPCRPosition(REFERENCE_TIME *pos)
+{
+	if(!pos)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pos = m_pPin->getPCRPosition();
+
+	return NOERROR;
+
+}
+
 
 //*****************************************************************************************
 //ASync Additions

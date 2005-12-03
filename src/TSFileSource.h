@@ -200,6 +200,7 @@ protected:
 	STDMETHODIMP GetCreateTxtPinOnDemux(WORD *pbCreatePin);
 	STDMETHODIMP SetCreateTxtPinOnDemux(WORD bCreatePin);
 	STDMETHODIMP ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt);
+	STDMETHODIMP GetPCRPosition(REFERENCE_TIME *pos);
 
 protected:
 
@@ -221,6 +222,8 @@ protected:
 	REFERENCE_TIME m_rtLastCurrentTime;
 	BOOL m_bThreadRunning;
 	BOOL m_bReload;
+	__int64 m_llLastMultiFileStart;
+	__int64 m_llLastMultiFileLength;
     enum Command {CMD_INIT, CMD_PAUSE, CMD_RUN, CMD_STOP, CMD_EXIT};
     DWORD ThreadProc();
 	HRESULT DoProcessingLoop(void);

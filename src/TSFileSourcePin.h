@@ -88,6 +88,7 @@ public:
 	HRESULT UpdateDuration(FileReader *pFileReader);
 	void WaitPinLock(void);
 	HRESULT SetDuration(REFERENCE_TIME duration);
+	REFERENCE_TIME getPCRPosition(void);
 	BOOL IsTimeShifting(FileReader *pFileReader, BOOL *timeMode);
 
 	HRESULT CTSFileSourcePin::DisconnectDemuxPins();
