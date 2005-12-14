@@ -80,6 +80,13 @@ public:
 	static  void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
 	static  HRESULT GetReferenceClock(IBaseFilter *pFilter, IReferenceClock **ppClock);
 	HRESULT CheckDemuxPids(void);
+	HRESULT	Sleeps(ULONG Duration, long TimeOut[]);
+	HRESULT	IsStopped();
+	HRESULT	IsPlaying();
+	HRESULT	IsPaused();
+	HRESULT	DoStop();
+	HRESULT	DoStart();
+	HRESULT	DoPause();
 
 protected:
 	HRESULT UpdateDemuxPins(IBaseFilter* pDemux);
@@ -102,13 +109,6 @@ protected:
 	HRESULT	LoadTelexPin(IPin* pIPin, ULONG pid);
 	HRESULT	ClearDemuxPin(IPin* pIPin);
 	HRESULT	ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConnect);
-	HRESULT	Sleeps(ULONG Duration, long TimeOut[]);
-	HRESULT	IsStopped();
-	HRESULT	IsPlaying();
-	HRESULT	IsPaused();
-	HRESULT	DoStop();
-	HRESULT	DoStart();
-	HRESULT	DoPause();
 	HRESULT UpdateNetworkProvider(IBaseFilter* pNetworkProvider);
 	HRESULT CheckTIFPin(IBaseFilter* pDemux);
 	HRESULT GetTIFMedia(AM_MEDIA_TYPE *pintype);

@@ -1094,12 +1094,12 @@ HRESULT PidParser::ACheckVAPids(PBYTE pData, ULONG ulDataLength)
 
 					pid = ((0x1F & pData[b+1])<<8 | (0xFF & pData[b+2]));
 
-					if (((0xFF0&pesID) == 0x1e0) && (pids.vid == 0)) {
+					if (((0xFFFFFFF0&pesID) == 0x1e0) && (pids.vid == 0)) {
 						pids.vid = pid;
 
 					};
 
-					if ((0xFF0&pesID) == 0x1c0) {
+					if ((0xFFFFFFF0&pesID) == 0x1c0) {
 						if (pids.aud == 0) {
 							pids.aud = pid;
 						} else {
@@ -1109,7 +1109,7 @@ HRESULT PidParser::ACheckVAPids(PBYTE pData, ULONG ulDataLength)
 						}
 					};
 
-					if ((0xFF0&pesID) == 0x1b0) {
+					if ((0xFFFFFFF0&pesID) == 0x1b0 && (0xFFF&pesID) < 0x1BA) {
 						if (pids.ac3 == 0) {
 							pids.ac3 = pid;
 						} else {
@@ -1164,7 +1164,7 @@ HRESULT PidParser::CheckVAStreams(PBYTE pData, ULONG ulDataLength)
 
 					};
 
-					if ((0xFF0&pesID) == 0x1c0) {
+					if ((0xFFFFFFF0&pesID) == 0x1c0) {
 						if (pids.aud == 0) {
 							pids.aud = pid;
 						} else {
@@ -1174,7 +1174,9 @@ HRESULT PidParser::CheckVAStreams(PBYTE pData, ULONG ulDataLength)
 						}
 					};
 
-					if ((0xFF0&pesID) == 0x1b0 && (0xFFF&pesID) != 0x1bb) {
+					if ((0xFFFFFFF0&pesID) == 0x1b0
+						&& (0xFFF&pesID) != 0x1BB
+						&& (0xFFF&pesID) != 0x1BA) {
 						if (pids.ac3 == 0) {
 							pids.ac3 = pid;
 						} else {

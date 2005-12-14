@@ -93,6 +93,9 @@ public:
 
 	HRESULT CTSFileSourcePin::DisconnectDemuxPins();
 	HRESULT SetDemuxClock(IReferenceClock *pClock);
+	HRESULT ReNewDemux();
+	HRESULT GetPinConnection(IBaseFilter *pFilter, IPin **ppIPin, IPin **ppOPin);
+	HRESULT RenderOutputPins(IBaseFilter *pFilter);
 
 	BOOL get_RateControl();
 	void set_RateControl(BOOL bRateControl);

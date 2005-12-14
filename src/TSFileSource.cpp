@@ -278,7 +278,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 						}
 					}
 					//check pids every 5sec or quicker if no pids parsed
-					else if (count > 5 && !m_pPidParser->pidArray.Count())
+					else if (count > 5 || !m_pPidParser->pidArray.Count())
 					{
 						//update the parser
 							UpdatePidParser();
@@ -699,7 +699,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 
 		// Setup the OPENFILENAME structure
 		OPENFILENAME ofn = { sizeof(OPENFILENAME), NULL, NULL,
-							 TEXT("Transport Stream Files (*.mpg, *.ts, *.tsbuffer)\0*.mpg;*.ts;*.tsbuffer\0All Files\0*.*\0\0"), NULL,
+							 TEXT("Transport Stream Files (*.mpg, *.ts, *.tsbuffer, *.vob)\0*.mpg;*.ts;*.tsbuffer;*.vob\0All Files\0*.*\0\0"), NULL,
 							 0, 1,
 							 ptFilename, MAX_PATH,
 							 NULL, 0,
@@ -799,12 +799,20 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	HRESULT hr;
 
 	BOOL bState_Running = FALSE;
+	BOOL bState_Paused = FALSE;
+	long m_TimeOut[2];
+	m_TimeOut[0] = 0;
+	m_TimeOut[1] = 0;
+
 	if (m_State == State_Running)
-	{
-		CAutoLock cObjectLock(m_pLock);
-		CAutoLock lock(&m_Lock);
-		hr = CSource::Stop();
 		bState_Running = TRUE;
+	else if (m_State == State_Paused)
+		bState_Paused = TRUE;
+
+	if (bState_Paused || bState_Running)
+	{
+		CAutoLock lock(&m_Lock);
+		m_pDemux->DoStop();
 	}
 
 	BOOL pinModeSave = m_pPidParser->get_ProgPinMode();
@@ -895,57 +903,78 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		pMediaSeeking->Release();
 	}
 
-	// Reconnect Demux if pin mode has changed
-	if (m_pPidParser->get_ProgPinMode() != pinModeSave)
+	// Reconnect Demux if pin mode has changed and Source is connected
+	if (m_pPidParser->get_ProgPinMode() != pinModeSave && (IPin*)m_pPin->IsConnected())
 	{
-		//Get the demux input pin
+		//Replace the old demux
+		m_pPin->ReNewDemux();
+		
+		//Get the Connecting Filter input pin
 		PIN_INFO PinInfo;
-		IPin *pIPin = m_pPin;
+		IPin *pIPin = NULL;
 		(IPin*)m_pPin->ConnectedTo(&pIPin);
 
-		// Get the demux filter
-		pIPin->QueryPinInfo(&PinInfo);
-		if(PinInfo.pFilter != NULL)
+		if(pIPin != NULL)
 		{
-			//Stop the graph
-			IMediaControl *pMediaControl;
-			if (SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+			// Get the demux filter
+			pIPin->QueryPinInfo(&PinInfo);
+			if(PinInfo.pFilter != NULL)
 			{
-				hr = pMediaControl->Stop(); 
-				pMediaControl->Release();
-			}
+				//Get the Connecting Filter Info
+				CLSID ClsID;
+				PinInfo.pFilter->GetClassID(&ClsID);
+				LPWSTR pName = new WCHAR[128];
+				FILTER_INFO FilterInfo;
+				if (SUCCEEDED(PinInfo.pFilter->QueryFilterInfo(&FilterInfo)))
+					memcpy(pName, FilterInfo.achName, 128);
 
-			//remove the old demux
-			hr = GetFilterGraph()->Disconnect(m_pPin);
-			pIPin->Release();
-			PinInfo.pFilter->Release();
-			GetFilterGraph()->RemoveFilter(PinInfo.pFilter);
-
-			//Replace the Demux Filter
-			IGraphBuilder *pGraphBuilder;
-			if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
-			{
-				hr = pGraphBuilder->Render(m_pPin);
-				pGraphBuilder->Release();
+				hr = GetFilterGraph()->Disconnect(m_pPin);
+				GetFilterGraph()->RemoveFilter(PinInfo.pFilter);
+				pIPin->Release();
+				pIPin = NULL;
+				PinInfo.pFilter->Release();
+				
+				//Replace the Connecting Filter
+				IBaseFilter *pFilter = NULL;
+				if (SUCCEEDED(CoCreateInstance(ClsID, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, reinterpret_cast<void**>(&pFilter))))
+				{
+					GetFilterGraph()->AddFilter(pFilter, pName);
+					pFilter->Release();
+				}
 			}
+			else 
+				pIPin->Release();
+		}
 
-			//Restart the graph
-			if (SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
-			{
-				hr = pMediaControl->Pause(); 
-				hr = pMediaControl->Run(); 
-				pMediaControl->Release();
-			}
+		//Render this Source Filter
+		IGraphBuilder *pGraphBuilder;
+		if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
+		{
+			hr = pGraphBuilder->Render(m_pPin);
+			pGraphBuilder->Release();
 		}
 	}
-	else if (bState_Running == TRUE)
+
 	{
 		CAutoLock lock(&m_Lock);
-		hr = CSource::Run(timeGetTime()*10000);
+		m_pDemux->AOnConnect();
 	}
-	m_pDemux->AOnConnect();
 	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+
+
+	if (bState_Paused || bState_Running)
+	{
+		CAutoLock lock(&m_Lock);
+		m_pDemux->DoStart();
+	}
+				
+	if (bState_Paused)
+	{
+		CAutoLock lock(&m_Lock);
+		m_pDemux->DoPause();
+	}
+
 	NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);	
 
 	return hr;

@@ -214,6 +214,7 @@ HRESULT CTSFileSourcePin::CheckMediaType(const CMediaType* pType)
 
     CheckPointer(pType,E_POINTER);
 
+	m_pTSFileSourceFilter->m_pDemux->AOnConnect();
 	if(MEDIATYPE_Stream == pType->majortype)
 	{
 		//Are we in Transport mode
@@ -2003,6 +2004,7 @@ HRESULT CTSFileSourcePin::DisconnectDemuxPins()
 //							pDPin->Disconnect();
 						}
 						pDPin.Release();
+						pDPin = NULL;
 					}
 				}
 				pFilter->Release();
@@ -2074,12 +2076,170 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 
 	return S_OK;
 }
-/*
-REFERENCE_TIME rtCurrentTime1 = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-if(((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)100000000) < rtCurrentTime1))
+
+HRESULT CTSFileSourcePin::ReNewDemux()
 {
-TCHAR sz[128];
-sprintf(sz, "%lu", readonly);
-MessageBox(NULL, sz,"RefreshPidsin", NULL);
+	// Parse only the existing Mpeg2 Demultiplexer Filter
+	// in the filter graph, we do this by looking for filters
+	// that implement the IMpeg2Demultiplexer interface while
+	// the count is still active.
+	CFilterList FList(NAME("MyList"));  // List to hold the downstream peers.
+	if (SUCCEEDED(Demux::GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList)) && FList.GetHeadPosition())
+	{
+		IBaseFilter* pFilter = NULL;
+		POSITION pos = FList.GetHeadPosition();
+		pFilter = FList.Get(pos);
+		while (SUCCEEDED(Demux::GetPeerFilters(pFilter, PINDIR_OUTPUT, FList)) && pos)
+		{
+			pFilter = FList.GetNext(pos);
+		}
+
+		pos = FList.GetHeadPosition();
+
+		while (pos)
+		{
+			pFilter = FList.GetNext(pos);
+			if(pFilter != NULL)
+			{
+				// Get an instance of the Demux control interface
+				IMpeg2Demultiplexer* muxInterface = NULL;
+				if(SUCCEEDED(pFilter->QueryInterface (&muxInterface)))
+				{
+					muxInterface->Release();
+
+					//Get the Demux Filter Info
+					CLSID ClsID;
+					pFilter->GetClassID(&ClsID);
+					LPWSTR pName = new WCHAR[128];
+					FILTER_INFO FilterInfo;
+					if (SUCCEEDED(pFilter->QueryFilterInfo(&FilterInfo)))
+					{
+						memcpy(pName, FilterInfo.achName, 128);
+						pFilter->SetSyncSource(NULL);
+						IPin *pIPin;
+						IPin *pOPin;
+						GetPinConnection(pFilter, &pIPin, &pOPin);
+						FilterInfo.pGraph->RemoveFilter(pFilter);
+						pIPin->Release();
+						delete pFilter;
+
+						//Replace the Demux Filter
+						IBaseFilter *pFilter = NULL;
+						if (SUCCEEDED(CoCreateInstance(ClsID, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, reinterpret_cast<void**>(&pFilter))))
+						{
+							if (SUCCEEDED(FilterInfo.pGraph->AddFilter(pFilter, pName)))
+							{
+								if (pOPin)
+								{
+									IPin *pNPin;
+									GetPinConnection(pFilter, &pIPin, &pNPin);
+									//Render this Source Filter
+									IGraphBuilder *pGraphBuilder;
+									if(SUCCEEDED(FilterInfo.pGraph->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
+									{
+										pGraphBuilder->Connect(pOPin, pIPin);
+										m_pTSFileSourceFilter->OnConnect();
+										RenderOutputPins(pFilter);
+										pGraphBuilder->Disconnect(pOPin);
+										pGraphBuilder->Disconnect(pIPin);
+										pGraphBuilder->Release();
+									}
+									pOPin->Release();
+									pIPin->Release();
+								}	
+							}
+						}
+						FilterInfo.pGraph->Release();
+					}
+				}
+				pFilter->Release();
+				pFilter = NULL;
+			}
+		}
+	}
+
+	//Clear the filter list;
+	POSITION pos = FList.GetHeadPosition();
+	while (pos){
+
+		FList.Remove(pos);
+		pos = FList.GetHeadPosition();
+	}
+
+	return S_OK;
 }
-*/
+
+HRESULT CTSFileSourcePin::GetPinConnection(IBaseFilter *pFilter, IPin **ppIPin, IPin **ppOPin)
+{
+	HRESULT hr = E_FAIL;
+
+	if (!pFilter || !ppOPin || !ppIPin)
+		return hr;
+
+	IPin *pOPin = NULL;
+	IPin *pIPin = NULL;
+
+	FILTER_INFO FilterInfo;
+	if (SUCCEEDED(pFilter->QueryFilterInfo(&FilterInfo)))
+	{
+		PIN_DIRECTION  direction;
+		// Enumerate the Filter pins
+		CComPtr<IEnumPins> pIEnumPins;
+		if (SUCCEEDED(pFilter->EnumPins(&pIEnumPins))){
+
+			ULONG pinfetch(0);
+			while(pIEnumPins->Next(1, &pIPin, &pinfetch) == S_OK){
+
+				pIPin->QueryDirection(&direction);
+				if(direction == PINDIR_INPUT){
+
+					*ppIPin = pIPin;
+					hr = pIPin->ConnectedTo(&pOPin);
+					*ppOPin = pOPin;
+					return hr;
+				}
+			}
+			pOPin->Release();
+			pOPin = NULL;
+		}
+	}
+	return hr;
+}
+
+HRESULT CTSFileSourcePin::RenderOutputPins(IBaseFilter *pFilter)
+{
+	HRESULT hr = E_FAIL;
+
+	if (!pFilter)
+		return hr;
+
+	IPin *pOPin = NULL;
+	FILTER_INFO FilterInfo;
+	if (SUCCEEDED(pFilter->QueryFilterInfo(&FilterInfo)))
+	{
+		PIN_DIRECTION  direction;
+		// Enumerate the Filter pins
+		CComPtr<IEnumPins> pIEnumPins;
+		if (SUCCEEDED(pFilter->EnumPins(&pIEnumPins))){
+
+			ULONG pinfetch(0);
+			while(pIEnumPins->Next(1, &pOPin, &pinfetch) == S_OK){
+
+				pOPin->QueryDirection(&direction);
+				if(direction == PINDIR_OUTPUT){
+
+					//Render this Filter Output
+					IGraphBuilder *pGraphBuilder;
+					if(SUCCEEDED(FilterInfo.pGraph->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
+					{
+						pGraphBuilder->Render(pOPin);
+						pGraphBuilder->Release();
+					}
+				}
+				pOPin->Release();
+				pOPin = NULL;
+			};
+		}
+	}
+	return hr;
+}
