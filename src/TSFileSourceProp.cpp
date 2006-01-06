@@ -116,6 +116,7 @@ DWORD CTSFileSourceProp::ThreadProc(void)
 				m_bThreadRunning = TRUE;
                 Reply(NOERROR);
                 DoProcessingLoop();
+				m_bThreadRunning = FALSE;
                 break;
 
             case CMD_STOP:
@@ -157,6 +158,7 @@ HRESULT CTSFileSourceProp::DoProcessingLoop(void)
         // For all commands sent to us there must be a Reply call!
         if(com == CMD_RUN || com == CMD_PAUSE)
         {
+			m_bThreadRunning = TRUE;
             Reply(NOERROR);
         }
         else if(com != CMD_STOP)
@@ -166,6 +168,7 @@ HRESULT CTSFileSourceProp::DoProcessingLoop(void)
         }
     } while(com != CMD_STOP);
 
+	m_bThreadRunning = FALSE;
     return S_FALSE;
 }
 
@@ -631,8 +634,12 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 				case IDC_LOAD:
 				{
-					m_pProgram->Load(L"", NULL);
-					OnRefreshProgram();
+					if (m_bThreadRunning)
+					{
+						CAMThread::CallWorker(CMD_STOP);
+						m_pProgram->Load(L"", NULL);
+						CAMThread::CallWorker(CMD_PAUSE);
+					}
 					break;
 				}
 
@@ -753,7 +760,6 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		default:
 			return FALSE;
 	}
-
 	return TRUE;
 }
 

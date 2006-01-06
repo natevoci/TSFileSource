@@ -1,4 +1,13 @@
 bear:
+
+Removed the Threadexist test in the SetPositions() function to fix the problem where the position is set prior to the first run call. Re Remember the last media position in Zoomplayer fix.
+
+Made some further improvments to the Load() file change feature to make it more robust and to allow for Infinite tee filter in the chain.
+Fixed a number of bugs in the duration parser to allow for buggy streams such as those that have PRBS content. 
+
+Made some further improvments to the Load() file change feature.
+Some other minor improvements.
+
 Fixed a problem with double starting after a file change.
 Added a windows load feature to the Load Function, if you call it with a null filename it will now open a Browse window.
 Improved the method of changing files, can now change files when paused and stopped. 

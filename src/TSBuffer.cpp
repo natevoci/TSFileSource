@@ -34,7 +34,8 @@ CTSBuffer::CTSBuffer(PidInfo *pPids, PidInfoArray *pPidArray)
 	m_pPidArray = pPidArray;
 	m_pPids = pPids;
 	m_lItemOffset = 0;
-	m_lTSBufferItemSize = 188*1000;
+	m_lTSBufferItemSize = 800 * 1000;//188*1000;
+	Clear();
 }
 
 CTSBuffer::~CTSBuffer()
@@ -52,7 +53,7 @@ void CTSBuffer::Clear()
 	std::vector<BYTE *>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
 	{
-		delete *it;
+		delete[] *it;
 	}
 	m_Array.clear();
 
@@ -140,7 +141,6 @@ HRESULT CTSBuffer::Require(long nBytes)
 	}
 	return S_OK;
 }
-
 
 HRESULT CTSBuffer::DequeFromBuffer(BYTE *pbData, long lDataLength)
 {

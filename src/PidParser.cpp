@@ -1856,15 +1856,31 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 		else
 			m_fileStartOffset = m_fileStartOffset + 100000;
 
-		//If unable to find any pids dont go again
+		//If unable to find any pcr's so don't go again
 		if (pPids->start == 0 || pPids->end == 0){
 
 			//Check if we have a pre-calculated length to use. 
 			if(calcDuration > 0) {
 				totalduration = calcDuration;
 				pPids->end = startPCRSave + totalduration;
+				break;
 			}
-			break;
+			else
+			{
+				if (pPids->start != 0 && pPids->end == 0){
+
+					pPids->start = 0;
+					pPids->end = 0;
+					m_fileLenOffset = m_fileLenOffset/2;
+					endFilePos = m_fileLenOffset;
+					m_fileEndOffset = m_fileLenOffset;
+					m_fileStartOffset = 300000;// skip faulty header 
+					continue;
+				}
+				else
+					break;
+
+			}
 		}
 
 		pPids->start = 0;
@@ -1928,7 +1944,7 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 
 	__int64 SaveEndPCR = pPids->end;
 
-	while(m_fileLenOffset > (__int64)0x800)//(10 * m_PacketSize))
+	while(m_fileLenOffset > (__int64)m_PacketSize)//(10 * m_PacketSize))
 	{
 		if (pPids->start == 0)
 			break; //exit if no PCR found
@@ -1959,6 +1975,9 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 
 			hr = FindNextPCR(pData, lDataLength, pPids, &midPCR, &pos, -1); //Get the PCR
 			if (hr != S_OK){
+
+				m_fileLenOffset = (__int64)(m_fileLenOffset / 2); //Set file length offset for next search  
+				return S_OK; // File length matchs PCR time
 				break; //exit if no PCR found
 			}
 

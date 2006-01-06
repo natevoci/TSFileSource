@@ -123,7 +123,6 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 
 	m_pTunerEvent->UnRegisterForTunerEvents();
 	m_pTunerEvent->Release();
-
 	delete  m_pClock;
 	delete	m_pDemux;
 	delete 	m_pRegStore;
@@ -133,6 +132,7 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	delete	m_pPin;
 	delete	m_pFileReader;
 	delete  m_pFileDuration;
+//Sleep(5000);
 }
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
@@ -200,10 +200,13 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
                 // !!! fall through
 
             case CMD_PAUSE:
-				m_pFileDuration->OpenFile();
-				m_bThreadRunning = TRUE;
-                Reply(NOERROR);
-                DoProcessingLoop();
+				if (SUCCEEDED(m_pFileDuration->OpenFile()))
+				{
+					m_bThreadRunning = TRUE;
+					Reply(NOERROR);
+					DoProcessingLoop();
+					m_bThreadRunning = FALSE;
+				}
                 break;
 
             case CMD_STOP:
@@ -309,6 +312,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
         // For all commands sent to us there must be a Reply call!
         if(com == CMD_RUN || com == CMD_PAUSE)
         {
+			m_bThreadRunning = TRUE;
             Reply(NOERROR);
         }
         else if(com != CMD_STOP)
@@ -317,6 +321,8 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
             DbgLog((LOG_ERROR, 1, TEXT("Unexpected command!!!")));
         }
     } while(com != CMD_STOP);
+
+	m_bThreadRunning = FALSE;
 
     return S_FALSE;
 }
@@ -553,6 +559,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 //***********************************************************************************************
 			m_pPin->m_DemuxLock = TRUE;
 			m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+//m_pPin->PrintTime(TEXT("Run"), (__int64) start, 10000);
 			m_pPin->m_DemuxLock = FALSE;
 			m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
@@ -583,6 +590,7 @@ HRESULT CTSFileSourceFilter::Pause()
 
 		REFERENCE_TIME start, stop;
 		m_pPin->GetPositions(&start, &stop);
+//m_pPin->PrintTime(TEXT("Pause"), (__int64) start, 10000);
 
 		//Start at least 100ms into file to skip header
 		if (start == 0)
@@ -798,11 +806,15 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 {
 	HRESULT hr;
 
+	BOOL wasThreadRunning = FALSE;
+	if (ThreadRunning() && ThreadExists()) {
+
+		CAMThread::CallWorker(CMD_STOP);
+		wasThreadRunning = TRUE;
+	}
+
 	BOOL bState_Running = FALSE;
 	BOOL bState_Paused = FALSE;
-	long m_TimeOut[2];
-	m_TimeOut[0] = 0;
-	m_TimeOut[1] = 0;
 
 	if (m_State == State_Running)
 		bState_Running = TRUE;
@@ -926,7 +938,10 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 				LPWSTR pName = new WCHAR[128];
 				FILTER_INFO FilterInfo;
 				if (SUCCEEDED(PinInfo.pFilter->QueryFilterInfo(&FilterInfo)))
+				{
 					memcpy(pName, FilterInfo.achName, 128);
+					FilterInfo.pGraph->Release();
+				}
 
 				hr = GetFilterGraph()->Disconnect(m_pPin);
 				GetFilterGraph()->RemoveFilter(PinInfo.pFilter);
@@ -975,7 +990,14 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		m_pDemux->DoPause();
 	}
 
-	NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);	
+	{
+		CAutoLock lock(&m_Lock);
+		NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);	
+	}
+
+	if (wasThreadRunning)
+		CAMThread::CallWorker(CMD_RUN);
+
 
 	return hr;
 }
@@ -1069,11 +1091,12 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(void)
 						
 		m_pStreamParser->ParsePidArray();
 		m_pDemux->m_bConnectBusyFlag = FALSE;
+
 		if (m_pDemux->CheckDemuxPids() == S_FALSE)
 		{
 			m_pDemux->AOnConnect();
-			m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 		}
+		m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 
 	}
 	delete  pPidParser;
@@ -1493,7 +1516,7 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
-	Sleep(200);
+//	Sleep(200);
 	ResetStreamTime();
 	m_pPin->setPositions(&start,AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
@@ -1536,7 +1559,7 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
-	Sleep(200);
+//	Sleep(200);
 	ResetStreamTime();
 	m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
@@ -1579,7 +1602,7 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
-	Sleep(200);
+//	Sleep(200);
 	ResetStreamTime();
 	m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
@@ -2262,8 +2285,8 @@ STDMETHODIMP CTSFileSourceFilter::SyncRead(
 	// Read the data from the file
 	llPosition = min(fileSize, llPosition);
 	llPosition = max(0, llPosition);
-	hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, (__int64)(llPosition - fileSize), FILE_END);
-//	hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
+//	hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, (__int64)(llPosition - fileSize), FILE_END);
+	hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
 	if (FAILED(hr))
 		return hr;
 
@@ -2288,8 +2311,8 @@ STDMETHODIMP CTSFileSourceFilter::SyncRead(
 				ULONG ulNextBytesRead = 0;				
 				llPosition = min(filelength, llPosition);
 				llPosition = max(0, llPosition);
-				HRESULT hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, (__int64)(llPosition - filelength), FILE_END);
-//				HRESULT hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
+//				HRESULT hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, (__int64)(llPosition - filelength), FILE_END);
+				HRESULT hr = m_pFileReader->Read(pBuffer, dwBytesToRead, &dwReadLength, llPosition, FILE_BEGIN);
 				if (FAILED(hr))
 					return hr;
 
@@ -2361,6 +2384,7 @@ STDMETHODIMP CTSFileSourceFilter::EndFlush(void)
 {
 	return E_NOTIMPL;
 }
+//m_pPin->PrintTime(TEXT("Run"), (__int64) tStart, 10000);
 
 //*****************************************************************************************
 

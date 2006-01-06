@@ -383,6 +383,10 @@ HRESULT MultiFileWriter::CleanupFiles()
 {
 	USES_CONVERSION;
 
+	m_filesAdded = 0;
+	m_filesRemoved = 0;
+	m_currentFilenameId = 0;
+
 	// Check if .tsbuffer file is being read by something.
 	if (IsFileLocked(m_pTSBufferFileName) == TRUE)
 		return S_OK;
@@ -421,6 +425,9 @@ HRESULT MultiFileWriter::CleanupFiles()
 		swprintf((LPWSTR)&msg, L"Failed to delete tsbuffer file : 0x%x\n", GetLastError());
 		::OutputDebugString(W2T((LPWSTR)&msg));
 	}
+	m_filesAdded = 0;
+	m_filesRemoved = 0;
+	m_currentFilenameId = 0;
 	return S_OK;
 }
 

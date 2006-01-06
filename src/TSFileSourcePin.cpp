@@ -126,6 +126,7 @@ STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void **
 		 GetInterface((IAMStreamSelect*)m_pTSFileSourceFilter, ppv);
 	}
 	if (riid == IID_IAsyncReader)
+	{
 		if ((!m_pTSFileSourceFilter->m_pPidParser->pids.pcr
 			&& !m_pTSFileSourceFilter->get_AutoMode()
 			&& m_pTSFileSourceFilter->m_pPidParser->get_ProgPinMode())
@@ -133,6 +134,7 @@ STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void **
 		{
 			return GetInterface((IAsyncReader*)m_pTSFileSourceFilter, ppv);
 		}
+	}
 	if (riid == IID_IMediaSeeking)
     {
         return CSourceSeeking::NonDelegatingQueryInterface( riid, ppv );
@@ -774,6 +776,7 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 	m_LastMultiFileStart = 0;
 	m_LastMultiFileEnd = 0;
 
+/*
 	//Check if file is being recorded
 	__int64 fileStart;
 	__int64 filelength;
@@ -781,7 +784,6 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 	m_LastFileSize = filelength;
 	m_LastStartSize = fileStart;
 
-/*
 	if(filelength < 2001000)
 	{
 		if (m_pTSFileSourceFilter->RefreshPids() == S_OK)
@@ -982,6 +984,7 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags)
 {
+//PrintTime(TEXT("setPositions"), (__int64) *pCurrent, 10000);
 	if (pCurrent)
 	{
 		WORD readonly = 0;
@@ -997,6 +1000,7 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 		REFERENCE_TIME rtCurrent = *pCurrent;
 		if (CurrentFlags & AM_SEEKING_RelativePositioning)
 		{
+//PrintTime(TEXT("setPositions/RelativePositioning"), (__int64) *pCurrent, 10000);
 			CAutoLock lock(&m_SeekLock);
 			rtCurrent += m_rtStart;
 			CurrentFlags -= AM_SEEKING_RelativePositioning; //Remove relative flag
@@ -1005,15 +1009,17 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 
 		if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
 		{
+//PrintTime(TEXT("setPositions/PositioningBitsMask"), (__int64) *pCurrent, 10000);
 			CAutoLock lock(&m_SeekLock);
 			m_rtStart = rtCurrent;
 		}
 
 		if (!(CurrentFlags & AM_SEEKING_NoFlush) && (CurrentFlags & AM_SEEKING_PositioningBitsMask))
 		{
-			if (ThreadExists())
-			{	
+//			if (ThreadExists())
+//			{	
 				m_bSeeking = TRUE;
+
 				if(m_pTSFileSourceFilter->IsActive() && !m_DemuxLock)
 					SetDemuxClock(NULL);
 
@@ -1051,7 +1057,7 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 
 				CAutoLock lock(&m_SeekLock);
 				return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
-			}
+//			}
 		}
 		if (CurrentFlags & AM_SEEKING_ReturnTime)
 			*pCurrent  = rtCurrent;
@@ -1219,14 +1225,14 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 //PrintTime(TEXT("our pcr end time for reference"), (__int64)pcrEndPos, 90);
 
 	//Test if we have a pcr or if the pcr is less than rollover time
-	if (FAILED(hr) || pcrSeekTime < 0) {
+	if (FAILED(hr) || pcrEndPos == 0 || pcrSeekTime < 0) {
 //PrintTime(TEXT("get lastpcr failed now using first pcr"), (__int64)m_IntStartTimePCR, 90);
 	
 		//Set seektime to position relative to first pcr
 		pcrSeekTime = m_IntStartTimePCR + pcrDeltaSeekTime;
 
 		//test if pcr time is now larger than file size
-		if (pcrSeekTime > m_IntEndTimePCR) {
+		if (pcrSeekTime > m_IntEndTimePCR || pcrEndPos == 0) {
 //		if (pcrSeekTime > pcrDuration) {
 //PrintTime(TEXT("get first pcr failed as well SEEK ERROR AT START"), (__int64) pcrSeekTime, 90);
 
@@ -1815,7 +1821,7 @@ HRESULT CTSFileSourcePin::FindNextPCR(__int64 *pcrtime, long *byteOffset, long m
 {
 	HRESULT hr = E_FAIL;
 
-	long bytesToRead = m_lTSPacketDeliverySize + m_pTSFileSourceFilter->m_pPidParser->get_PacketSize();	//Read an extra packet to make sure we don't miss a PCR that spans a gap.
+	long bytesToRead = m_lTSPacketDeliverySize + m_PacketSave;	//Read an extra packet to make sure we don't miss a PCR that spans a gap.
 	BYTE *pData = new BYTE[bytesToRead];
 
 	while (*byteOffset < maxOffset)
@@ -1827,7 +1833,7 @@ HRESULT CTSFileSourcePin::FindNextPCR(__int64 *pcrtime, long *byteOffset, long m
 			break;
 
 		ULONG pos = 0;
-		hr = m_pTSFileSourceFilter->m_pPidParser->FindFirstPCR(pData, bytesToRead, &m_pTSFileSourceFilter->m_pPidParser->pids, pcrtime, &pos);
+		hr = m_pTSFileSourceFilter->m_pPidParser->FindFirstPCR(pData, bytesToRead, m_pPids, pcrtime, &pos);
 		if (SUCCEEDED(hr))
 		{
 			*byteOffset += pos;
@@ -1846,7 +1852,7 @@ HRESULT CTSFileSourcePin::FindPrevPCR(__int64 *pcrtime, long *byteOffset)
 {
 	HRESULT hr = E_FAIL;
 
-	long bytesToRead = m_lTSPacketDeliverySize + m_pTSFileSourceFilter->m_pPidParser->get_PacketSize(); //Read an extra packet to make sure we don't miss a PCR that spans a gap.
+	long bytesToRead = m_lTSPacketDeliverySize + m_PacketSave; //Read an extra packet to make sure we don't miss a PCR that spans a gap.
 	BYTE *pData = new BYTE[bytesToRead];
 
 	while (*byteOffset > 0)
@@ -1854,14 +1860,14 @@ HRESULT CTSFileSourcePin::FindPrevPCR(__int64 *pcrtime, long *byteOffset)
 		bytesToRead = min(m_lTSPacketDeliverySize, *byteOffset);
 		*byteOffset -= bytesToRead;
 
-		bytesToRead += m_pTSFileSourceFilter->m_pPidParser->get_PacketSize();
+		bytesToRead += m_PacketSave;
 
 		hr = m_pTSBuffer->ReadFromBuffer(pData, bytesToRead, *byteOffset);
 		if (FAILED(hr))
 			break;
 
 		ULONG pos = 0;
-		hr = m_pTSFileSourceFilter->m_pPidParser->FindLastPCR(pData, bytesToRead, &m_pTSFileSourceFilter->m_pPidParser->pids, pcrtime, &pos);
+		hr = m_pTSFileSourceFilter->m_pPidParser->FindLastPCR(pData, bytesToRead, m_pPids, pcrtime, &pos);
 		if (SUCCEEDED(hr))
 		{
 			*byteOffset += pos;
@@ -1931,6 +1937,7 @@ void CTSFileSourcePin::PrintTime(LPCTSTR lstring, __int64 value, __int64 divider
 	wsprintf(sz, TEXT("%05i - %s %02i:%02i:%02i.%03i\n"), debugcount, lstring, hours, mins, secs, ms);
 	::OutputDebugString(sz);
 	debugcount++;
+//MessageBox(NULL, sz,lstring, NULL);
 }
 
 void CTSFileSourcePin::PrintLongLong(LPCTSTR lstring, __int64 value)
@@ -2116,40 +2123,46 @@ HRESULT CTSFileSourcePin::ReNewDemux()
 					{
 						memcpy(pName, FilterInfo.achName, 128);
 						pFilter->SetSyncSource(NULL);
-						IPin *pIPin;
-						IPin *pOPin;
+						IPin *pIPin = NULL;
+						IPin *pOPin = NULL;
 						GetPinConnection(pFilter, &pIPin, &pOPin);
 						FilterInfo.pGraph->RemoveFilter(pFilter);
-						pIPin->Release();
-						delete pFilter;
+						FilterInfo.pGraph->Release();
+						if (pIPin) pIPin->Release();
+						pFilter->Release();
 
 						//Replace the Demux Filter
-						IBaseFilter *pFilter = NULL;
+						pFilter = NULL;
 						if (SUCCEEDED(CoCreateInstance(ClsID, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, reinterpret_cast<void**>(&pFilter))))
 						{
 							if (SUCCEEDED(FilterInfo.pGraph->AddFilter(pFilter, pName)))
 							{
-								if (pOPin)
+								if (SUCCEEDED(pFilter->QueryFilterInfo(&FilterInfo)))
 								{
-									IPin *pNPin;
-									GetPinConnection(pFilter, &pIPin, &pNPin);
-									//Render this Source Filter
-									IGraphBuilder *pGraphBuilder;
-									if(SUCCEEDED(FilterInfo.pGraph->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
+									if (pOPin)
 									{
-										pGraphBuilder->Connect(pOPin, pIPin);
-										m_pTSFileSourceFilter->OnConnect();
-										RenderOutputPins(pFilter);
-										pGraphBuilder->Disconnect(pOPin);
-										pGraphBuilder->Disconnect(pIPin);
-										pGraphBuilder->Release();
+										IPin *pIPin = NULL;
+										IPin *pNPin = NULL;
+										GetPinConnection(pFilter, &pIPin, &pNPin);
+										if (pNPin) pNPin->Release();
+										//Render this Source Filter
+										IGraphBuilder *pGraphBuilder;
+										if(SUCCEEDED(FilterInfo.pGraph->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
+										{
+											pGraphBuilder->Connect(pOPin, pIPin);
+											m_pTSFileSourceFilter->OnConnect();
+											RenderOutputPins(pFilter);
+											pGraphBuilder->Disconnect(pOPin);
+											pGraphBuilder->Disconnect(pIPin);
+											pGraphBuilder->Release();
+										}
+										if (pIPin) pIPin->Release();
+										if (pOPin) pOPin->Release();
 									}
-									pOPin->Release();
-									pIPin->Release();
-								}	
+									FilterInfo.pGraph->Release();
+								}
 							}
 						}
-						FilterInfo.pGraph->Release();
 					}
 				}
 				pFilter->Release();
@@ -2196,12 +2209,14 @@ HRESULT CTSFileSourcePin::GetPinConnection(IBaseFilter *pFilter, IPin **ppIPin, 
 					*ppIPin = pIPin;
 					hr = pIPin->ConnectedTo(&pOPin);
 					*ppOPin = pOPin;
+					FilterInfo.pGraph->Release();
 					return hr;
 				}
 			}
-			pOPin->Release();
-			pOPin = NULL;
+			pIPin->Release();
+			pIPin = NULL;
 		}
+		FilterInfo.pGraph->Release();
 	}
 	return hr;
 }
@@ -2240,6 +2255,7 @@ HRESULT CTSFileSourcePin::RenderOutputPins(IBaseFilter *pFilter)
 				pOPin = NULL;
 			};
 		}
+		FilterInfo.pGraph->Release();
 	}
 	return hr;
 }
