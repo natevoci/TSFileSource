@@ -1,4 +1,5 @@
 bear:
+Made some improvments to the Load() function so that the filtergraph will re-render an infinite tee filter when changing between media types. 
 
 Removed the Threadexist test in the SetPositions() function to fix the problem where the position is set prior to the first run call. Re Remember the last media position in Zoomplayer fix.
 

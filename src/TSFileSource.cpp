@@ -918,56 +918,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	// Reconnect Demux if pin mode has changed and Source is connected
 	if (m_pPidParser->get_ProgPinMode() != pinModeSave && (IPin*)m_pPin->IsConnected())
 	{
-		//Replace the old demux
 		m_pPin->ReNewDemux();
-		
-		//Get the Connecting Filter input pin
-		PIN_INFO PinInfo;
-		IPin *pIPin = NULL;
-		(IPin*)m_pPin->ConnectedTo(&pIPin);
-
-		if(pIPin != NULL)
-		{
-			// Get the demux filter
-			pIPin->QueryPinInfo(&PinInfo);
-			if(PinInfo.pFilter != NULL)
-			{
-				//Get the Connecting Filter Info
-				CLSID ClsID;
-				PinInfo.pFilter->GetClassID(&ClsID);
-				LPWSTR pName = new WCHAR[128];
-				FILTER_INFO FilterInfo;
-				if (SUCCEEDED(PinInfo.pFilter->QueryFilterInfo(&FilterInfo)))
-				{
-					memcpy(pName, FilterInfo.achName, 128);
-					FilterInfo.pGraph->Release();
-				}
-
-				hr = GetFilterGraph()->Disconnect(m_pPin);
-				GetFilterGraph()->RemoveFilter(PinInfo.pFilter);
-				pIPin->Release();
-				pIPin = NULL;
-				PinInfo.pFilter->Release();
-				
-				//Replace the Connecting Filter
-				IBaseFilter *pFilter = NULL;
-				if (SUCCEEDED(CoCreateInstance(ClsID, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, reinterpret_cast<void**>(&pFilter))))
-				{
-					GetFilterGraph()->AddFilter(pFilter, pName);
-					pFilter->Release();
-				}
-			}
-			else 
-				pIPin->Release();
-		}
-
-		//Render this Source Filter
-		IGraphBuilder *pGraphBuilder;
-		if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
-		{
-			hr = pGraphBuilder->Render(m_pPin);
-			pGraphBuilder->Release();
-		}
 	}
 
 	{

@@ -91,11 +91,14 @@ public:
 	REFERENCE_TIME getPCRPosition(void);
 	BOOL IsTimeShifting(FileReader *pFileReader, BOOL *timeMode);
 
-	HRESULT CTSFileSourcePin::DisconnectDemuxPins();
+	HRESULT DisconnectDemux();
+	HRESULT DisconnectOutputPins(IBaseFilter *pFilter);
+	HRESULT DisconnectInputPins(IBaseFilter *pFilter);
 	HRESULT SetDemuxClock(IReferenceClock *pClock);
 	HRESULT ReNewDemux();
 	HRESULT GetPinConnection(IBaseFilter *pFilter, IPin **ppIPin, IPin **ppOPin);
 	HRESULT RenderOutputPins(IBaseFilter *pFilter);
+	HRESULT RenderOutputPin(IBaseFilter *pFilter);
 
 	BOOL get_RateControl();
 	void set_RateControl(BOOL bRateControl);
