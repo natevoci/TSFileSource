@@ -469,21 +469,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 	//Test if out of bounds
 	if (lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return E_INVALIDARG;
-/*
-	int groupOffset = 0;
-	if (netArray.Count())
-	{
-		groupOffset = 1;
-		if (lIndex < netArray.Count())
-		{
-			WCHAR wfilename[MAX_PATH];
-			lstrcpyW(wfilename, netArray[lIndex].fileName);
-			Load(wfilename, NULL);
-		}
-	}
 
-	if (!(lIndex - netArray.Count()))
-*/
 	if (lIndex && lIndex < m_pStreamParser->StreamArray.Count() - netArray.Count() - 1){
 
 		m_pDemux->m_StreamVid = m_pStreamParser->StreamArray[lIndex].Vid;
@@ -774,9 +760,10 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 			// Create the Network Filtergraph 
 			//
 			hr = CNetRender::CreateNetworkGraph(netAddr);
-			if(FAILED(hr))
+			if(FAILED(hr)  || (hr > 31))
 			{
 				delete[] netAddr;
+//				MessageBoxW(NULL, netAddr->fileName, L"Graph Builder Failed", NULL);
 				return hr;
 			}
 			//Add the new filtergraph settings to the local array
