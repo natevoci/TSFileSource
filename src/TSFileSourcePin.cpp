@@ -2348,7 +2348,7 @@ HRESULT CTSFileSourcePin::RenderOutputPins(IBaseFilter *pFilter)
 						IGraphBuilder *pGraphBuilder;
 						if(SUCCEEDED(FilterInfo.pGraph->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
 						{
-							pGraphBuilder->Render(pOPin);
+							hr = pGraphBuilder->Render(pOPin);
 							pGraphBuilder->Release();
 						}
 					}

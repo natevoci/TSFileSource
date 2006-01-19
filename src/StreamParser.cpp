@@ -36,10 +36,11 @@
 //////////////////////////////////////////////////////////////////////
 
 
-StreamParser::StreamParser(PidParser *pPidParser, Demux * pDemux)
+StreamParser::StreamParser(PidParser *pPidParser, Demux * pDemux, NetInfoArray *pNetArray)
 {
 	m_pPidParser = pPidParser;
 	m_pDemux = pDemux;
+	m_pNetArray = pNetArray;
 }
 
 StreamParser::~StreamParser()
@@ -55,7 +56,6 @@ HRESULT StreamParser::ParsePidArray()
 	if (!m_pPidParser->pidArray.Count())
 		return hr;
 
-	int count = 0;
 	int index = 0;
 
 	//Setup Network Name
@@ -73,6 +73,7 @@ HRESULT StreamParser::ParsePidArray()
 	m_pDemux->GetVideoMedia(&StreamArray[index].media);
 	index++;
 
+	int count = 0;
 	while (count < m_pPidParser->pidArray.Count())
 	{
 		streams.Clear();
@@ -197,6 +198,33 @@ HRESULT StreamParser::ParsePidArray()
 		count++;
 	}
 
+	streams.Clear();
+	LoadStreamArray(count);
+	AddStreamArray();
+	wsprintfW(StreamArray[index].name, L"  Open File Browser");
+	index++;
+	count++;
+	int offset = count;
+	
+	int i = 0;
+	while (i < m_pNetArray->Count())
+	{
+		streams.Clear();
+		LoadStreamArray(count);
+		AddStreamArray();
+		if ((*m_pNetArray)[i].playing)
+			wsprintfW(StreamArray[index].name, L"  ->UDP@ %S : %S : %S",
+										(*m_pNetArray)[i].strIP,
+										(*m_pNetArray)[i].strPort,
+										(*m_pNetArray)[i].strNic);
+		else
+			wsprintfW(StreamArray[index].name, L"  UDP@ %S : %S : %S",
+										(*m_pNetArray)[i].strIP,
+										(*m_pNetArray)[i].strPort,
+										(*m_pNetArray)[i].strNic);
+		i++;
+		index++;
+	}
 	return S_OK;
 }
 	

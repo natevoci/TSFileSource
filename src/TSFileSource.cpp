@@ -62,11 +62,12 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 {
 	ASSERT(phr);
 
+//	m_pNetworkGraph = new CNetRender();
 	m_pFileReader = new FileReader();
 	m_pFileDuration = new FileReader();//Get Live File Duration Thread
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
-	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
+	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, phr);
 	if (m_pPin == NULL)
@@ -102,6 +103,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_bReload = FALSE;
 	m_llLastMultiFileStart = 0;
 	m_llLastMultiFileLength = 0;
+
 }
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
@@ -132,7 +134,9 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	delete	m_pPin;
 	delete	m_pFileReader;
 	delete  m_pFileDuration;
-//Sleep(5000);
+	netArray.Clear();
+//	delete  m_pNetworkGraph;
+
 }
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
@@ -465,8 +469,22 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 	//Test if out of bounds
 	if (lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return E_INVALIDARG;
+/*
+	int groupOffset = 0;
+	if (netArray.Count())
+	{
+		groupOffset = 1;
+		if (lIndex < netArray.Count())
+		{
+			WCHAR wfilename[MAX_PATH];
+			lstrcpyW(wfilename, netArray[lIndex].fileName);
+			Load(wfilename, NULL);
+		}
+	}
 
-	if (lIndex) {
+	if (!(lIndex - netArray.Count()))
+*/
+	if (lIndex && lIndex < m_pStreamParser->StreamArray.Count() - netArray.Count() - 1){
 
 		m_pDemux->m_StreamVid = m_pStreamParser->StreamArray[lIndex].Vid;
 		m_pDemux->m_StreamH264 = m_pStreamParser->StreamArray[lIndex].H264;
@@ -475,7 +493,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamMP2 = m_pStreamParser->StreamArray[lIndex].Aud;
 		m_pDemux->m_StreamAAC = m_pStreamParser->StreamArray[lIndex].AAC;
 		m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
-		SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
+		SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group +1);
 		m_pStreamParser->SetStreamActive(m_pStreamParser->StreamArray[lIndex].group);
 		m_pDemux->m_StreamVid = 0;
 		m_pDemux->m_StreamH264 = 0;
@@ -485,9 +503,16 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamAAC = 0;
 		SetRegProgram();
 	}
-	else
+	else if (!lIndex)
 		ShowEPGInfo();
-
+	else if (lIndex == m_pStreamParser->StreamArray.Count() - netArray.Count() - 1)
+		Load(L"", NULL);
+	else if (lIndex > m_pStreamParser->StreamArray.Count() - netArray.Count() - 1)
+	{
+		WCHAR wfilename[MAX_PATH];
+		lstrcpyW(wfilename, netArray[lIndex - m_pStreamParser->StreamArray.Count() + netArray.Count()].fileName);
+		Load(wfilename, NULL);
+	}
 	return S_OK;
 
 } //IAMStreamSelect
@@ -694,7 +719,7 @@ STDMETHODIMP CTSFileSourceFilter::GetPages(CAUUID *pPages)
 	return S_OK;
 }
 
-STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE *pmt)
+STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt)
 {
 	// Is this a valid filename supplied
 	CheckPointer(pszFileName,E_POINTER);
@@ -726,10 +751,59 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 			return NO_ERROR;
 	}
 
+	HRESULT hr;
+
+	//
+	// Check & create a NetSource Filtergraph and play the file 
+	//
+	NetInfo *netAddr = new NetInfo();
+	netAddr->rotEnable = m_bRotEnable;
+
+	//
+	// Check if the FileName is a Network address 
+	//
+	if (CNetRender::IsMulticastAddress((unsigned short *)pszFileName, netAddr))
+	{
+		//
+		// Check in the local array if the Network address already active 
+		//
+		int pos = 0;
+		if (!CNetRender::IsMulticastActive(netAddr, &netArray, &pos))
+		{
+			//
+			// Create the Network Filtergraph 
+			//
+			hr = CNetRender::CreateNetworkGraph(netAddr);
+			if(FAILED(hr))
+			{
+				delete[] netAddr;
+				return hr;
+			}
+			//Add the new filtergraph settings to the local array
+			netArray.Add(netAddr);
+			pszFileName = netAddr->fileName;
+		}
+		else // If already running
+		{
+			pszFileName = netArray[pos].fileName;
+			delete[] netAddr;
+		}
+	}
+	else
+		delete[] netAddr;
+
+	for (int pos = 0; pos < netArray.Count(); pos++)
+	{
+		if (!lstrcmpiW(pszFileName, netArray[pos].fileName))
+			netArray[pos].playing = TRUE;
+		else
+			netArray[pos].playing = FALSE;
+	}
+
+	//Jump to a different Load method if already been set.
 	if (ThreadExists() || IsActive())
 		return ReLoad(pszFileName, pmt);
-			
-	HRESULT hr;
+
 
 	delete m_pStreamParser;
 	delete m_pDemux;
@@ -753,7 +827,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE
 
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
-	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
+	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
 	// Load Registry Settings data
 	GetRegStore("default");
@@ -850,7 +924,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
-	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux);
+	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
 	// Load Registry Settings data
 	GetRegStore("default");

@@ -97,7 +97,7 @@ public:
 	HRESULT SetDemuxClock(IReferenceClock *pClock);
 	HRESULT ReNewDemux();
 	HRESULT GetPinConnection(IBaseFilter *pFilter, IPin **ppIPin, IPin **ppOPin);
-	HRESULT RenderOutputPins(IBaseFilter *pFilter);
+	static HRESULT RenderOutputPins(IBaseFilter *pFilter);
 	HRESULT RenderOutputPin(IBaseFilter *pFilter);
 
 	BOOL get_RateControl();

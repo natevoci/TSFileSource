@@ -48,6 +48,8 @@ class CTSFileSourceFilter;
 #include "Demux.h"
 #include "StreamInfo.h"
 #include "StreamParser.h"
+#include "NetRender.h"
+#include "NetInfo.h"
 #include <comdef.h>
 
 /**********************************************
@@ -107,6 +109,7 @@ public:
 	HRESULT UpdatePidParser(void);
 	BOOL get_AutoMode();
 	BOOL get_PinMode();
+	NetInfoArray netArray;
 
 protected:
 
@@ -204,6 +207,7 @@ protected:
 
 protected:
 
+//	CNetRender *m_pNetworkGraph;
 	CTSFileSourcePin *m_pPin;          // A simple rendered input pin
 	CTSFileSourceClock *m_pClock;
 	CRegStore *m_pRegStore;
@@ -230,6 +234,8 @@ protected:
 	BOOL ThreadRunning(void);
     Command GetRequest(void) { return (Command) CAMThread::GetRequest(); }
     BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
+
+
 
 //*****************************************************************************************
 //ASync Additions

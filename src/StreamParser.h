@@ -35,13 +35,14 @@
 #include "PidParser.h"
 #include "PidInfo.h"
 #include "Demux.h"
+#include "NetInfo.h"
 
 
 class StreamParser
 {
 public:
 
-	StreamParser(PidParser *pPidParser, Demux * pDemux);
+	StreamParser(PidParser *pPidParser, Demux * pDemux, NetInfoArray *pNetArray);
 	virtual ~StreamParser();
 
 	HRESULT ParsePidArray();
@@ -64,7 +65,7 @@ protected:
 
 	PidParser *m_pPidParser;
 	Demux *	m_pDemux;
-
+	NetInfoArray *m_pNetArray;
 
 };
 

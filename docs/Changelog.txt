@@ -1,4 +1,9 @@
 bear:
+Added a open file browser feature to allow changing files via the IAMStreamSelect interface.
+Added selection capability of any active NetSource stream graphs via the IAMStreamSelect interface.
+Changed the Demux video pin format to allow for different aspect ratios.
+Implemented multicasting via a child filtergraph using the DSNet Receiver filter & the TSFileSink filter to create a timeshift file for playing.
+
 Made some improvments to the Load() function so that the filtergraph will re-render an infinite tee filter when changing between media types. 
 
 Removed the Threadexist test in the SetPositions() function to fix the problem where the position is set prior to the first run call. Re Remember the last media position in Zoomplayer fix.

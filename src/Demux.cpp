@@ -1942,10 +1942,10 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 	pintype->lSampleSize = 1;
 	pintype->formattype = FORMAT_MPEG2Video;
 	pintype->pUnk = NULL;
-	pintype->cbFormat = sizeof(Mpeg2ProgramVideo);
-	pintype->pbFormat = Mpeg2ProgramVideo;
-//	pintype->cbFormat = sizeof(g_Mpeg2ProgramVideo);
-//	pintype->pbFormat = g_Mpeg2ProgramVideo;
+//	pintype->cbFormat = sizeof(Mpeg2ProgramVideo);
+//	pintype->pbFormat = Mpeg2ProgramVideo;
+	pintype->cbFormat = sizeof(g_Mpeg2ProgramVideo);
+	pintype->pbFormat = g_Mpeg2ProgramVideo;
 
 	return S_OK;
 }

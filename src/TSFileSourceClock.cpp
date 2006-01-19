@@ -1,5 +1,5 @@
 /**
-*  TSFileSourceClock.h
+*  TSFileSourceClock.ccp
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that

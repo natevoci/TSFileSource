@@ -135,7 +135,7 @@ HRESULT MultiFileWriter::GetFileSize(__int64 *lpllsize)
 	if (m_hTSBufferFile == INVALID_HANDLE_VALUE)
 		*lpllsize = 0;
 	else
-		*lpllsize = (__int64)(((__int64)(m_filesAdded - m_filesRemoved - 1) * m_maxTSFileSize) + m_pCurrentTSFile->GetFilePointer());
+		*lpllsize = max(0, (__int64)(((__int64)(m_filesAdded - m_filesRemoved - 1) * m_maxTSFileSize) + m_pCurrentTSFile->GetFilePointer()));
 
 	return S_OK;
 }
