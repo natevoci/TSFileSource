@@ -70,7 +70,7 @@ HRESULT StreamParser::ParsePidArray()
 
 	mbstowcs(StreamArray[index].name, (const char*)&szBuffer, 256);
 	ZeroMemory(szBuffer, sizeof(szBuffer));
-	m_pDemux->GetVideoMedia(&StreamArray[index].media);
+//	m_pDemux->GetVideoMedia(&StreamArray[index].media);
 	index++;
 
 	int count = 0;
@@ -201,11 +201,16 @@ HRESULT StreamParser::ParsePidArray()
 	streams.Clear();
 	LoadStreamArray(count);
 	AddStreamArray();
+	wsprintfW(StreamArray[index].name, L"  ");
+	index++;
+	streams.Clear();
+	LoadStreamArray(count);
+	AddStreamArray();
 	wsprintfW(StreamArray[index].name, L"  Open File Browser");
 	index++;
 	count++;
+
 	int offset = count;
-	
 	int i = 0;
 	while (i < m_pNetArray->Count())
 	{
@@ -225,6 +230,7 @@ HRESULT StreamParser::ParsePidArray()
 		i++;
 		index++;
 	}
+
 	return S_OK;
 }
 	

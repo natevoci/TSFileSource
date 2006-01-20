@@ -470,7 +470,9 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 	if (lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return E_INVALIDARG;
 
-	if (lIndex && lIndex < m_pStreamParser->StreamArray.Count() - netArray.Count() - 1){
+	if (!lIndex)
+		ShowEPGInfo();
+	else if (lIndex && lIndex < m_pStreamParser->StreamArray.Count() - netArray.Count() - 2){
 
 		m_pDemux->m_StreamVid = m_pStreamParser->StreamArray[lIndex].Vid;
 		m_pDemux->m_StreamH264 = m_pStreamParser->StreamArray[lIndex].H264;
@@ -479,7 +481,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamMP2 = m_pStreamParser->StreamArray[lIndex].Aud;
 		m_pDemux->m_StreamAAC = m_pStreamParser->StreamArray[lIndex].AAC;
 		m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
-		SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group +1);
+		SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
 		m_pStreamParser->SetStreamActive(m_pStreamParser->StreamArray[lIndex].group);
 		m_pDemux->m_StreamVid = 0;
 		m_pDemux->m_StreamH264 = 0;
@@ -489,14 +491,14 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamAAC = 0;
 		SetRegProgram();
 	}
-	else if (!lIndex)
-		ShowEPGInfo();
+	else if (lIndex == m_pStreamParser->StreamArray.Count() - netArray.Count() - 2)
+	{}
 	else if (lIndex == m_pStreamParser->StreamArray.Count() - netArray.Count() - 1)
 		Load(L"", NULL);
 	else if (lIndex > m_pStreamParser->StreamArray.Count() - netArray.Count() - 1)
 	{
 		WCHAR wfilename[MAX_PATH];
-		lstrcpyW(wfilename, netArray[lIndex - m_pStreamParser->StreamArray.Count() + netArray.Count()].fileName);
+		lstrcpyW(wfilename, netArray[lIndex - (m_pStreamParser->StreamArray.Count() - netArray.Count())].fileName);
 		Load(wfilename, NULL);
 	}
 	return S_OK;
@@ -723,7 +725,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 							 ptFilename, MAX_PATH,
 							 NULL, 0,
 							 NULL,
-							 TEXT("Load File"),
+							 TEXT("Open Files (TS File Filter(AU))"),
 							 OFN_FILEMUSTEXIST|OFN_HIDEREADONLY, 0, 0,
 							 NULL, 0, NULL, NULL };
 
