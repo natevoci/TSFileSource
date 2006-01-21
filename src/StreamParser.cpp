@@ -201,34 +201,43 @@ HRESULT StreamParser::ParsePidArray()
 	streams.Clear();
 	LoadStreamArray(count);
 	AddStreamArray();
-	wsprintfW(StreamArray[index].name, L"  ");
+	wsprintfW(StreamArray[index].name, L"  File Menu:");
 	index++;
 	streams.Clear();
 	LoadStreamArray(count);
 	AddStreamArray();
-	wsprintfW(StreamArray[index].name, L"  Open File Browser");
+	wsprintfW(StreamArray[index].name, L"  Open Browse Window");
 	index++;
 	count++;
 
-	int offset = count;
-	int i = 0;
-	while (i < m_pNetArray->Count())
+	if (m_pNetArray->Count())
 	{
 		streams.Clear();
 		LoadStreamArray(count);
 		AddStreamArray();
-		if ((*m_pNetArray)[i].playing)
-			wsprintfW(StreamArray[index].name, L"  ->UDP@ %S : %S : %S",
-										(*m_pNetArray)[i].strIP,
-										(*m_pNetArray)[i].strPort,
-										(*m_pNetArray)[i].strNic);
-		else
-			wsprintfW(StreamArray[index].name, L"  UDP@ %S : %S : %S",
-										(*m_pNetArray)[i].strIP,
-										(*m_pNetArray)[i].strPort,
-										(*m_pNetArray)[i].strNic);
-		i++;
+		wsprintfW(StreamArray[index].name, L"  Active Multicast Streams:");
 		index++;
+
+		int offset = count;
+		int i = 0;
+		while (i < m_pNetArray->Count())
+		{
+			streams.Clear();
+			LoadStreamArray(count);
+			AddStreamArray();
+			if ((*m_pNetArray)[i].playing)
+				wsprintfW(StreamArray[index].name, L"  ->UDP@ %S : %S : %S",
+											(*m_pNetArray)[i].strIP,
+											(*m_pNetArray)[i].strPort,
+											(*m_pNetArray)[i].strNic);
+			else
+				wsprintfW(StreamArray[index].name, L"  UDP@ %S : %S : %S",
+											(*m_pNetArray)[i].strIP,
+										(*m_pNetArray)[i].strPort,
+										(*m_pNetArray)[i].strNic);
+			i++;
+			index++;
+		}
 	}
 
 	return S_OK;

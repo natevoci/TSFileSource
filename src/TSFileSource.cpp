@@ -470,9 +470,11 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 	if (lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return E_INVALIDARG;
 
+	int indexOffset = netArray.Count() + (int)(netArray.Count() != 0);
+
 	if (!lIndex)
 		ShowEPGInfo();
-	else if (lIndex && lIndex < m_pStreamParser->StreamArray.Count() - netArray.Count() - 2){
+	else if (lIndex && lIndex < m_pStreamParser->StreamArray.Count() - indexOffset - 2){
 
 		m_pDemux->m_StreamVid = m_pStreamParser->StreamArray[lIndex].Vid;
 		m_pDemux->m_StreamH264 = m_pStreamParser->StreamArray[lIndex].H264;
@@ -491,15 +493,26 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamAAC = 0;
 		SetRegProgram();
 	}
-	else if (lIndex == m_pStreamParser->StreamArray.Count() - netArray.Count() - 2)
+	else if (lIndex == m_pStreamParser->StreamArray.Count() - indexOffset - 2) //File Menu title
 	{}
-	else if (lIndex == m_pStreamParser->StreamArray.Count() - netArray.Count() - 1)
+	else if (lIndex == m_pStreamParser->StreamArray.Count() - indexOffset - 1) //Load file Browser
 		Load(L"", NULL);
-	else if (lIndex > m_pStreamParser->StreamArray.Count() - netArray.Count() - 1)
+	else if (lIndex == m_pStreamParser->StreamArray.Count() - indexOffset) //Multicasting title
+	{}
+	else if (lIndex > m_pStreamParser->StreamArray.Count() - indexOffset) //Select multicast streams
 	{
 		WCHAR wfilename[MAX_PATH];
 		lstrcpyW(wfilename, netArray[lIndex - (m_pStreamParser->StreamArray.Count() - netArray.Count())].fileName);
-		Load(wfilename, NULL);
+		if (SUCCEEDED(Load(wfilename, NULL)))
+		{
+			REFERENCE_TIME stop, start = (__int64)max(0,(__int64)(m_pPidParser->pids.dur - 20000000));
+			IMediaSeeking *pMediaSeeking;
+			if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+			{
+				pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_AbsolutePositioning);
+				pMediaSeeking->Release();
+			}
+		}
 	}
 	return S_OK;
 

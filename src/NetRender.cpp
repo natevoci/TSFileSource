@@ -295,7 +295,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	if(llDataFlow < 2000000 || (llDataFlow < (__int64)(llDataFlowSave + (__int64)1)))
     {
 		DeleteNetworkGraph(netAddr);
-        return ERROR_CANNOT_MAKE;
+        return VFW_E_INVALIDMEDIATYPE;//ERROR_CANNOT_MAKE;
     }
 
 	//
