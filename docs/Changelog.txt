@@ -1,6 +1,10 @@
-Version 2.1.1.8
-=================
 bear:
+Fixed the problem where the video pin was not re-rendered when changing to a audio only program stream.
+Added a flow rate value to the stream name in the IAMStreamSelect menu list for Network streams so you can see if they are running.
+Added a restart method for the Network filtergraphs if the net data flow stops for longer than 2 seconds and then graph will close if longer than 10 seconds.
+Added a ShowStreamMenu() function to the ITSFileSource interface, it will create a mouse controlled popup menu of the streams list, this has been extended to the Prop page using the mouse right click to enable stream selection.
+Fixed a threading issue with the property page where it was locking up if you were to operate buttons too quickly.
+
 Changed the look of the menu in the IAMStreamSelect Interface.
 Changed the error code returned if the network graph has not data flow so applications do not try to access the filter.
 Fixed an issue when the filter was used by mplayer2.exe, seems it was selecting the first stream of every group prior to playing, hence it would then select the stream that was the Browser option and opened the open file window. 

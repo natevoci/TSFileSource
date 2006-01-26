@@ -145,13 +145,20 @@ HRESULT CTSFileSinkProp::DoProcessingLoop(void)
 
     do
     {
+		int count = 0;
         while(!CheckRequest(&com))
         {
-           HRESULT hr = S_OK;// if an error occurs.
+			HRESULT hr = S_OK;// if an error occurs.
 
-			RefreshDialog();
+			if (count > 10)
+			{
+				RefreshDialog();
+				count = 0;
+			}
+			else
+				count++;
 
-			Sleep(500);
+			Sleep(50);
         }
 
         // For all commands sent to us there must be a Reply call!
@@ -321,6 +328,9 @@ BOOL CTSFileSinkProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 	BOOL    bRet = FALSE;
 	TCHAR sz[10] = "";
 
+	if (!m_bThreadRunning)
+		return FALSE;
+
 	switch(uMsg)
 	{
 		case WM_INITDIALOG:
@@ -337,13 +347,6 @@ BOOL CTSFileSinkProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 
 		case WM_COMMAND:
 		{
-//			BOOL wasThreadRunning = FALSE;
-//			if (ThreadRunning() && ThreadExists()) {
-
-//				CAMThread::CallWorker(CMD_STOP);
-//				wasThreadRunning = TRUE;
-//			}
-
 			BOOL checked = FALSE;
 			switch (LOWORD (wParam))
 			{
@@ -423,9 +426,6 @@ BOOL CTSFileSinkProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 					}
 					break;
 				}
-
-//				if (wasThreadRunning)
-//					CAMThread::CallWorker(CMD_RUN);
 			};
 			return TRUE;
 		}

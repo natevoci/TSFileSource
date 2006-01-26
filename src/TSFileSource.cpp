@@ -62,7 +62,6 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 {
 	ASSERT(phr);
 
-//	m_pNetworkGraph = new CNetRender();
 	m_pFileReader = new FileReader();
 	m_pFileDuration = new FileReader();//Get Live File Duration Thread
 	m_pPidParser = new PidParser(m_pFileReader);
@@ -135,7 +134,6 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	delete	m_pFileReader;
 	delete  m_pFileDuration;
 	netArray.Clear();
-//	delete  m_pNetworkGraph;
 
 }
 
@@ -214,8 +212,8 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
                 break;
 
             case CMD_STOP:
-				m_bThreadRunning = FALSE;
 				m_pFileDuration->CloseFile();
+				m_bThreadRunning = FALSE;
                 Reply(NOERROR);
                 break;
 
@@ -240,7 +238,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 {
     Command com;
 
-	m_pFileReader->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
+	m_pFileDuration->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
 	int count = 1;
@@ -256,16 +254,17 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 			//Reparse the file for service change	
 			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime)
 			{
+				CNetRender::UpdateNetFlow(&netArray);
 				count++;
 				if(m_State == State_Running
 					&& 1 == 1)
 				{
 					__int64 fileStart, filelength;
-					m_pFileReader->GetFileSize(&fileStart, &filelength);
+					m_pFileDuration->GetFileSize(&fileStart, &filelength);
 
 					//Get the FileReader Type
 					WORD bMultiMode;
-					m_pFileReader->get_ReaderMode(&bMultiMode);
+					m_pFileDuration->get_ReaderMode(&bMultiMode);
 					//Do MultiFile timeshifting mode
 					if((bMultiMode & ((__int64)(fileStart + (__int64)5000000) < m_llLastMultiFileStart))
 						|| (bMultiMode & (fileStart == 0) & ((__int64)(filelength + (__int64)5000000) < m_llLastMultiFileLength))
@@ -273,7 +272,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 						&& 1 == 1)
 					{
 						LPOLESTR pszFileName;
-						if (m_pFileReader->GetFileName(&pszFileName) == S_OK)
+						if (m_pFileDuration->GetFileName(&pszFileName) == S_OK)
 						{
 							LPOLESTR pFileName = new WCHAR[1+lstrlenW(pszFileName)];
 							if (pFileName != NULL)
@@ -302,7 +301,6 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				&& 1 == 1)
 			{
 				hr = m_pPin->UpdateDuration(m_pFileDuration);
-
 				if (m_pDemux->CheckDemuxPids() == S_FALSE)
 				{
 					m_pDemux->AOnConnect();
@@ -415,6 +413,9 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 
 	CAutoLock lock(&m_Lock);
 
+	m_pStreamParser->ParsePidArray();
+	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+
 	//Check if file has been parsed
 	if (!m_pStreamParser->StreamArray.Count())
 		return E_FAIL;
@@ -505,6 +506,8 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		lstrcpyW(wfilename, netArray[lIndex - (m_pStreamParser->StreamArray.Count() - netArray.Count())].fileName);
 		if (SUCCEEDED(Load(wfilename, NULL)))
 		{
+//			m_pFileReader->set_DelayMode(TRUE);
+//			m_pFileDuration->set_DelayMode(TRUE);
 			REFERENCE_TIME stop, start = (__int64)max(0,(__int64)(m_pPidParser->pids.dur - 20000000));
 			IMediaSeeking *pMediaSeeking;
 			if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
@@ -694,6 +697,7 @@ HRESULT CTSFileSourceFilter::OnConnect()
 	if (ThreadRunning() && ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
+		while (m_bThreadRunning){};
 		wasThreadRunning = TRUE;
 	}
 
@@ -784,6 +788,9 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 			//Add the new filtergraph settings to the local array
 			netArray.Add(netAddr);
 			pszFileName = netAddr->fileName;
+//			m_pFileReader->set_DelayMode(TRUE);
+//			m_pFileDuration->set_DelayMode(TRUE);
+
 		}
 		else // If already running
 		{
@@ -806,6 +813,9 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	if (ThreadExists() || IsActive())
 		return ReLoad(pszFileName, pmt);
 
+	//Get delay if we had been told to previously
+	USHORT delay;
+	m_pFileReader->get_DelayMode(&delay);
 
 	delete m_pStreamParser;
 	delete m_pDemux;
@@ -833,6 +843,13 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 
 	// Load Registry Settings data
 	GetRegStore("default");
+	
+	//Set delay if we had been told to previously
+	if (delay)
+	{
+		m_pFileReader->set_DelayMode(delay);
+		m_pFileDuration->set_DelayMode(delay);
+	}
 
 	hr = m_pFileReader->SetFileName(pszFileName);
 	if (FAILED(hr))
@@ -886,6 +903,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	if (ThreadRunning() && ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
+		while (m_bThreadRunning){};
 		wasThreadRunning = TRUE;
 	}
 
@@ -904,6 +922,11 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	}
 
 	BOOL pinModeSave = m_pPidParser->get_ProgPinMode();
+
+	//Set delay if we had been told to previously
+	USHORT delay;
+	m_pFileReader->get_DelayMode(&delay);
+
 	delete m_pStreamParser;
 	delete m_pDemux;
 	delete m_pPidParser;
@@ -930,6 +953,13 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 	// Load Registry Settings data
 	GetRegStore("default");
+
+	//Set delay if we had been told to previously
+	if (delay)
+	{
+		m_pFileReader->set_DelayMode(delay);
+		m_pFileDuration->set_DelayMode(delay);
+	}
 
 	hr = m_pFileReader->SetFileName(pszFileName);
 	if (FAILED(hr))
@@ -1534,6 +1564,7 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 	if (ThreadRunning() && ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
+		while (m_bThreadRunning){};
 		wasThreadRunning = TRUE;
 	}
 
@@ -1577,6 +1608,7 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	if (ThreadRunning() && ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
+		while (m_bThreadRunning){};
 		wasThreadRunning = TRUE;
 	}
 
@@ -1620,6 +1652,7 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	if (ThreadRunning() && ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
+		while (m_bThreadRunning){};
 		wasThreadRunning = TRUE;
 	}
 
@@ -1974,6 +2007,7 @@ STDMETHODIMP CTSFileSourceFilter::GetRegStore(LPTSTR nameReg)
 		else
 		{	
 			m_pFileReader->set_DelayMode(m_pSettingsStore->getDelayModeReg());
+			m_pFileDuration->set_DelayMode(m_pSettingsStore->getDelayModeReg());
 			m_pDemux->set_Auto(m_pSettingsStore->getAutoModeReg());
 			m_pDemux->set_NPControl(m_pSettingsStore->getNPControlReg());
 			m_pDemux->set_NPSlave(m_pSettingsStore->getNPSlaveReg());
@@ -2238,6 +2272,80 @@ STDMETHODIMP CTSFileSourceFilter::GetPCRPosition(REFERENCE_TIME *pos)
 	return NOERROR;
 
 }
+
+STDMETHODIMP CTSFileSourceFilter::ShowStreamMenu(HWND hwnd)
+{
+	HRESULT hr;
+
+	POINT mouse;
+	GetCursorPos(&mouse);
+
+	HMENU hMenu = CreatePopupMenu();
+	if (hMenu)
+	{
+		IAMStreamSelect *pIAMStreamSelect;
+		hr = this->QueryInterface(IID_IAMStreamSelect, (void**)&pIAMStreamSelect);
+		if (SUCCEEDED(hr))
+		{
+			ULONG count;
+			pIAMStreamSelect->Count(&count);
+
+			ULONG flags, group, lastgroup = -1;
+				
+			for(UINT i = 0; i < count; i++)
+			{
+				WCHAR* pStreamName = NULL;
+
+				if(S_OK == pIAMStreamSelect->Info(i, 0, &flags, 0, &group, &pStreamName, 0, 0))
+				{
+					if(lastgroup != group && i) 
+						::AppendMenu(hMenu, MF_SEPARATOR, NULL, NULL);
+
+					lastgroup = group;
+
+					if(pStreamName)
+					{
+						UINT uFlags = (flags?MF_CHECKED:MF_UNCHECKED) | MF_STRING | MF_ENABLED;
+						::AppendMenuW(hMenu, uFlags, (i + 0x100), LPCWSTR(pStreamName));
+						CoTaskMemFree(pStreamName);
+					}
+				}
+			}
+
+			SetForegroundWindow(hwnd);
+			UINT index = ::TrackPopupMenu(hMenu, TPM_LEFTBUTTON|TPM_RETURNCMD, mouse.x, mouse.y, 0, hwnd, 0);
+			PostMessage(hwnd, NULL, 0, 0);
+
+			if(index & 0x100) 
+				pIAMStreamSelect->Enable((index & 0xff), AMSTREAMSELECTENABLE_ENABLE);
+
+			pIAMStreamSelect->Release();
+		}
+		DestroyMenu(hMenu);
+	}
+	return hr;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 //*****************************************************************************************

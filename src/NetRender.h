@@ -35,7 +35,9 @@ public:
 	virtual ~CNetRender();
 
 	static HRESULT CreateNetworkGraph(NetInfo *netAddr);
+	static HRESULT RestartNetworkGraph(NetInfo *netAddr);
 	static void DeleteNetworkGraph(NetInfo *netAddr);
+	static BOOL UpdateNetFlow(NetInfoArray *netArray);
 	static BOOL IsMulticastActive(NetInfo *netAddr, NetInfoArray *netArray, int *pos);
 	static BOOL IsMulticastAddress(LPOLESTR lpszFileName, NetInfo *netAddr);
 	static BOOL IsMulticastingIP(DWORD dwIP);

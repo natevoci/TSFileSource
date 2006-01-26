@@ -204,6 +204,7 @@ protected:
 	STDMETHODIMP SetCreateTxtPinOnDemux(WORD bCreatePin);
 	STDMETHODIMP ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt);
 	STDMETHODIMP GetPCRPosition(REFERENCE_TIME *pos);
+	STDMETHODIMP ShowStreamMenu(HWND hwnd);
 
 protected:
 

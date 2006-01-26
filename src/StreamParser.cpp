@@ -226,15 +226,17 @@ HRESULT StreamParser::ParsePidArray()
 			LoadStreamArray(count);
 			AddStreamArray();
 			if ((*m_pNetArray)[i].playing)
-				wsprintfW(StreamArray[index].name, L"  ->UDP@ %S : %S : %S",
+				wsprintfW(StreamArray[index].name, L"  ->UDP@ %S : %S : %S [%lukb/s]",
 											(*m_pNetArray)[i].strIP,
 											(*m_pNetArray)[i].strPort,
-											(*m_pNetArray)[i].strNic);
+											(*m_pNetArray)[i].strNic,
+											(__int64)((*m_pNetArray)[i].flowRate * 80)/10000);
 			else
-				wsprintfW(StreamArray[index].name, L"  UDP@ %S : %S : %S",
+				wsprintfW(StreamArray[index].name, L"  UDP@ %S : %S : %S [%lukb/s]",
 											(*m_pNetArray)[i].strIP,
-										(*m_pNetArray)[i].strPort,
-										(*m_pNetArray)[i].strNic);
+											(*m_pNetArray)[i].strPort,
+											(*m_pNetArray)[i].strNic,
+											(__int64)((*m_pNetArray)[i].flowRate * 80)/10000);
 			i++;
 			index++;
 		}

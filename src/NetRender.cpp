@@ -216,6 +216,15 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 //MessageBoxW(NULL, netAddr->fileName, L"time", NULL);
 
 	//
+	//Register the FilterGraph in the Object Running Table
+	//
+	if (netAddr->rotEnable)
+	{
+		if (!netAddr->dwGraphRegister && FAILED(AddGraphToRot (netAddr->pNetworkGraph, &netAddr->dwGraphRegister)))
+			netAddr->dwGraphRegister = 0;
+	}
+	
+	//
 	// Get the IMediaControl Interface 
 	//
 	CComPtr <IMediaControl> pMediaControl;
@@ -225,15 +234,6 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 		DeleteNetworkGraph(netAddr);
         return hr;
     }
-
-	//
-	//Register the FilterGraph in the Object Running Table
-	//
-	if (netAddr->rotEnable)
-	{
-		if (!netAddr->dwGraphRegister && FAILED(AddGraphToRot (netAddr->pNetworkGraph, &netAddr->dwGraphRegister)))
-			netAddr->dwGraphRegister = 0;
-	}
 
 	//
 	//Run the FilterGraph
@@ -262,7 +262,6 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
     }
 
 	__int64 llDataFlow = 0;
-	__int64 llDataFlowSave = 0;
 	int count = 0;
 
 	//
@@ -278,10 +277,10 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 			return hr;
 		}
 
-		if (llDataFlow > (__int64)(llDataFlowSave + (__int64)1000))
+		if (llDataFlow > (__int64)(netAddr->buffSize + (__int64)1000))
 		{
-			llDataFlowSave = llDataFlow; 
-			count--;
+			netAddr->buffSize = llDataFlow; 
+			count = max(0, count-1);
 		}
 		count++;
 	}
@@ -292,7 +291,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	Sleep(100);
 	pITSFileSink->GetFileBufferSize(&llDataFlow);
 
-	if(llDataFlow < 2000000 || (llDataFlow < (__int64)(llDataFlowSave + (__int64)1)))
+	if(llDataFlow < 2000000 || (llDataFlow < (__int64)(netAddr->buffSize + (__int64)1)))
     {
 		DeleteNetworkGraph(netAddr);
         return VFW_E_INVALIDMEDIATYPE;//ERROR_CANNOT_MAKE;
@@ -310,8 +309,53 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	}
 	wsprintfW(netAddr->fileName, L"%s", ptFileName);
 //MessageBoxW(NULL, netAddr->fileName, ptFileName, NULL);
+	SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
+//	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
     return hr;
+}
+
+HRESULT CNetRender::RestartNetworkGraph(NetInfo *netAddr)
+{
+	HRESULT hr = S_OK;
+	//
+	// Get the IMediaControl Interface 
+	//
+	CComPtr <IMediaControl> pMediaControl;
+	hr = netAddr->pNetworkGraph->QueryInterface(&pMediaControl);
+    if (FAILED (hr))
+    {
+		DeleteNetworkGraph(netAddr);
+        return hr;
+    }
+
+	//
+	//Run the FilterGraph
+	//
+	hr = pMediaControl->Stop(); 
+    if (FAILED (hr))
+    {
+		DeleteNetworkGraph(netAddr);
+        return hr;
+    }
+
+	//
+	//Wait for data to build before testing data flow
+	//
+	Sleep(100);
+
+	//
+	//Run the FilterGraph
+	//
+	hr = pMediaControl->Run(); 
+    if (FAILED (hr))
+    {
+		DeleteNetworkGraph(netAddr);
+        return hr;
+    }
+
+	return hr;
+
 }
 
 void CNetRender::DeleteNetworkGraph(NetInfo *netAddr)
@@ -350,6 +394,68 @@ void CNetRender::DeleteNetworkGraph(NetInfo *netAddr)
 	netAddr->pNetworkGraph = NULL;
 	netAddr->pNetSource = NULL;
 	netAddr->pFileSink = NULL;
+}
+
+
+BOOL CNetRender::UpdateNetFlow(NetInfoArray *netArray)
+{
+	//
+	// return if the array is empty, no running graphs
+	//
+	if (!(*netArray).Count())
+		return FALSE;
+
+	HRESULT hr;
+	//
+	// loop through the array
+	for( int i = 0; i < (int)(*netArray).Count(); i++)
+	{
+		//
+		// Get the Sink Filter Interface 
+		//
+		ITSFileSink *pITSFileSink;
+		hr = (*netArray)[i].pFileSink->QueryInterface(IID_ITSFileSink, (void**)&pITSFileSink);
+		if(SUCCEEDED(hr))
+		{
+			__int64 buffSizeSave = (*netArray)[i].buffSize; 
+			hr = pITSFileSink->GetFileBufferSize(&(*netArray)[i].buffSize);
+			if (SUCCEEDED(hr))
+			{
+				(*netArray)[i].flowRate = max(0, (*netArray)[i].buffSize - buffSizeSave);
+				//Save the last time value
+				if ((*netArray)[i].flowRate)
+				{
+					(*netArray)[i].lastTime = timeGetTime();
+					(*netArray)[i].retry = 0;
+				}
+			}
+
+			pITSFileSink->Release();
+		}
+		//
+		//Check if data is flowing and restart graph if not
+		if ((*netArray)[i].lastTime && !(*netArray)[i].playing)
+		{
+			if((*netArray)[i].retry > 5)
+			{
+				netArray->RemoveAt(i);
+				return hr;
+			}
+
+			if(((*netArray)[i].lastTime + 2000) < timeGetTime())
+			{
+				if (FAILED(RestartNetworkGraph(&(*netArray)[i])))
+				{
+					netArray->RemoveAt(i);
+					return hr;
+				}
+				(*netArray)[i].lastTime = timeGetTime();
+				(*netArray)[i].retry = (*netArray)[i].retry + 1;
+			}
+
+		}
+	}
+	return hr;
 }
 
 BOOL CNetRender::IsMulticastActive(NetInfo *netAddr, NetInfoArray *netArray, int *pos)

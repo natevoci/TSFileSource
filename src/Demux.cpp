@@ -325,13 +325,13 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 	if(SUCCEEDED(pDemux->QueryInterface (&muxInterface)))
 	{
 		// Update Video Pin
-		if (FAILED(CheckVideoPin(pDemux))){
+		if (CheckVideoPin(pDemux) != S_OK){
 			// change pin type if we do have a Video pid & can don't already have an video pin
 			LPWSTR PinName = L"Video";
 			BOOL connect = FALSE;
 			ChangeDemuxPin(pDemux, &PinName, &connect);
 			if (FAILED(CheckVideoPin(pDemux))){
-				// if we can't change the pin type to AC3 make a new pin
+				// if we can't change the pin type to the new video make a new pin
 				muxInterface->DeleteOutputPin(PinName);
 				hr = NewVideoPin(muxInterface, PinName);
 			}
@@ -866,47 +866,56 @@ HRESULT Demux::CheckVideoPin(IBaseFilter* pDemux)
 	AM_MEDIA_TYPE pintype;
 	IPin* pIPin = NULL;
 
-	USHORT pPid;
-	pPid = m_pPidParser->pids.vid;
-	if (pPid)
-	{
+//	USHORT pPid;
+//	pPid = m_pPidParser->pids.vid;
+//	if (pPid)
+//	{
 		GetVideoMedia(&pintype);
 		if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
-			if SUCCEEDED(LoadVideoPin(pIPin, pPid)){
+			USHORT pPid = m_pPidParser->pids.vid;
+			if (pPid && SUCCEEDED(LoadVideoPin(pIPin, pPid))){
 				pIPin->Release();
 				return S_OK;
 			}
+			pIPin->Release();
+			return S_FALSE;
 		}
-	}
+//	}
 
-	pPid = m_pPidParser->pids.h264;
-	if (pPid)
-	{
+//	pPid = m_pPidParser->pids.h264;
+//	if (pPid)
+//	{
 		GetH264Media(&pintype);
 		if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
-			if SUCCEEDED(LoadVideoPin(pIPin, pPid)){
+			USHORT pPid = m_pPidParser->pids.h264;
+			if (pPid && SUCCEEDED(LoadVideoPin(pIPin, pPid))){
 				pIPin->Release();
 				return S_OK;
 			}
+			pIPin->Release();
+			return S_FALSE;
 		}
-	}
+//	}
 
-	pPid = m_pPidParser->pids.mpeg4;
-	if (pPid)
-	{
+//	pPid = m_pPidParser->pids.mpeg4;
+//	if (pPid)
+//	{
 		GetMpeg4Media(&pintype);
 		if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
 
-			if SUCCEEDED(LoadVideoPin(pIPin, pPid)){
+			USHORT pPid = m_pPidParser->pids.mpeg4;
+			if (pPid && SUCCEEDED(LoadVideoPin(pIPin, pPid))){
 				pIPin->Release();
 				return S_OK;
 			}
+			pIPin->Release();
+			return S_FALSE;
 		}
-	}
+//	}
 
-	return hr;
+	return E_FAIL;
 }
 
 HRESULT Demux::CheckAudioPin(IBaseFilter* pDemux)
@@ -1696,6 +1705,8 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 					pPid = m_pPidParser->pids.mpeg4;
 					if (pPid)
 						GetMpeg4Media(&pintype);
+					else
+						GetVideoMedia(&pintype);
 				}
 			}
 
@@ -1708,7 +1719,6 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 				if (SUCCEEDED(pIPin->ConnectedTo(&pInpPin))){
 
 					IPin* pInpPin2 = NULL;
-//					*pConnect = TRUE;
 					PIN_INFO pinInfo;
 					pInpPin->QueryPinInfo(&pinInfo);
 
@@ -1741,9 +1751,6 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 						}
 					}
 
-//					if (pinInfo.pFilter) pinInfo.pFilter->Release();
-//					if (pInpPin) pInpPin->Release();
-//					if (pInpPin2) pInpPin2->Release();
 					if (pIPin) pIPin->Release();
 					muxInterface->Release();
 					return S_FALSE;
@@ -1757,15 +1764,6 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 				if (pIPin) pIPin->Release();
 				muxInterface->Release();
 				return S_OK;
-
-//					if (SUCCEEDED(pIPin->Disconnect())){
-//						*pConnect = TRUE;
-//						RemoveFilterChain(pinInfo.pFilter, NULL);
-//					}
-
-//				muxInterface->DeleteOutputPin(*pPinName);
-//				pIPin->Release();
-//				hr = S_OK;
 			}
 		}
 		else if (strcmp(telexcheck, pinname) == 0){

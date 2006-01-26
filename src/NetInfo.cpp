@@ -55,6 +55,11 @@ void NetInfo::Clear()
 	time = 0;
 	tmTime = NULL;
 	playing = 0;
+	buffSize = 0;
+	flowRate = 0;
+	lastTime = 0;
+	retry = 0;
+	
 }
 
 void NetInfo::CopyFrom(NetInfo *netInfo)
@@ -76,6 +81,10 @@ void NetInfo::CopyFrom(NetInfo *netInfo)
 	time = netInfo->time;
 	tmTime = netInfo->tmTime;
 	playing = netInfo->playing;
+	buffSize = netInfo->buffSize;
+	flowRate = netInfo->flowRate;
+	lastTime = netInfo->lastTime;
+	retry = netInfo->retry;
 }
 
 void NetInfo::CopyTo(NetInfo *netInfo)
@@ -97,6 +106,10 @@ void NetInfo::CopyTo(NetInfo *netInfo)
 	netInfo->time = time;
 	netInfo->tmTime = tmTime;
 	netInfo->playing = playing;
+	netInfo->buffSize = buffSize;
+	netInfo->flowRate = flowRate;
+	netInfo->lastTime = lastTime;
+	netInfo->retry = retry;
 }
 
 NetInfoArray::NetInfoArray()

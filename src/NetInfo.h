@@ -63,7 +63,10 @@ public:
 	BOOL rotEnable;
     DWORD dwGraphRegister;
 	BOOL playing;
-
+	int retry;
+	__int64 buffSize;
+	__int64 flowRate;
+	REFERENCE_TIME lastTime;
 	time_t time;
 	struct tm *tmTime;
 

@@ -31,6 +31,8 @@
 #include <streams.h>
 #include "TSFileSourceProp.h"
 #include "resource.h"
+#include <string>
+
 
 CUnknown * WINAPI CTSFileSourceProp::CreateInstance(LPUNKNOWN pUnk, HRESULT *pHr)
 {
@@ -146,13 +148,20 @@ HRESULT CTSFileSourceProp::DoProcessingLoop(void)
 
     do
     {
+		int count = 0;
         while(!CheckRequest(&com))
         {
-           HRESULT hr = S_OK;// if an error occurs.
+			HRESULT hr = S_OK;// if an error occurs.
 
-			RefreshDialog();
+			if (count > 10)
+			{
+				RefreshDialog();
+				count = 0;
+			}
+			else
+				count++;
 
-			Sleep(500);
+			Sleep(50);
         }
 
         // For all commands sent to us there must be a Reply call!
@@ -458,6 +467,9 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 {
 	BOOL    bRet = FALSE;
 
+	if (!m_bThreadRunning)
+		return FALSE;
+
 	switch(uMsg)
 	{
 		case WM_INITDIALOG:
@@ -469,6 +481,19 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 		case WM_DESTROY:
 		{
 			DestroyWindow(m_hwnd);
+			return TRUE;
+		}
+
+		case WM_RBUTTONUP:
+		{
+			if (m_bThreadRunning)
+			{
+				CAMThread::CallWorker(CMD_STOP);
+				while (m_bThreadRunning){};
+				m_pProgram->ShowStreamMenu(hwnd);
+				OnRefreshProgram () ;
+				CAMThread::CallWorker(CMD_PAUSE);
+			}
 			return TRUE;
 		}
 
@@ -637,6 +662,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					if (m_bThreadRunning)
 					{
 						CAMThread::CallWorker(CMD_STOP);
+						while (m_bThreadRunning){};
 						m_pProgram->Load(L"", NULL);
 						CAMThread::CallWorker(CMD_PAUSE);
 					}
@@ -756,7 +782,6 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			};
 			return TRUE;
 		}
-
 		default:
 			return FALSE;
 	}
