@@ -1012,15 +1012,6 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 
-	IMediaSeeking *pMediaSeeking;
-	if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
-	{
-		REFERENCE_TIME stop, start = 1000000;
-		stop = m_pPidParser->pids.dur;
-		hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_AbsolutePositioning);
-		pMediaSeeking->Release();
-	}
-
 	// Reconnect Demux if pin mode has changed and Source is connected
 	if (m_pPidParser->get_ProgPinMode() != pinModeSave && (IPin*)m_pPin->IsConnected())
 	{
@@ -1045,6 +1036,15 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	{
 		CAutoLock lock(&m_Lock);
 		m_pDemux->DoPause();
+	}
+
+	IMediaSeeking *pMediaSeeking;
+	if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+	{
+		REFERENCE_TIME stop, start = 1000000;
+		stop = m_pPidParser->pids.dur;
+		hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_AbsolutePositioning);
+		pMediaSeeking->Release();
 	}
 
 	{
@@ -1568,17 +1568,25 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 		wasThreadRunning = TRUE;
 	}
 
-	m_pPin->m_DemuxLock = TRUE;
+//	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
+
 //	Sleep(200);
 	ResetStreamTime();
-	m_pPin->setPositions(&start,AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
-	m_pPin->m_DemuxLock = FALSE;
+	IMediaSeeking *pMediaSeeking;
+	if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+	{
+		pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+		pMediaSeeking->Release();
+	}
+
+//	m_pPin->setPositions(&start,AM_SEEKING_AbsolutePositioning, NULL, NULL);
+//	m_pPin->m_DemuxLock = FALSE;
 
 	if (wasThreadRunning)
 		CAMThread::CallWorker(CMD_RUN);
@@ -1612,7 +1620,7 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 		wasThreadRunning = TRUE;
 	}
 
-	m_pPin->m_DemuxLock = TRUE;
+//	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
@@ -1620,9 +1628,17 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	OnConnect();
 //	Sleep(200);
 	ResetStreamTime();
-	m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
-	m_pPin->m_DemuxLock = FALSE;
+	IMediaSeeking *pMediaSeeking;
+	if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+	{
+		pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+		pMediaSeeking->Release();
+	}
+
+//	m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
+
+//	m_pPin->m_DemuxLock = FALSE;
 
 	if (wasThreadRunning)
 		CAMThread::CallWorker(CMD_RUN);
@@ -1656,17 +1672,26 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 		wasThreadRunning = TRUE;
 	}
 
-	m_pPin->m_DemuxLock = TRUE;
+//	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
 //	Sleep(200);
-	ResetStreamTime();
-	m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
 
-	m_pPin->m_DemuxLock = FALSE;
+	ResetStreamTime();
+
+	IMediaSeeking *pMediaSeeking;
+	if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+	{
+		pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+		pMediaSeeking->Release();
+	}
+
+//	m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning, NULL, NULL);
+
+//	m_pPin->m_DemuxLock = FALSE;
 
 	if (wasThreadRunning)
 		CAMThread::CallWorker(CMD_RUN);

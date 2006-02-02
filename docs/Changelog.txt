@@ -1,4 +1,6 @@
 bear:
+Fixed a problem with the seeking of the filtergraph after a change of streams or files.
+ 
 Fixed the problem where the video pin was not re-rendered when changing to a audio only program stream.
 Added a flow rate value to the stream name in the IAMStreamSelect menu list for Network streams so you can see if they are running.
 Added a restart method for the Network filtergraphs if the net data flow stops for longer than 2 seconds and then graph will close if longer than 10 seconds.

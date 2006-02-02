@@ -848,7 +848,7 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 		CComPtr<IReferenceClock> pClock;
 		Demux::GetReferenceClock(m_pTSFileSourceFilter, &pClock);
 		SetDemuxClock(pClock);
-		m_pTSFileSourceFilter->NotifyEvent(EC_CLOCK_UNSET, NULL, NULL);
+//		m_pTSFileSourceFilter->NotifyEvent(EC_CLOCK_UNSET, NULL, NULL);
 	}
 
 	return CBaseOutputPin::Run(tStart);
