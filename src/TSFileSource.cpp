@@ -277,7 +277,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							LPOLESTR pFileName = new WCHAR[1+lstrlenW(pszFileName)];
 							if (pFileName != NULL)
 							{
-								lstrcpyW(pFileName,pszFileName);
+								lstrcpyW(pFileName, pszFileName);
 								Load(pFileName, NULL);
 								delete pFileName;
 							}
@@ -682,8 +682,11 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 		// shifting right by 14 rounds the seek and duration time down to the
 		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
-		__int64 nFileIndex;
-		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pPidParser->pids.dur>>14);
+		__int64 nFileIndex = 0;
+
+		if (m_pPidParser->pids.dur>>14)
+			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pPidParser->pids.dur>>14);
+
 		nFileIndex = min(filelength, nFileIndex);
 		nFileIndex = max(300000, nFileIndex);
 		m_pFileReader->setFilePointer(nFileIndex, FILE_BEGIN);
@@ -742,9 +745,17 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 							 ptFilename, MAX_PATH,
 							 NULL, 0,
 							 NULL,
-							 TEXT("Open Files (TS File Filter(AU))"),
+							 TEXT("Open Files (TS File Source Filter)"),
 							 OFN_FILEMUSTEXIST|OFN_HIDEREADONLY, 0, 0,
 							 NULL, 0, NULL, NULL };
+
+//		HWND hWnd = GetForegroundWindow();
+//		ATLASSERT(::IsWindow(hWnd));
+//		SetForegroundWindow(GetParent(hWnd));
+
+//		SetActiveWindow(GetParent(hWnd));
+//		BringWindowToTop(GetParent(hWnd));
+		
 
 		// Display the SaveFileName dialog.
 		if( GetOpenFileName( &ofn ) != FALSE )
@@ -2096,7 +2107,7 @@ STDMETHODIMP CTSFileSourceFilter::ShowFilterProperties()
 				LPOLESTR fileName;
 				m_pFileReader->GetFileName(&fileName);
 			
-				if (wcscmp(fileName, filterInfo2.achName) == 0)
+				if (!wcsicmp(fileName, filterInfo2.achName))
 				{
 					IUnknown *piFilterUnk;
 					piFilter2->QueryInterface(IID_IUnknown, (void **)&piFilterUnk);
@@ -2145,7 +2156,7 @@ HRESULT CTSFileSourceFilter::AddGraphToRot(
 
     wsprintfW(wsz, L"FilterGraph %08x pid %08x\0", (DWORD_PTR) pUnkGraph, 
               GetCurrentProcessId());
-	
+/*	
 	//Search the ROT for the same reference
 	IUnknown *pUnk = NULL;
 	if (SUCCEEDED(GetObjectFromROT(wsz, &pUnk)))
@@ -2157,7 +2168,7 @@ HRESULT CTSFileSourceFilter::AddGraphToRot(
 			return S_OK;
 		}
 	}
-
+*/
     hr = CreateItemMoniker(L"!", wsz, &pMoniker);
     if (SUCCEEDED(hr))
 	{
@@ -2330,7 +2341,8 @@ STDMETHODIMP CTSFileSourceFilter::ShowStreamMenu(HWND hwnd)
 
 					if(pStreamName)
 					{
-						UINT uFlags = (flags?MF_CHECKED:MF_UNCHECKED) | MF_STRING | MF_ENABLED;
+						UINT uFlags = MF_STRING | MF_ENABLED;
+//						UINT uFlags = (flags?MF_CHECKED:MF_UNCHECKED) | MF_STRING | MF_ENABLED;
 						::AppendMenuW(hMenu, uFlags, (i + 0x100), LPCWSTR(pStreamName));
 						CoTaskMemFree(pStreamName);
 					}

@@ -1,12 +1,18 @@
+Version 2.1.1.9
+=================
+bear:
+Fixed a bug with the TSFileSource's ITSFileSource property page Method that was stopping the page from displaying when called.
+Fixed a divide by zero bug that was causing the filter to crash when you tried to run the filter with a zero duration file then tried to stop it.
+
+Version 2.1.1.8
+=================
 bear:
 Fixed a problem with the seeking of the filtergraph after a change of streams or files.
- 
 Fixed the problem where the video pin was not re-rendered when changing to a audio only program stream.
 Added a flow rate value to the stream name in the IAMStreamSelect menu list for Network streams so you can see if they are running.
 Added a restart method for the Network filtergraphs if the net data flow stops for longer than 2 seconds and then graph will close if longer than 10 seconds.
 Added a ShowStreamMenu() function to the ITSFileSource interface, it will create a mouse controlled popup menu of the streams list, this has been extended to the Prop page using the mouse right click to enable stream selection.
 Fixed a threading issue with the property page where it was locking up if you were to operate buttons too quickly.
-
 Changed the look of the menu in the IAMStreamSelect Interface.
 Changed the error code returned if the network graph has not data flow so applications do not try to access the filter.
 Fixed an issue when the filter was used by mplayer2.exe, seems it was selecting the first stream of every group prior to playing, hence it would then select the stream that was the Browser option and opened the open file window. 
@@ -15,42 +21,31 @@ Added a open file browser feature to allow changing files via the IAMStreamSelec
 Added selection capability of any active NetSource stream graphs via the IAMStreamSelect interface.
 Changed the Demux video pin format to allow for different aspect ratios.
 Implemented multicasting via a child filtergraph using the DSNet Receiver filter & the TSFileSink filter to create a timeshift file for playing.
-
 Made some improvments to the Load() function so that the filtergraph will re-render an infinite tee filter when changing between media types. 
-
 Removed the Threadexist test in the SetPositions() function to fix the problem where the position is set prior to the first run call. Re Remember the last media position in Zoomplayer fix.
-
 Made some further improvments to the Load() file change feature to make it more robust and to allow for Infinite tee filter in the chain.
 Fixed a number of bugs in the duration parser to allow for buggy streams such as those that have PRBS content. 
-
 Made some further improvments to the Load() file change feature.
 Some other minor improvements.
-
 Fixed a problem with double starting after a file change.
 Added a windows load feature to the Load Function, if you call it with a null filename it will now open a Browse window.
 Improved the method of changing files, can now change files when paused and stopped. 
 Fixed a problem with the property page updating while the pidparser was restarting.
-
 Added a File Load feature to the ITSFileSource Interface as well as a button to the TSFileSource Property page. You can now change the file being played on the fly.
 Added a auto reload feature for Timeshifting files where the TSFileSource fiiter will restart if the timeshift file changes size shuch as in a restart of the fileWriter filter.
 Isolated the pidArray from the TSFileSourcePin class functions so it would reduce accessing conflicts.
 added in some delete code in the MultiFileWriter class to delete the file before it is reused. This eliminates any delay issues due to Read/Write conflicts. 
-
 Fixed the auto pid parsing problem with the MultiFileWriter.
 Removed the extra RefreshTSBufferFile() calls from the MulitfileWriter as they seem to be causing problems.
 Added a seperate getFilePointer() & setFilePointer() calls to the fileWriters to reduce the need for special code for the different filewriters.
-
 Replaced the class Destructor calls in all the code with delete.
 Added CAMThreads to both prop pages for regular updating.
-
 Fixed the GetAvailable function to return correct times.
 Replaced the class Destructors in the load() function with delete.
 Disabled the auto pid parse code as its still buggy for Timeshifting.
 Fixed the line of code to update the duration, re converting to ref time rather than pcr time.
- 
 Added a property page to the TSFileSink Filter.
 Added settings to the registry for the TSFileSink filter.
-
 Added locking code to the pidparser to prevent the pid array from being accessed while its being updated.
 changed the setpointer calls from FILE_BEGIN to FILE_END.
 Enabled the auto pid reparsing code to check pids every 5sec.
@@ -71,17 +66,14 @@ Fixed some build warnings
 bear:
 Made improvments the Update duration code to correctly update the filtergraph time for MultiFileReader Mode.
 Made changes to the SetAccuratePos function to correctly seek relative to the file end position, seems to improve the MultiFileReader seeking now.
-
 Changed the default clock reference option to select the TSFileSource Internal clock.
 Changed the AC3 Preference Option Default setting to disabled so that UK users don't loose audio if a private stream is detected as AC3 and is chosen.
 Fixed a bug with the Program Pin Mode where it was not updating the duration.
-
 Added code to improve the Cyclic Timeshift mode, it can now handle pauses to the writer or the Source and the current time remains static or increases accordingly.
 Added code for the IMediaSeeking::GetAvailable() function.
 Added extra Update duration code for use with the MultiFileReader.
 Added a FileReader Mode function to indicate if we are using the MultiFileReader.
 Added some changes to the Getfilesize function of the MultifileReader.
-
 Fixed a problem with the update duration thread locking the file when stopped. 
 Fixed the high cpu usage problem that occurs at 0 file start.
 Fixed the problem where the filter would not update the demux from a 0 file start.

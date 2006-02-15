@@ -457,9 +457,13 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		if (m_IntLastStreamTime > 20000000) {
 
 			intTimeDelta = (__int64)(REFERENCE_TIME(cTime) - m_IntLastStreamTime);
-			__int64 bitrate = ((__int64)lDataLength * (__int64)80000000) / intTimeDelta;
-			AddBitRateForAverage(bitrate);
-			m_pPids->bitrate = m_DataRate;
+
+			if (intTimeDelta > 0)
+			{
+				__int64 bitrate = ((__int64)lDataLength * (__int64)80000000) / intTimeDelta;
+				AddBitRateForAverage(bitrate);
+			}
+				m_pPids->bitrate = m_DataRate;
 		}
 
 		{
@@ -555,9 +559,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	//Calculate PCR
 	__int64 pcrStart;
 	if (m_lByteDelta > 0)
-	{
 		pcrStart = m_llPrevPCR - (__int64)((__int64)(m_llPCRDelta * (__int64)m_lPrevPCRByteOffset) / (__int64)m_lByteDelta);
-	}
 	else
 	{
 		Debug(TEXT("Invalid byte difference. Using previous PCR\n"));
@@ -1172,7 +1174,10 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		// Revert to old method
 		// shifting right by 14 rounds the seek and duration time down to the
 		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
-//		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+//		nFileIndex = 0;
+
+//		if (m_pPidParser->pids.dur>>14)
+//			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
 //		nFileIndex = max(300000, nFileIndex);
 //		m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 //		return S_OK;
@@ -1195,7 +1200,11 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		// Revert to old method
 		// shifting right by 14 rounds the seek and duration time down to the
 		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
-		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+		nFileIndex = 0;
+
+		if (m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14)
+			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+
 		nFileIndex = max(300000, nFileIndex);
 		m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 		return S_OK;
@@ -1239,7 +1248,11 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 			// Revert to old method
 			// shifting right by 14 rounds the seek and duration time down to the
 			// nearest multiple 16.384 ms. More than accurate enough for our seeks.
-			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+			nFileIndex = 0;
+
+			if (m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14)
+				nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+
 			nFileIndex = max(300000, nFileIndex);
 			m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 
@@ -1343,7 +1356,11 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		// Revert to old method
 		// shifting right by 14 rounds the seek and duration time down to the
 		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
-		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+		nFileIndex = 0;
+
+		if (m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14)
+			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
+
 PrintTime(TEXT("SEEK ERROR AT END"), (__int64)pcrPos, 90);
 	}
 		nFileIndex = max(300000, nFileIndex);
@@ -1379,8 +1396,13 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 		__int64 fileStart;
 		__int64	fileSize = 0;
 		pFileReader->GetFileSize(&fileStart, &fileSize);
-		__int64 calcDuration = (__int64)(fileSize / (__int64)((__int64)m_DataRateSave / (__int64)8000));
-		calcDuration = (__int64)(calcDuration * (__int64)10000);
+
+		__int64 calcDuration = 0;
+		if (m_DataRateSave > 0)
+		{
+			calcDuration = (__int64)(fileSize / (__int64)((__int64)m_DataRateSave / (__int64)8000));
+			calcDuration = (__int64)(calcDuration * (__int64)10000);
+		}
 
 		if ((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur)
 		{
