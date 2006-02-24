@@ -391,6 +391,8 @@ STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams) //IAMStreamSelect
 	if(!pcStreams)
 		return E_INVALIDARG;
 
+	*pcStreams = 0;
+
 	CAutoLock lock(&m_Lock);
 	if (!m_pStreamParser->StreamArray.Count())
 		return VFW_E_NOT_CONNECTED;

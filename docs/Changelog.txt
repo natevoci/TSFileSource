@@ -1,3 +1,9 @@
+Version 2.2.0.0
+=================
+bear:
+Fixed a potential problem with the IAMStreamSelect GetCount() function not returning 0 value if there are no streams.
+Fixed a potential problem if you have a threaded call to CTSFileSourcePin::GetAvailable() function if the FileReader class does not exist such as when reloading.
+
 Version 2.1.1.9
 =================
 bear:

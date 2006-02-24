@@ -1078,6 +1078,9 @@ STDMETHODIMP CTSFileSourcePin::GetAvailable(LONGLONG *pEarliest, LONGLONG *pLate
 	CheckPointer(pEarliest,E_POINTER);
 	CheckPointer(pLatest,E_POINTER);
 
+	if(!m_pTSFileSourceFilter->m_pFileReader)
+		return CSourceSeeking::GetAvailable(pEarliest, pLatest);
+
 	//Get the FileReader Type
 	WORD bMultiMode;
 	m_pTSFileSourceFilter->m_pFileReader->get_ReaderMode(&bMultiMode);
