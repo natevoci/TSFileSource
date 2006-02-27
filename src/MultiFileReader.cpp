@@ -157,6 +157,9 @@ HRESULT MultiFileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadByte
 			break;
 	};
 
+	if(!file)
+		return S_FALSE;
+
 	if (m_currentPosition < (file->startPosition + file->length))
 	{
 		if (m_TSFileId != file->filePositionId)

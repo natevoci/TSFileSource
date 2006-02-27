@@ -482,7 +482,10 @@ HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 
 	if (!pids.pcr && !m_ProgPinMode) {
 		//Set our fake duration
-		__int64 calcDuration = (REFERENCE_TIME)(filelength / (__int64)((__int64)pids.bitrate / (__int64)8000));
+		__int64 calcDuration = 1000000;
+		if((__int64)((__int64)pids.bitrate / (__int64)8000))
+			__int64 calcDuration = (REFERENCE_TIME)(filelength / (__int64)((__int64)pids.bitrate / (__int64)8000));
+
 		pids.dur = (REFERENCE_TIME)(calcDuration * (__int64)10000);
 		
 		//Refresh all the sub program durations in the pid array
@@ -1816,7 +1819,8 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			if (totalduration > 0 && calcDuration == 0) {
 				//Only do this once even if we have a partial duration.
 				kByteRate = (__int64) ((endFilePos*(__int64)100) / totalduration);
-				calcDuration = 	(REFERENCE_TIME)((__int64)((__int64)filelength / (__int64)kByteRate)*(__int64)100);
+				if (kByteRate) 
+					calcDuration = 	(REFERENCE_TIME)((__int64)((__int64)filelength / (__int64)kByteRate)*(__int64)100);
 //				kByteRate = (__int64) ((endFilePos *(__int64)10000) / totalduration);
 //				calcDuration = 	(REFERENCE_TIME)((__int64)((__int64)filelength / (__int64)kByteRate)*(__int64)10000);
 			}

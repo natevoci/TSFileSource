@@ -1401,7 +1401,7 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 		pFileReader->GetFileSize(&fileStart, &fileSize);
 
 		__int64 calcDuration = 0;
-		if (m_DataRateSave > 0)
+		if ((__int64)((__int64)m_DataRateSave / (__int64)8000) > 0)
 		{
 			calcDuration = (__int64)(fileSize / (__int64)((__int64)m_DataRateSave / (__int64)8000));
 			calcDuration = (__int64)(calcDuration * (__int64)10000);
