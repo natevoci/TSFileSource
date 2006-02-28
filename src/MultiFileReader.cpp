@@ -146,7 +146,7 @@ HRESULT MultiFileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadByte
 	if (m_currentPosition < m_startPosition)
 		m_currentPosition = m_startPosition;
 
-//	RefreshTSBufferFile();
+	RefreshTSBufferFile();
 	// Find out which file the currentPosition is in.
 	MultiFileReaderFile *file = NULL;
 	std::vector<MultiFileReaderFile *>::iterator it = m_tsFiles.begin();
