@@ -2344,6 +2344,11 @@ STDMETHODIMP CTSFileSourceFilter::ShowStreamMenu(HWND hwnd)
 					if(pStreamName)
 					{
 						UINT uFlags = MF_STRING | MF_ENABLED;
+						if (flags & AMSTREAMSELECTINFO_EXCLUSIVE)
+							uFlags |= MF_CHECKED; //MFT_RADIOCHECK;
+						else if (flags & AMSTREAMSELECTINFO_ENABLED)
+							uFlags |= MF_CHECKED;
+						
 //						UINT uFlags = (flags?MF_CHECKED:MF_UNCHECKED) | MF_STRING | MF_ENABLED;
 						::AppendMenuW(hMenu, uFlags, (i + 0x100), LPCWSTR(pStreamName));
 						CoTaskMemFree(pStreamName);

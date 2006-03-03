@@ -129,6 +129,9 @@ HRESULT StreamParser::ParsePidArray()
 			StreamArray[index].Vid = true;
 			m_pDemux->GetVideoMedia(&StreamArray[index].media);
 		}
+		else
+			StreamArray[index].Vid = true;
+
 		index++;
 
 		//Setup Audio Tracks
@@ -226,17 +229,20 @@ HRESULT StreamParser::ParsePidArray()
 			LoadStreamArray(count);
 			AddStreamArray();
 			if ((*m_pNetArray)[i].playing)
-				wsprintfW(StreamArray[index].name, L"  ->UDP@ %S : %S : %S [%lukb/s]",
+			{
+				wsprintfW(StreamArray[index].name, L"UDP@ %S : %S : %S [%lukb/s]",
 											(*m_pNetArray)[i].strIP,
 											(*m_pNetArray)[i].strPort,
 											(*m_pNetArray)[i].strNic,
 											(__int64)((*m_pNetArray)[i].flowRate * 80)/10000);
-			else
-				wsprintfW(StreamArray[index].name, L"  UDP@ %S : %S : %S [%lukb/s]",
-											(*m_pNetArray)[i].strIP,
-											(*m_pNetArray)[i].strPort,
-											(*m_pNetArray)[i].strNic,
-											(__int64)((*m_pNetArray)[i].flowRate * 80)/10000);
+				StreamArray[index].flags = AMSTREAMSELECTINFO_ENABLED;
+			}
+//			else
+//				wsprintfW(StreamArray[index].name, L"  UDP@ %S : %S : %S [%lukb/s]",
+//											(*m_pNetArray)[i].strIP,
+//											(*m_pNetArray)[i].strPort,
+//											(*m_pNetArray)[i].strNic,
+//											(__int64)((*m_pNetArray)[i].flowRate * 80)/10000);
 			i++;
 			index++;
 		}
@@ -259,18 +265,19 @@ void StreamParser::SetStreamActive(int group)
 	while (count < StreamArray.Count())
 	{
 		StreamArray[count].flags = 0;
-		memcpy(StreamArray[count].name, &L"  ", 4);
+//		memcpy(StreamArray[count].name, &L"  ", 4);
 
 		if (StreamArray[count].group == group)
 		{
-			if (StreamArray[count].Vid)
+			if (StreamArray[count].Vid | StreamArray[count].H264 | StreamArray[count].Mpeg4)
 			{
-				memcpy(StreamArray[count].name, &L"->", 4);
+//				memcpy(StreamArray[count].name, &L"->", 4);
+				StreamArray[count].flags = AMSTREAMSELECTINFO_ENABLED;
 			}
 			else if (StreamArray[count].Pid == m_pDemux->m_SelAudioPid)
 			{
-				StreamArray[count].flags = AMSTREAMSELECTINFO_EXCLUSIVE; //AMSTREAMSELECTINFO_ENABLED;
-				memcpy(StreamArray[count].name, &L"->", 4);
+				StreamArray[count].flags = AMSTREAMSELECTINFO_EXCLUSIVE | AMSTREAMSELECTINFO_ENABLED; //AMSTREAMSELECTINFO_ENABLED;
+//				memcpy(StreamArray[count].name, &L"->", 4);
 				m_StreamIndex = count;
 			}
 		}
