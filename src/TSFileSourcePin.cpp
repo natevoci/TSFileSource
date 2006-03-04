@@ -869,7 +869,8 @@ STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
 		//Do MultiFile timeshifting mode
 		if (m_bGetAvailableMode && bMultiMode)
 		{
-			*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR - m_IntBaseTimePCR));
+//			*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR - m_IntBaseTimePCR));
+			*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR));
 			REFERENCE_TIME current, stop;
 			return CSourceSeeking::GetPositions(&current, &stop);
 		}
@@ -892,10 +893,20 @@ STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 		//Do MultiFile timeshifting mode
 		if(bMultiMode)
 		{
-			*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR - m_IntStartTimePCR));
-			*pStop = max(0, (__int64)ConvertPCRtoRT(m_IntEndTimePCR - m_IntStartTimePCR));
-			REFERENCE_TIME current, stop;
-			return CSourceSeeking::GetPositions(&current, &stop);
+			if (m_bGetAvailableMode)
+			{
+				*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR - m_IntBaseTimePCR));
+				*pStop = max(0, (__int64)ConvertPCRtoRT(m_IntEndTimePCR - m_IntBaseTimePCR));
+				REFERENCE_TIME current, stop;
+				return CSourceSeeking::GetPositions(&current, &stop);
+			}
+			else
+			{
+				*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR - m_IntStartTimePCR));
+				*pStop = max(0, (__int64)ConvertPCRtoRT(m_IntEndTimePCR - m_IntStartTimePCR));
+				REFERENCE_TIME current, stop;
+				return CSourceSeeking::GetPositions(&current, &stop);
+			}
 		}
 		else
 		{
@@ -1153,7 +1164,7 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 
 HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 {
-//PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
+PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 	HRESULT hr;
 	ULONG pos;
 	__int64 pcrEndPos;
@@ -1218,12 +1229,13 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	__int64 pcrByteRate = (__int64)((__int64)m_DataRate / (__int64)720);
 //PrintTime(TEXT("our pcr Byte Rate"), (__int64)pcrByteRate, 90);
 
-	__int64	pcrDuration = (__int64)((__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur * (__int64)9) / (__int64)1000);
-//PrintTime(TEXT("our pcr duration"), (__int64)pcrDuration, 90);
+////Multireader fixed 	__int64	pcrDuration = (__int64)((__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur * (__int64)9) / (__int64)1000);
+		__int64	pcrDuration = max(0, (__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end - (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start));
+PrintTime(TEXT("our pcr duration"), (__int64)pcrDuration, 90);
 
 	//Get estimated time of seek as pcr 
 	__int64	pcrDeltaSeekTime = (__int64)((__int64)((__int64)seektime * (__int64)9) / (__int64)1000);
-//PrintTime(TEXT("our pcr Delta SeekTime"), (__int64)pcrDeltaSeekTime, 90);
+PrintTime(TEXT("our pcr Delta SeekTime"), (__int64)pcrDeltaSeekTime, 90);
 
 //This is where we create a pcr time relative to the current stream position
 //
@@ -1234,11 +1246,11 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	hr = S_OK;
 	hr = m_pTSFileSourceFilter->m_pPidParser->FindNextPCR(pData, ulBytesRead, &m_pTSFileSourceFilter->m_pPidParser->pids, &pcrEndPos, &pos, -1); //Get the PCR
 	__int64	pcrSeekTime = pcrDeltaSeekTime + (__int64)(pcrEndPos - pcrDuration);
-//PrintTime(TEXT("our pcr end time for reference"), (__int64)pcrEndPos, 90);
+PrintTime(TEXT("our pcr end time for reference"), (__int64)pcrEndPos, 90);
 
 	//Test if we have a pcr or if the pcr is less than rollover time
 	if (FAILED(hr) || pcrEndPos == 0 || pcrSeekTime < 0) {
-//PrintTime(TEXT("get lastpcr failed now using first pcr"), (__int64)m_IntStartTimePCR, 90);
+PrintTime(TEXT("get lastpcr failed now using first pcr"), (__int64)m_IntStartTimePCR, 90);
 	
 		//Set seektime to position relative to first pcr
 		pcrSeekTime = m_IntStartTimePCR + pcrDeltaSeekTime;
@@ -1246,7 +1258,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		//test if pcr time is now larger than file size
 		if (pcrSeekTime > m_IntEndTimePCR || pcrEndPos == 0) {
 //		if (pcrSeekTime > pcrDuration) {
-//PrintTime(TEXT("get first pcr failed as well SEEK ERROR AT START"), (__int64) pcrSeekTime, 90);
+PrintTime(TEXT("get first pcr failed as well SEEK ERROR AT START"), (__int64) pcrSeekTime, 90);
 
 			// Revert to old method
 			// shifting right by 14 rounds the seek and duration time down to the
@@ -1264,7 +1276,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		}
 	}
 
-//PrintTime(TEXT("our predicted pcr position for seek"), (__int64)pcrSeekTime, 90);
+PrintTime(TEXT("our predicted pcr position for seek"), (__int64)pcrSeekTime, 90);
 
 	//create our predicted file pointer position
 	nFileIndex = (pcrDeltaSeekTime / (__int64)1000) * pcrByteRate;
@@ -1288,11 +1300,11 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	//compare our predicted file position to our predicted seektime and adjust file pointer
 	if (pcrPos > pcrSeekTime) {
 		nFileIndex -= (__int64)((__int64)((__int64)(pcrPos - pcrSeekTime) / (__int64)1000) * (__int64)pcrByteRate);
-//PrintTime(TEXT("seek---------"), (__int64) pcrPos, 90);
+PrintTime(TEXT("seek---------"), (__int64) pcrPos, 90);
 	}
 	else if (pcrSeekTime > pcrPos) {
 			nFileIndex += (__int64)((__int64)((__int64)(pcrSeekTime - pcrPos) / (__int64)1000) * (__int64)pcrByteRate);
-//PrintTime(TEXT("seek+++++++++++++"), (__int64) pcrPos, 90);
+PrintTime(TEXT("seek+++++++++++++"), (__int64) pcrPos, 90);
 	}
 
 	lDataLength = 4000000;
@@ -1317,9 +1329,9 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		//Seek forwards
 		pos += m_pTSFileSourceFilter->m_pPidParser->get_PacketSize();
 		hr = m_pTSFileSourceFilter->m_pPidParser->FindNextPCR(pData, ulBytesRead, &m_pTSFileSourceFilter->m_pPidParser->pids, &pcrPos, &pos, 1); //Get the PCR
-//PrintTime(TEXT("seekfwdloop"), (__int64) pcrPos, 90);
+PrintTime(TEXT("seekfwdloop"), (__int64) pcrPos, 90);
 	}
-//PrintTime(TEXT("seekfwd"), (__int64) pcrPos, 90);
+PrintTime(TEXT("seekfwd"), (__int64) pcrPos, 90);
 
 	//Store this pos for later use
 	__int64 posSave = 0;
@@ -1336,9 +1348,9 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		//Seek backwards
 		hr = m_pTSFileSourceFilter->m_pPidParser->FindNextPCR(pData, ulBytesRead, &m_pTSFileSourceFilter->m_pPidParser->pids, &pcrPos, &pos, -1); //Get the PCR
 		pos -= m_pTSFileSourceFilter->m_pPidParser->get_PacketSize();
-//PrintTime(TEXT("seekbackloop"), (__int64) pcrPos, 90);
+PrintTime(TEXT("seekbackloop"), (__int64) pcrPos, 90);
 	}
-//PrintTime(TEXT("seekback"), (__int64) pcrPos, 90);
+PrintTime(TEXT("seekback"), (__int64) pcrPos, 90);
 
 	// if we have backed up to correct pcr
 	if (SUCCEEDED(hr)) {
@@ -1352,7 +1364,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		//Set pointer to locale
 		nFileIndex += (__int64)pos;
 
-//PrintTime(TEXT("seekend"), (__int64) pcrPos, 90);
+PrintTime(TEXT("seekend"), (__int64) pcrPos, 90);
 	}
 	else
 	{
@@ -2285,6 +2297,7 @@ HRESULT CTSFileSourcePin::ReNewDemux()
 							}
 						}
 					}
+					delete[] pName;
 				}
 				pFilter->Release();
 				pFilter = NULL;

@@ -112,9 +112,10 @@ CTSFileSink::~CTSFileSink()
 	if (m_pPin) delete m_pPin;
 	if (m_pFilter) delete m_pFilter;
 	if (m_pPosition) delete m_pPosition;
-	if (m_pFileName) delete m_pFileName;
+	if (m_pFileName) delete[] m_pFileName;
 	if (m_pRegStore) delete m_pRegStore;
 	if (m_pSettingsStore) delete m_pSettingsStore;
+	if (m_pRegFileName) delete[] m_pRegFileName;
 }
 
 STDMETHODIMP CTSFileSink::NonDelegatingQueryInterface(REFIID riid, void ** ppv)

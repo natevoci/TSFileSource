@@ -47,7 +47,7 @@ public:
 	void CopyTo(NetInfo *netInfo);
 
 	ULONG userIP;
-	USHORT  userPort;
+	USHORT userPort;
 	ULONG  userNic;
 
 	WCHAR fileName[MAX_PATH];

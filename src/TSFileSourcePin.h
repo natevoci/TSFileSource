@@ -107,12 +107,12 @@ public:
 	void set_BitRate(long rate);
 	virtual void PrintTime(LPCTSTR lstring, __int64 value, __int64 divider);
 	virtual void PrintLongLong(LPCTSTR lstring, __int64 value);
+	virtual __int64 ConvertPCRtoRT(REFERENCE_TIME pcrtime);
 
 protected:
 
 	HRESULT FindNextPCR(__int64 *pcrtime, long *byteOffset, long maxOffset);
 	HRESULT FindPrevPCR(__int64 *pcrtime, long *byteOffset);
-	__int64 ConvertPCRtoRT(REFERENCE_TIME pcrtime);
 	void AddBitRateForAverage(__int64 bitratesample);
 	void Debug(LPCTSTR lpOutputString);
 

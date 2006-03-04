@@ -488,13 +488,13 @@ BOOL CNetRender::IsMulticastActive(NetInfo *netAddr, NetInfoArray *netArray, int
 BOOL CNetRender::IsMulticastAddress(LPOLESTR lpszFileName, NetInfo *netAddr)
 {
 	wcslwr(lpszFileName);
-	WCHAR *addrPosFile = wcsstr(lpszFileName, L"udp@");
-	WCHAR *addrPosUrl = wcsstr(lpszFileName, L"udp://@");
-	WCHAR *portPosFile = wcsstr(lpszFileName, L"#");
-	WCHAR *portPosUrl = wcsstr(lpszFileName, L":");
-	WCHAR *nicPosFile = wcsstr(lpszFileName, L"$");
-	WCHAR *nicPosUrl = wcsstr(lpszFileName, L"$");
-	WCHAR *endString = lpszFileName + wcslen(lpszFileName);
+	LPWSTR addrPosFile = wcsstr(lpszFileName, L"udp@");
+	LPWSTR addrPosUrl = wcsstr(lpszFileName, L"udp://@");
+	LPWSTR portPosFile = wcsstr(lpszFileName, L"#");
+	LPWSTR portPosUrl = wcsstr(lpszFileName, L":");
+	LPWSTR nicPosFile = wcsstr(lpszFileName, L"$");
+	LPWSTR nicPosUrl = wcsstr(lpszFileName, L"$");
+	LPWSTR endString = lpszFileName + wcslen(lpszFileName);
 
 //MessageBoxW(NULL, lpszFileName,lpszFileName, NULL);
 	//Check if we have a valid Network Address

@@ -279,7 +279,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							{
 								lstrcpyW(pFileName, pszFileName);
 								Load(pFileName, NULL);
-								delete pFileName;
+								delete[] pFileName;
 							}
 						}
 					}
@@ -734,7 +734,10 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	// Is this a valid filename supplied
 	CheckPointer(pszFileName,E_POINTER);
 
-	if (_wcsicmp(pszFileName, L"") == 0)
+	LPOLESTR wFileName = new WCHAR[lstrlenW(pszFileName)];
+	lstrcpyW(wFileName, pszFileName);
+
+	if (_wcsicmp(wFileName, L"") == 0)
 	{
 		TCHAR tmpFile[MAX_PATH];
 		LPTSTR ptFilename = (LPTSTR)&tmpFile;
@@ -763,10 +766,16 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 		if( GetOpenFileName( &ofn ) != FALSE )
 		{
 			USES_CONVERSION;
-			pszFileName = T2W(ptFilename); 
+			if(wFileName)
+				delete[] wFileName;
+			wFileName = new WCHAR[lstrlenW(T2W(ptFilename))];
+			lstrcpyW(wFileName, T2W(ptFilename));
 		}
 		else
+		{
+			delete[] wFileName;
 			return NO_ERROR;
+		}
 	}
 
 	HRESULT hr;
@@ -780,7 +789,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	//
 	// Check if the FileName is a Network address 
 	//
-	if (CNetRender::IsMulticastAddress((unsigned short *)pszFileName, netAddr))
+	if (CNetRender::IsMulticastAddress(wFileName, netAddr))
 	{
 		//
 		// Check in the local array if the Network address already active 
@@ -795,19 +804,26 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 			if(FAILED(hr)  || (hr > 31))
 			{
 				delete[] netAddr;
+				delete[] wFileName;
 //				MessageBoxW(NULL, netAddr->fileName, L"Graph Builder Failed", NULL);
 				return hr;
 			}
 			//Add the new filtergraph settings to the local array
 			netArray.Add(netAddr);
-			pszFileName = netAddr->fileName;
+			if(wFileName)
+				delete[] wFileName;
+			wFileName = new WCHAR[lstrlenW(netAddr->fileName)];
+			lstrcpyW(wFileName, netAddr->fileName);
 //			m_pFileReader->set_DelayMode(TRUE);
 //			m_pFileDuration->set_DelayMode(TRUE);
 
 		}
 		else // If already running
 		{
-			pszFileName = netArray[pos].fileName;
+			if(wFileName)
+				delete[] wFileName;
+			wFileName = new WCHAR[lstrlenW(netArray[pos].fileName)];
+			lstrcpyW(wFileName, netArray[pos].fileName);
 			delete[] netAddr;
 		}
 	}
@@ -816,7 +832,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 
 	for (int pos = 0; pos < netArray.Count(); pos++)
 	{
-		if (!lstrcmpiW(pszFileName, netArray[pos].fileName))
+		if (!lstrcmpiW(wFileName, netArray[pos].fileName))
 			netArray[pos].playing = TRUE;
 		else
 			netArray[pos].playing = FALSE;
@@ -824,7 +840,11 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 
 	//Jump to a different Load method if already been set.
 	if (ThreadExists() || IsActive())
-		return ReLoad(pszFileName, pmt);
+	{
+		hr = ReLoad(wFileName, pmt);
+		delete[] wFileName;
+		return hr;
+	}
 
 	//Get delay if we had been told to previously
 	USHORT delay;
@@ -836,8 +856,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	delete m_pFileReader;
 	delete m_pFileDuration;
 
-	long length = lstrlenW(pszFileName);
-	if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
+	long length = lstrlenW(wFileName);
+	if ((length < 9) || (_wcsicmp(wFileName+length-9, L".tsbuffer") != 0))
 	{
 		m_pFileReader = new FileReader();
 		m_pFileDuration = new FileReader();//Get Live File Duration Thread
@@ -864,13 +884,19 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 		m_pFileDuration->set_DelayMode(delay);
 	}
 
-	hr = m_pFileReader->SetFileName(pszFileName);
+	hr = m_pFileReader->SetFileName(wFileName);
 	if (FAILED(hr))
+	{
+		delete[] wFileName;
 		return hr;
+	}
 
 	hr = m_pFileReader->OpenFile();
 	if (FAILED(hr))
+	{
+		delete[] wFileName;
 		return VFW_E_INVALIDMEDIATYPE;
+	}
 
 	CAMThread::Create();			 //Create our GetDuration thread
 	if (ThreadExists())
@@ -886,6 +912,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	{
 		CAutoLock lock(&m_Lock);
 		m_pFileReader->CloseFile();
+		delete[] wFileName;
 		return hr;
 	}
 
@@ -898,7 +925,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 
 	CAutoLock lock(&m_Lock);
 	m_pFileReader->CloseFile();
-
+	delete[] wFileName;
 
 	m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
@@ -1581,9 +1608,14 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 		wasThreadRunning = TRUE;
 	}
 
+	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+
 //	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
+
+	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
+
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
@@ -1633,9 +1665,14 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 		wasThreadRunning = TRUE;
 	}
 
+	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+
 //	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
+
+	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
+
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
@@ -1685,9 +1722,14 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 		wasThreadRunning = TRUE;
 	}
 
+	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+
 //	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
+
+	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
+
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 	OnConnect();
@@ -2343,13 +2385,13 @@ STDMETHODIMP CTSFileSourceFilter::ShowStreamMenu(HWND hwnd)
 
 					if(pStreamName)
 					{
-						UINT uFlags = MF_STRING | MF_ENABLED;
-						if (flags & AMSTREAMSELECTINFO_EXCLUSIVE)
-							uFlags |= MF_CHECKED; //MFT_RADIOCHECK;
-						else if (flags & AMSTREAMSELECTINFO_ENABLED)
-							uFlags |= MF_CHECKED;
+//						UINT uFlags = MF_STRING | MF_ENABLED;
+//						if (flags & AMSTREAMSELECTINFO_EXCLUSIVE)
+//							uFlags |= MF_CHECKED; //MFT_RADIOCHECK;
+//						else if (flags & AMSTREAMSELECTINFO_ENABLED)
+//							uFlags |= MF_CHECKED;
 						
-//						UINT uFlags = (flags?MF_CHECKED:MF_UNCHECKED) | MF_STRING | MF_ENABLED;
+						UINT uFlags = (flags?MF_CHECKED:MF_UNCHECKED) | MF_STRING | MF_ENABLED;
 						::AppendMenuW(hMenu, uFlags, (i + 0x100), LPCWSTR(pStreamName));
 						CoTaskMemFree(pStreamName);
 					}

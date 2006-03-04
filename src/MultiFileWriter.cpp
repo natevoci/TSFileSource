@@ -52,6 +52,9 @@ MultiFileWriter::~MultiFileWriter()
 
 	if (m_pTSRegFileName)
 		delete m_pTSRegFileName;
+
+	if (m_pCurrentTSFile)
+		delete m_pCurrentTSFile;
 }
 
 HRESULT MultiFileWriter::GetFileName(LPOLESTR *lpszFileName)
@@ -283,14 +286,14 @@ HRESULT MultiFileWriter::CreateNewTSFile()
 	if FAILED(hr = m_pCurrentTSFile->SetFileName(pFilename))
 	{
 		::OutputDebugString(TEXT("Failed to set filename for new file.\n"));
-		delete pFilename;
+		delete[] pFilename;
 		return hr;
 	}
 
 	if FAILED(hr = m_pCurrentTSFile->OpenFile())
 	{
 		::OutputDebugString(TEXT("Failed to open new file\n"));
-		delete pFilename;
+		delete[] pFilename;
 		return hr;
 	}
 
