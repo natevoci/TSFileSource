@@ -42,6 +42,20 @@ MultiFileReader::MultiFileReader()
 MultiFileReader::~MultiFileReader()
 {
 	//CloseFile called by ~FileReader
+/*	USES_CONVERSION;
+
+	std::vector<MultiFileReaderFile *>::iterator it = m_tsFiles.begin();
+	for ( ; it < m_tsFiles.end() ; it++ )
+	{
+		if((*it)->filename)
+		{
+			DeleteFile(W2T((*it)->filename));
+			delete[] (*it)->filename;
+		}
+
+		delete *it;
+	};
+*/
 }
 
 FileReader* MultiFileReader::CreateFileReader()

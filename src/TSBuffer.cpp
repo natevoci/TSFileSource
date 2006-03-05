@@ -112,7 +112,7 @@ HRESULT CTSBuffer::Require(long nBytes)
 					{
 //						m_pClock->SetPrivateTimePause(100);
 //						m_pClock->AddPrivateTime(-100);
-						Sleep(200);
+						Sleep(50);
 					}
 
 					ULONG ulNextBytesRead = 0;				

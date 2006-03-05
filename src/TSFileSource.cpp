@@ -574,6 +574,13 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 				return hr;
 		}
 
+		if (m_pFileDuration->IsFileInvalid())
+		{
+			HRESULT hr = m_pFileDuration->OpenFile();
+			if (FAILED(hr))
+				return hr;
+		}
+
 		//Set our StreamTime Reference offset to zero
 		m_tStart = tStart;
 
@@ -615,6 +622,13 @@ HRESULT CTSFileSourceFilter::Pause()
 		if (m_pFileReader->IsFileInvalid())
 		{
 			HRESULT hr = m_pFileReader->OpenFile();
+			if (FAILED(hr))
+				return hr;
+		}
+
+		if (m_pFileDuration->IsFileInvalid())
+		{
+			HRESULT hr = m_pFileDuration->OpenFile();
 			if (FAILED(hr))
 				return hr;
 		}
@@ -661,6 +675,8 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 
 	m_pTunerEvent->UnRegisterForTunerEvents();
 	m_pFileReader->CloseFile();
+	m_pFileDuration->CloseFile();
+
 	return hr;
 }
 
@@ -734,7 +750,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	// Is this a valid filename supplied
 	CheckPointer(pszFileName,E_POINTER);
 
-	LPOLESTR wFileName = new WCHAR[lstrlenW(pszFileName)];
+	LPOLESTR wFileName = new WCHAR[lstrlenW(pszFileName)+1];
 	lstrcpyW(wFileName, pszFileName);
 
 	if (_wcsicmp(wFileName, L"") == 0)
@@ -754,21 +770,13 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 							 OFN_FILEMUSTEXIST|OFN_HIDEREADONLY, 0, 0,
 							 NULL, 0, NULL, NULL };
 
-//		HWND hWnd = GetForegroundWindow();
-//		ATLASSERT(::IsWindow(hWnd));
-//		SetForegroundWindow(GetParent(hWnd));
-
-//		SetActiveWindow(GetParent(hWnd));
-//		BringWindowToTop(GetParent(hWnd));
-		
-
 		// Display the SaveFileName dialog.
 		if( GetOpenFileName( &ofn ) != FALSE )
 		{
 			USES_CONVERSION;
 			if(wFileName)
 				delete[] wFileName;
-			wFileName = new WCHAR[lstrlenW(T2W(ptFilename))];
+			wFileName = new WCHAR[1+lstrlenW(T2W(ptFilename))];
 			lstrcpyW(wFileName, T2W(ptFilename));
 		}
 		else
@@ -812,7 +820,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 			netArray.Add(netAddr);
 			if(wFileName)
 				delete[] wFileName;
-			wFileName = new WCHAR[lstrlenW(netAddr->fileName)];
+			wFileName = new WCHAR[1+lstrlenW(netAddr->fileName)];
 			lstrcpyW(wFileName, netAddr->fileName);
 //			m_pFileReader->set_DelayMode(TRUE);
 //			m_pFileDuration->set_DelayMode(TRUE);
@@ -822,7 +830,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 		{
 			if(wFileName)
 				delete[] wFileName;
-			wFileName = new WCHAR[lstrlenW(netArray[pos].fileName)];
+			wFileName = new WCHAR[1+lstrlenW(netArray[pos].fileName)];
 			lstrcpyW(wFileName, netArray[pos].fileName);
 			delete[] netAddr;
 		}

@@ -82,7 +82,7 @@ protected:
 	std::vector<MultiFileReaderFile *> m_tsFiles;
 
 	FileReader m_TSFile;
-	long m_TSFileId;
+	long	 m_TSFileId;
 	BOOL     m_bReadOnly;
 	BOOL     m_bDelay;
 
