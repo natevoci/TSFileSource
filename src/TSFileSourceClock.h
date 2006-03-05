@@ -34,8 +34,14 @@ public:
 
     virtual REFERENCE_TIME GetPrivateTime();
 
+	virtual void SetPrivateTimePause(ULONG lPauseTime);
+	virtual void AddPrivateTime(long lDelayTime);
+
 private:
 	REFERENCE_TIME m_baseTime;
+	ULONG m_PauseTime;
+	__int64 m_DelayTime;
+
 };
 
 #endif

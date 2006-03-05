@@ -28,14 +28,14 @@
 
 #include <vector>
 #include "FileReader.h"
-#include "PidInfo.h"
+#include "TSFileSourceClock.h"
 
 class CTSBuffer
 {
 public:
 
 
-	CTSBuffer(PidInfo *pPids, PidInfoArray *pPidArray);
+	CTSBuffer(CTSFileSourceClock *pClock);
 	virtual ~CTSBuffer();
 
 	void SetFileReader(FileReader *pFileReader);
@@ -49,9 +49,7 @@ public:
 
 protected:
 	FileReader *m_pFileReader;
-	PidInfo *m_pPids;
-	PidInfoArray *m_pPidArray;
-
+	CTSFileSourceClock *m_pClock;
 	std::vector<BYTE *> m_Array;
 	long m_lItemOffset;
 

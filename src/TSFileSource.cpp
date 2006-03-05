@@ -62,6 +62,14 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 {
 	ASSERT(phr);
 
+	m_pClock = new CTSFileSourceClock( NAME(""), GetOwner(), phr );
+	if (m_pClock == NULL)
+	{
+		if (phr)
+			*phr = E_OUTOFMEMORY;
+		return;
+	}
+
 	m_pFileReader = new FileReader();
 	m_pFileDuration = new FileReader();//Get Live File Duration Thread
 	m_pPidParser = new PidParser(m_pFileReader);
@@ -70,14 +78,6 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, phr);
 	if (m_pPin == NULL)
-	{
-		if (phr)
-			*phr = E_OUTOFMEMORY;
-		return;
-	}
-
-	m_pClock = new CTSFileSourceClock( NAME(""), GetOwner(), phr );
-	if (m_pClock == NULL)
 	{
 		if (phr)
 			*phr = E_OUTOFMEMORY;
@@ -592,7 +592,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 			m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 //m_pPin->PrintTime(TEXT("Run"), (__int64) start, 10000);
 			m_pPin->m_DemuxLock = FALSE;
-			m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
+//			m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
@@ -634,7 +634,7 @@ HRESULT CTSFileSourceFilter::Pause()
 			m_pPin->m_DemuxLock = TRUE;
 			m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 			m_pPin->m_DemuxLock = FALSE;
-			m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
+//			m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;

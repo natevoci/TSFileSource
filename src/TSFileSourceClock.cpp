@@ -32,6 +32,8 @@
 
 CTSFileSourceClock::CTSFileSourceClock( TCHAR *pName, LPUNKNOWN pUnk, HRESULT *phr ) :
 	CBaseReferenceClock(pName, pUnk, phr, NULL),
+	m_PauseTime(0),
+	m_DelayTime(0),
 	m_baseTime(0)
 {
 }
@@ -58,8 +60,28 @@ REFERENCE_TIME CTSFileSourceClock::GetPrivateTime()
 	{
 		m_baseTime = rtPrivateTime;
 	}
+
+//	if(m_PauseTime)
+//	{
+//		Sleep(m_PauseTime);
+//		m_baseTime = (REFERENCE_TIME)max(0, (__int64)((__int64)m_baseTime - (__int64)((__int64)m_PauseTime * (__int64)10000)));
+//	}
+//	m_PauseTime = 0;
+
 	rtPrivateTime -= m_baseTime;
 
     return rtPrivateTime;
+}
+
+void CTSFileSourceClock::SetPrivateTimePause(ULONG lPauseTime)
+{
+	m_PauseTime = max(2000, lPauseTime);
+}
+
+void CTSFileSourceClock::AddPrivateTime(long lDelayTime)
+{
+	m_DelayTime = (__int64)min((__int64)20000000, (__int64)((__int64)lDelayTime * (__int64)10000));
+	m_DelayTime = (__int64)max((__int64)-20000000, (__int64)m_DelayTime);
+	m_baseTime = (REFERENCE_TIME)max(0, (__int64)((__int64)m_baseTime + m_DelayTime));
 }
 

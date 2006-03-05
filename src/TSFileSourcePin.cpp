@@ -81,7 +81,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 		m_BitRateStore[i] = 0;
 	}
 
-	m_pTSBuffer = new CTSBuffer(&m_pTSFileSourceFilter->m_pPidParser->pids, &m_pTSFileSourceFilter->m_pPidParser->pidArray);
+	m_pTSBuffer = new CTSBuffer(m_pTSFileSourceFilter->m_pClock);
 	m_pPids = new PidInfo();
 
 	debugcount = 0;
@@ -869,8 +869,8 @@ STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
 		//Do MultiFile timeshifting mode
 		if (m_bGetAvailableMode && bMultiMode)
 		{
-//			*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR - m_IntBaseTimePCR));
-			*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR));
+			*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR - m_IntBaseTimePCR));
+//			*pCurrent = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR));
 			REFERENCE_TIME current, stop;
 			return CSourceSeeking::GetPositions(&current, &stop);
 		}
@@ -1185,16 +1185,13 @@ PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 	//Do MultiFile timeshifting mode
 	if(bMultiMode)
 	{
-		// Revert to old method
-		// shifting right by 14 rounds the seek and duration time down to the
-		// nearest multiple 16.384 ms. More than accurate enough for our seeks.
-//		nFileIndex = 0;
-
-//		if (m_pPidParser->pids.dur>>14)
-//			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
-//		nFileIndex = max(300000, nFileIndex);
-//		m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
-//		return S_OK;
+		if (m_bGetAvailableMode && ((__int64)(seektime + (__int64)40000000) > m_pTSFileSourceFilter->m_pPidParser->pids.dur))
+		{
+			seektime = max(0, m_pTSFileSourceFilter->m_pPidParser->pids.dur -(__int64)40000000);
+			m_rtStart = seektime;
+			m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
+			m_rtTimeShiftPosition = seektime;
+		}
 	}
 	else
 	{

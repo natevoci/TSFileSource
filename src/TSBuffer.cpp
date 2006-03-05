@@ -25,14 +25,12 @@
 
 #include <streams.h>
 #include "TSBuffer.h"
-#include "PidParser.h"
 #include <crtdbg.h>
 
-CTSBuffer::CTSBuffer(PidInfo *pPids, PidInfoArray *pPidArray)
+CTSBuffer::CTSBuffer(CTSFileSourceClock *pClock)
 {
 	m_pFileReader = NULL;
-	m_pPidArray = pPidArray;
-	m_pPids = pPids;
+	m_pClock = pClock;
 	m_lItemOffset = 0;
 	m_lTSBufferItemSize = 800 * 1000;//188*1000;
 	Clear();
@@ -107,9 +105,15 @@ HRESULT CTSBuffer::Require(long nBytes)
 					m_pFileReader->get_DelayMode(&bDelay);
 
 					if (bDelay > 0)
+					{
 						Sleep(2000);
+					}
 					else
-						Sleep(100);
+					{
+//						m_pClock->SetPrivateTimePause(100);
+//						m_pClock->AddPrivateTime(-100);
+						Sleep(200);
+					}
 
 					ULONG ulNextBytesRead = 0;				
 					m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
