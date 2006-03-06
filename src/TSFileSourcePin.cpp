@@ -1185,9 +1185,9 @@ PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 	//Do MultiFile timeshifting mode
 	if(bMultiMode)
 	{
-		if (m_bGetAvailableMode && ((__int64)(seektime + (__int64)40000000) > m_pTSFileSourceFilter->m_pPidParser->pids.dur))
+		if (m_bGetAvailableMode && ((__int64)(seektime + (__int64)20000000) > m_pTSFileSourceFilter->m_pPidParser->pids.dur))
 		{
-			seektime = max(0, m_pTSFileSourceFilter->m_pPidParser->pids.dur -(__int64)40000000);
+			seektime = max(0, m_pTSFileSourceFilter->m_pPidParser->pids.dur -(__int64)20000000);
 			m_rtStart = seektime;
 			m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
 			m_rtTimeShiftPosition = seektime;
@@ -1227,7 +1227,9 @@ PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 //PrintTime(TEXT("our pcr Byte Rate"), (__int64)pcrByteRate, 90);
 
 ////Multireader fixed 	__int64	pcrDuration = (__int64)((__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur * (__int64)9) / (__int64)1000);
-		__int64	pcrDuration = max(0, (__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end - (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start));
+		__int64	pcrDuration = (__int64)max(0, (__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end - (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start));
+//PrintTime(TEXT("our pcr pid.start time for reference"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start, 90);
+//PrintTime(TEXT("our pcr pid.end time for reference"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end, 90);
 PrintTime(TEXT("our pcr duration"), (__int64)pcrDuration, 90);
 
 	//Get estimated time of seek as pcr 
@@ -1532,9 +1534,11 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 					for (int i = 0; i < m_pTSFileSourceFilter->m_pPidParser->pidArray.Count(); i++)
 						m_pTSFileSourceFilter->m_pPidParser->pidArray[i].start += pcrDeltaTime;
 
+					m_pTSFileSourceFilter->m_pPidParser->pids.start += pcrDeltaTime;
+
 					m_LastMultiFileStart = fileStart;
 					bStartChanged = TRUE;
-					m_rtLastSeekStart = max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR - m_IntStartTimePCR));
+					m_rtLastSeekStart = (__int64)max(0, (__int64)ConvertPCRtoRT(m_IntCurrentTimePCR - m_IntStartTimePCR));
 					m_rtStart = m_rtLastSeekStart;
 					m_pTSFileSourceFilter->ResetStreamTime();
 				}
@@ -1587,12 +1591,12 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 					m_pTSFileSourceFilter->m_pPidParser->pidArray[i].end += pcrDeltaTime;
 				}
 
+				m_pTSFileSourceFilter->m_pPidParser->pids.end += pcrDeltaTime;
 				m_LastMultiFileEnd = fileEnd;
 			}
 
 			if ((bLengthChanged | bStartChanged) && !m_bSeeking)
 			{	
-
 				__int64	pcrDeltaTime;
 				if(m_bGetAvailableMode)
 					//Use this code to cause the end time to be relative to the base time.
@@ -1621,6 +1625,13 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 					else
 						m_rtStop = m_pTSFileSourceFilter->m_pPidParser->pids.dur;
 				}
+
+PrintTime(TEXT("UpdateDuration: m_IntBaseTimePCR"), (__int64)m_IntBaseTimePCR, 90);
+PrintTime(TEXT("UpdateDuration: m_IntStartTimePCR"), (__int64)m_IntStartTimePCR, 90);
+PrintTime(TEXT("UpdateDuration: m_IntEndTimePCR"), (__int64)m_IntEndTimePCR, 90);
+PrintTime(TEXT("UpdateDuration: pids.start"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start, 90);
+PrintTime(TEXT("UpdateDuration: pids.end"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end, 90);
+PrintTime(TEXT("UpdateDuration: pids.dur"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur, 10000);
 
 				if (!m_bSeeking)
 				{
@@ -1692,6 +1703,7 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 						else
 							m_pTSFileSourceFilter->m_pPidParser->pidArray[i].dur = m_pTSFileSourceFilter->m_pPidParser->pids.dur;
 					}
+					m_pTSFileSourceFilter->m_pPidParser->pids.end += pcrDeltaTime;
 					bLengthChanged = TRUE;
 				}
 			}
