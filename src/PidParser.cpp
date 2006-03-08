@@ -1798,6 +1798,8 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 	m_fileLenOffset = filelength;
 	m_fileStartOffset = 300000;// skip faulty header 
 	m_fileEndOffset = 0;
+	BOOL bBitRateOK = FALSE;
+
 
 //***********************************************************************************************
 	int count = 0;
@@ -1819,7 +1821,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			if (totalduration > 0 && calcDuration == 0) {
 				//Only do this once even if we have a partial duration.
 				kByteRate = (__int64) ((endFilePos*(__int64)100) / totalduration);
-				if (kByteRate) 
+				if (kByteRate)
 					calcDuration = 	(REFERENCE_TIME)((__int64)((__int64)filelength / (__int64)kByteRate)*(__int64)100);
 //				kByteRate = (__int64) ((endFilePos *(__int64)10000) / totalduration);
 //				calcDuration = 	(REFERENCE_TIME)((__int64)((__int64)filelength / (__int64)kByteRate)*(__int64)10000);
@@ -1850,7 +1852,10 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 
 				//8bits per byte and convert to sec divide by pcr duration then average it
 				if (PeriodOfPCR > 0)
+				{
 					pids.bitrate = long (((endFilePos - startFilePos)*80000000) / PeriodOfPCR);
+					bBitRateOK = TRUE;
+				}
 
 				break;
 			}
@@ -1902,7 +1907,14 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			pPids->end = startPCRSave + totalduration; //Set the end pcr if not set.
 
 		delete[] pData;
-		return (REFERENCE_TIME)((totalduration)/9) * 1000;
+		__int64 duration = (__int64)(((__int64)totalduration/(__int64)9) * (__int64)1000);
+
+		if (totalduration > 0 && !bBitRateOK)
+		{
+			__int64 bitRate = (__int64)((__int64)filelength * (__int64)100);
+			pids.bitrate = (__int64)(bitRate/(__int64)((__int64)totalduration/(__int64)9000));
+		}
+		return (REFERENCE_TIME)(__int64)(((__int64)totalduration/(__int64)9) * (__int64)1000);
 	}
 
 	delete[] pData;

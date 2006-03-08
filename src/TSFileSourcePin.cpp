@@ -343,6 +343,9 @@ HRESULT CTSFileSourcePin::BreakConnect()
 
 	DisconnectDemux();
 
+	m_pTSFileSourceFilter->m_pFileReader->CloseFile();
+	m_pTSFileSourceFilter->m_pFileDuration->CloseFile();
+
 	m_pTSBuffer->Clear();
 	m_bSeeking = FALSE;
 	m_rtLastSeekStart = 0;
@@ -763,6 +766,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 */
 //*************************************************************************************************
 	m_IntCurrentTimePCR = m_llPrevPCR;
+	m_pTSFileSourceFilter->m_pPidParser->pids.bitrate = m_DataRate;
 
 	return NOERROR;
 }
@@ -777,6 +781,7 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 	m_rtTimeShiftPosition = 0;
 	m_LastMultiFileStart = 0;
 	m_LastMultiFileEnd = 0;
+	m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 
 /*
 	//Check if file is being recorded
@@ -948,6 +953,16 @@ STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags)
 {
+	BOOL bFileWasOpen = TRUE;
+	if (m_pTSFileSourceFilter->m_pFileReader->IsFileInvalid())
+	{
+		HRESULT hr = m_pTSFileSourceFilter->m_pFileReader->OpenFile();
+		if (FAILED(hr))
+			return hr;
+
+		bFileWasOpen = FALSE;
+	}
+
 	if (pCurrent)
 	{
 		//Get the FileReader Type
@@ -1216,8 +1231,9 @@ PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 		if (m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14)
 			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
 
-		nFileIndex = max(300000, nFileIndex);
+		nFileIndex = (__int64)max((__int64)300000, (__int64)nFileIndex);
 		m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+
 		return S_OK;
 	}
 //***********************************************************************************************
@@ -1241,6 +1257,15 @@ PrintTime(TEXT("our pcr Delta SeekTime"), (__int64)pcrDeltaSeekTime, 90);
 	//Set Pointer to end of file to get end pcr
 	m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64) - ((__int64)lDataLength), FILE_END);
 	m_pTSFileSourceFilter->m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
+	if (ulBytesRead != lDataLength)
+	{
+PrintTime(TEXT("File Read Call failed"), (__int64)ulBytesRead, 90);
+
+		delete[] pData;
+		return S_FALSE;
+	}
+
+
 	pos = ulBytesRead - m_pTSFileSourceFilter->m_pPidParser->get_PacketSize();
 	hr = S_OK;
 	hr = m_pTSFileSourceFilter->m_pPidParser->FindNextPCR(pData, ulBytesRead, &m_pTSFileSourceFilter->m_pPidParser->pids, &pcrEndPos, &pos, -1); //Get the PCR
@@ -1267,7 +1292,7 @@ PrintTime(TEXT("get first pcr failed as well SEEK ERROR AT START"), (__int64) pc
 			if (m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14)
 				nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
 
-			nFileIndex = max(300000, nFileIndex);
+			nFileIndex = (__int64)max((__int64)300000, (__int64)nFileIndex);
 			m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 
 			delete[] pData;
@@ -1383,7 +1408,6 @@ PrintTime(TEXT("SEEK ERROR AT END"), (__int64)pcrPos, 90);
 	delete[] pData;
 
 	return S_OK;
-	
 }
 
 HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
