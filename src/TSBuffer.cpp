@@ -97,34 +97,37 @@ HRESULT CTSBuffer::Require(long nBytes)
 			m_pFileReader->get_ReadOnly(&wReadOnly);
 			if (wReadOnly)
 			{
-				while (ulBytesRead < m_lTSBufferItemSize) 
+				int count = 40; // 2 second max delay
+				while (ulBytesRead < m_lTSBufferItemSize && count) 
 				{
 					::OutputDebugString(TEXT("TSBuffer::Require() Waiting for file to grow.\n"));
 
 					WORD bDelay = 0;
 					m_pFileReader->get_DelayMode(&bDelay);
+					count--;
 
 					if (bDelay > 0)
 					{
 						Sleep(2000);
+						count = 0;
 					}
 					else
 					{
-//						m_pClock->SetPrivateTimePause(100);
-//						m_pClock->AddPrivateTime(-100);
+						m_pClock->SetPrivateTimePause(50);
+//						m_pClock->AddPrivateTime(100);
 						Sleep(50);
 					}
 
 					ULONG ulNextBytesRead = 0;				
 					m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
 					HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulNextBytesRead);
-					if (FAILED(hr)){
+					if (FAILED(hr) && !count){
 
 						delete[] newItem;
 						return hr;
 					}
 
-					if ((ulNextBytesRead == 0) || (ulNextBytesRead == ulBytesRead)){
+					if (((ulNextBytesRead == 0) | (ulNextBytesRead == ulBytesRead)) && !count){
 
 						delete[] newItem;
 						return E_FAIL;
