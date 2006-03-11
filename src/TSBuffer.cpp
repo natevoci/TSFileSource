@@ -113,8 +113,8 @@ HRESULT CTSBuffer::Require(long nBytes)
 					}
 					else
 					{
-						m_pClock->SetPrivateTimePause(50);
-//						m_pClock->AddPrivateTime(100);
+						m_pClock->SetPrivateTimePause(60);
+//						m_pClock->AddPrivateTime(50);
 						Sleep(50);
 					}
 

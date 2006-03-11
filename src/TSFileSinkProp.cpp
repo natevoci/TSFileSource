@@ -66,6 +66,8 @@ CTSFileSinkProp::~CTSFileSinkProp(void)
 
 DWORD CTSFileSinkProp::ThreadProc(void)
 {
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+
     HRESULT hr;  // the return code from calls
     Command com;
 
