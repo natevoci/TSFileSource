@@ -99,6 +99,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_IntStartTimePCR = 0;
 	m_IntCurrentTimePCR = 0;
 	m_IntEndTimePCR = 0;
+	m_biMpegDemux = 0;
 }
 
 CTSFileSourcePin::~CTSFileSourcePin()
@@ -109,6 +110,8 @@ CTSFileSourcePin::~CTSFileSourcePin()
 
 STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void ** ppv )
 {
+	CAutoLock cAutoLock(m_pFilter->pStateLock());
+
 	if (riid == IID_ITSFileSource)
 	{
 		return GetInterface((ITSFileSource*)m_pTSFileSourceFilter, ppv);
@@ -130,7 +133,7 @@ STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void **
 		if ((!m_pTSFileSourceFilter->m_pPidParser->pids.pcr
 			&& !m_pTSFileSourceFilter->get_AutoMode()
 			&& m_pTSFileSourceFilter->m_pPidParser->get_ProgPinMode())
-			| m_pTSFileSourceFilter->m_pPidParser->get_AsyncMode())
+			&& m_pTSFileSourceFilter->m_pPidParser->get_AsyncMode())
 		{
 			return GetInterface((IAsyncReader*)m_pTSFileSourceFilter, ppv);
 		}
@@ -144,8 +147,8 @@ STDMETHODIMP CTSFileSourcePin::NonDelegatingQueryInterface( REFIID riid, void **
 
 STDMETHODIMP CTSFileSourcePin::IsFormatSupported(const GUID * pFormat)
 {
-	CAutoLock cAutoLock(m_pFilter->pStateLock());
     CheckPointer(pFormat, E_POINTER);
+	CAutoLock cAutoLock(m_pFilter->pStateLock());
 
 	if (*pFormat == TIME_FORMAT_MEDIA_TIME)
 		return S_OK;
@@ -155,16 +158,16 @@ STDMETHODIMP CTSFileSourcePin::IsFormatSupported(const GUID * pFormat)
 
 STDMETHODIMP CTSFileSourcePin::QueryPreferredFormat(GUID *pFormat)
 {
-	CAutoLock cAutoLock(m_pFilter->pStateLock());
     CheckPointer(pFormat, E_POINTER);
+	CAutoLock cAutoLock(m_pFilter->pStateLock());
 	*pFormat = TIME_FORMAT_MEDIA_TIME;
 	return S_OK;
 }
 
 HRESULT CTSFileSourcePin::GetMediaType(CMediaType *pmt)
 {
-	CAutoLock cAutoLock(m_pFilter->pStateLock());
     CheckPointer(pmt, E_POINTER);
+	CAutoLock cAutoLock(m_pFilter->pStateLock());
 
 	pmt->InitMediaType();
 	pmt->SetType      (& MEDIATYPE_Stream);
@@ -212,9 +215,8 @@ HRESULT CTSFileSourcePin::GetMediaType(int iPosition, CMediaType *pMediaType)
 
 HRESULT CTSFileSourcePin::CheckMediaType(const CMediaType* pType)
 {
+    CheckPointer(pType, E_POINTER);
 	CAutoLock cAutoLock(m_pFilter->pStateLock());
-
-    CheckPointer(pType,E_POINTER);
 
 	m_pTSFileSourceFilter->m_pDemux->AOnConnect();
 	if(MEDIATYPE_Stream == pType->majortype)
@@ -236,11 +238,12 @@ HRESULT CTSFileSourcePin::CheckMediaType(const CMediaType* pType)
 
 HRESULT CTSFileSourcePin::DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROPERTIES *pRequest)
 {
-    HRESULT hr;
-    CAutoLock cAutoLock(m_pFilter->pStateLock());
-
     CheckPointer(pAlloc, E_POINTER);
     CheckPointer(pRequest, E_POINTER);
+
+    CAutoLock cAutoLock(m_pFilter->pStateLock());
+
+    HRESULT hr;
 
     // Ensure a minimum number of buffers
     if (pRequest->cBuffers == 0)
@@ -268,24 +271,30 @@ HRESULT CTSFileSourcePin::DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROP
 
 HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 {
+	if(!pReceivePin)
+		return E_INVALIDARG;
+
+    CAutoLock cAutoLock(m_pFilter->pStateLock());
 	HRESULT hr = CBaseOutputPin::CheckConnect(pReceivePin);
 	if (SUCCEEDED(hr) && m_pTSFileSourceFilter->get_AutoMode())
 	{
 		PIN_INFO pInfo;
 		if (SUCCEEDED(pReceivePin->QueryPinInfo(&pInfo)))
 		{
-			//Test for a filter with "MPEG-2" on input pin label
-			if (_wcsicmp(pInfo.achName, L"MPEG-2") != 0)
-			{
-				pInfo.pFilter->Release();
-				return hr;
-			}
-
 			// Get an instance of the Demux control interface
 			CComPtr<IMpeg2Demultiplexer> muxInterface;
 			if(SUCCEEDED(pInfo.pFilter->QueryInterface (&muxInterface)))
 			{
 				pInfo.pFilter->Release();
+				m_biMpegDemux = TRUE;
+				return hr;
+			}
+
+			//Test for a filter with "MPEG-2" on input pin label
+			if (_wcsicmp(pInfo.achName, L"MPEG-2") != 0)
+			{
+				pInfo.pFilter->Release();
+				m_biMpegDemux = TRUE;
 				return hr;
 			}
 
@@ -299,10 +308,12 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 				//Test for an infinite tee filter
 				if (_wcsicmp(pFilterInfo.achName, L"Tee") != 0 || _wcsicmp(pFilterInfo.achName, L"Flow") != 0)
 				{
+					m_biMpegDemux = TRUE;
 					return hr;
 				}
 			}
 		}
+		m_biMpegDemux = FALSE;
 		return E_FAIL;
 	}
 	return hr;
@@ -310,6 +321,8 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 
 HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
 {
+    CAutoLock cAutoLock(m_pFilter->pStateLock());
+
 	HRESULT hr = CBaseOutputPin::CompleteConnect(pReceivePin);
 	if (SUCCEEDED(hr))
 	{
@@ -337,6 +350,8 @@ HRESULT CTSFileSourcePin::CompleteConnect(IPin *pReceivePin)
 
 HRESULT CTSFileSourcePin::BreakConnect()
 {
+    CAutoLock cAutoLock(m_pFilter->pStateLock());
+
 	HRESULT hr = CBaseOutputPin::BreakConnect();
 	if (FAILED(hr))
 		return hr;
@@ -354,6 +369,7 @@ HRESULT CTSFileSourcePin::BreakConnect()
 	m_llPrevPCR = -1;
 	m_lNextPCRByteOffset = 0;
 	m_lPrevPCRByteOffset = 0;
+	m_biMpegDemux = FALSE;
 
 	m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 	if (!m_DataRate)
@@ -378,28 +394,6 @@ HRESULT CTSFileSourcePin::BreakConnect()
 HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 {
 	CheckPointer(pSample, E_POINTER);
-
-	if (m_pTSFileSourceFilter->m_pFileReader->IsFileInvalid())
-	{
-		int count = 0;
-		__int64 fileStart;
-		__int64	fileSize = 0;
-		m_pTSFileSourceFilter->m_pFileReader->GetFileSize(&fileStart, &fileSize);
-		m_LastFileSize = fileSize;
-		m_LastStartSize = fileStart;
-
-		//If this a file start then return null.
-		while(fileSize < 500000 && count < 10)
-		{
-			Sleep(100);
-			m_pTSFileSourceFilter->m_pFileReader->GetFileSize(&fileStart, &fileSize);
-			count++;
-		}
-
-		CheckPointer(pSample, E_POINTER);
-		if (m_pTSFileSourceFilter->m_pFileReader->IsFileInvalid())
-			return NOERROR;
-	}
 
 	if (m_bSeeking)
 	{
@@ -441,8 +435,8 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 
 	__int64 firstPass = m_llPrevPCR;
 
-//	if (!m_pPidParser->pids.pcr && !m_pPidParser->get_ProgPinMode()) {
-	if (!m_pPids->pcr && m_bASyncModeSave) {
+//	cold start
+	if ((!m_pPids->pcr && m_bASyncModeSave) || !m_pTSFileSourceFilter->m_pPidParser->pidArray.Count()) {
 
 		if (firstPass == -1) {
 
@@ -783,25 +777,6 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 	m_LastMultiFileEnd = 0;
 	m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 
-/*
-	//Check if file is being recorded
-	__int64 fileStart;
-	__int64 filelength;
-	m_pTSFileSourceFilter->m_pFileReader->GetFileSize(&fileStart, &filelength);
-	m_LastFileSize = filelength;
-	m_LastStartSize = fileStart;
-
-	if(filelength < 2001000)
-	{
-		if (m_pTSFileSourceFilter->RefreshPids() == S_OK)
-		{
-			m_pTSFileSourceFilter->LoadPgmReg();
-			DeliverBeginFlush();
-			DeliverEndFlush();
-			SetDuration(m_pTSFileSourceFilter->m_pPidParser->pids.dur);
-		}
-	}
-*/
 	CAutoLock lock(&m_SeekLock);
 	//Test if parser Locked
 	if (!m_pTSFileSourceFilter->m_pPidParser->m_ParsingLock){
@@ -915,24 +890,6 @@ STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 		}
 		else
 		{
-/*			__int64 curr = (__int64)max(0, (__int64)ConvertPCRtoRT(max(0,(__int64)(m_IntEndTimePCR - m_IntCurrentTimePCR))));
-			curr = (REFERENCE_TIME)max(0, (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur - curr)); 
-			*pCurrent = (REFERENCE_TIME)min(curr, (__int64)max(0, m_pTSFileSourceFilter->m_pPidParser->pids.dur)); 
-		
-			BOOL bTimeMode;
-			BOOL bTimeShifting = IsTimeShifting(m_pTSFileSourceFilter->m_pFileReader, &bTimeMode);
-			if (bTimeMode)
-			{
-				curr = max(0,((__int64)(__int64)*pCurrent - (__int64)10000000));
-				*pStop = (REFERENCE_TIME) curr;
-			}
-			else
-			{
-				*pStop = max(0, (__int64)ConvertPCRtoRT(m_IntEndTimePCR - m_IntStartTimePCR));
-			}
-			REFERENCE_TIME current, stop;
-			return CSourceSeeking::GetPositions(&current, &stop);
-*/
 			BOOL bTimeMode;
 			BOOL bTimeShifting = IsTimeShifting(m_pTSFileSourceFilter->m_pFileReader, &bTimeMode);
 			if (bTimeMode)
@@ -953,6 +910,9 @@ STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags)
 {
+	if(!m_rtDuration)
+		return E_FAIL;
+
 	BOOL bFileWasOpen = TRUE;
 	if (m_pTSFileSourceFilter->m_pFileReader->IsFileInvalid())
 	{
@@ -1013,6 +973,9 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags)
 {
 //PrintTime(TEXT("setPositions"), (__int64) *pCurrent, 10000);
+	if(!m_rtDuration)
+		return E_FAIL;
+
 	if (pCurrent)
 	{
 		WORD readonly = 0;
@@ -1181,6 +1144,18 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 {
 PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 	HRESULT hr;
+
+	//Return as quick as possible if cold starting
+	__int64 fileStart, filelength = 0;
+	m_pTSFileSourceFilter->m_pFileReader->GetFileSize(&fileStart, &filelength);
+	if(filelength < 2000000)
+	{
+		__int64 nFileIndex = (__int64)min((__int64)-filelength, (__int64)(300000 - filelength));
+		m_pTSFileSourceFilter->m_pFileReader->setFilePointer(nFileIndex, FILE_END);
+
+		return S_OK;
+	}
+
 	ULONG pos;
 	__int64 pcrEndPos;
 	ULONG ulBytesRead = 0;
@@ -1190,9 +1165,6 @@ PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 	m_rtStart = seektime;
 	m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
 	m_rtTimeShiftPosition = seektime;
-
-	__int64 fileStart, filelength = 0;
-	m_pTSFileSourceFilter->m_pFileReader->GetFileSize(&fileStart, &filelength);
 
 	WORD bMultiMode;
 	m_pTSFileSourceFilter->m_pFileReader->get_ReaderMode(&bMultiMode);
@@ -1496,17 +1468,22 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 		if(bMultiMode
 			&& (REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime)	//Do MultiFile timeshifting mode
 		{
-//			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-//			REFERENCE_TIME rtStop = 0;
-
-//			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) > rtCurrentTime)
-//				return hr;
+			//Check if Cold Start
+			if(!m_IntBaseTimePCR && !m_IntStartTimePCR && !m_IntEndTimePCR)
+			{
+				m_LastMultiFileStart = -1;
+				m_LastMultiFileEnd = -1;
+			}
 
 			//Get CSourceSeeking current time.
 			CSourceSeeking::GetPositions(&rtCurrentTime, &rtStop);
 			//Test if we had been seeking recently and wait 2sec if so.
 			if ((REFERENCE_TIME)(m_rtLastSeekStart + (REFERENCE_TIME)20000000) > rtCurrentTime)
-				return hr;
+			{
+				if(m_rtLastSeekStart || rtCurrentTime)
+//				if (m_IntEndTimePCR != -1) //cold start
+					return hr;
+			}
 
 			BOOL bLengthChanged = FALSE;
 			BOOL bStartChanged = FALSE;
@@ -1527,7 +1504,7 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 				pcrPos = -1;
 
 				//Set Pointer to start of file to get end pcr
-				pFileReader->setFilePointer(0, FILE_BEGIN);
+				pFileReader->setFilePointer(300000, FILE_BEGIN);
 				PBYTE pData = new BYTE[lDataLength];
 				pFileReader->Read(pData, lDataLength, &ulBytesRead);
 				pos = 0;
@@ -1538,6 +1515,14 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 				//park the Pointer to end of file 
 //				pFileReader->setFilePointer( (__int64)max(0, (__int64)(m_pTSFileSourceFilter->m_pFileReader->getFilePointer() -(__int64)100000)), FILE_BEGIN);
 
+				//Cold Start
+				if (m_LastMultiFileStart == -1)
+				{
+					m_IntStartTimePCR = pcrPos;
+					m_IntBaseTimePCR = m_IntStartTimePCR;
+					m_LastMultiFileStart = fileStart;
+				}
+
 				__int64	pcrDeltaTime = (__int64)(pcrPos - m_IntStartTimePCR);
 				//Test if we have a pcr or if the pcr is less than rollover time
 				if (FAILED(hr) || pcrDeltaTime < 0)
@@ -1547,6 +1532,7 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 					PrintTime(TEXT("Start PCR"), pcrPos, 90);
 					if(pcrPos)
 						m_IntStartTimePCR = pcrPos;
+
 					return hr;
 				}
 				else
@@ -1593,6 +1579,15 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 				delete[] pData;
 				//park the Pointer to end of file 
 //				pFileReader->setFilePointer( (__int64)max(0, (__int64)(m_pTSFileSourceFilter->m_pFileReader->getFilePointer() -(__int64)100000)), FILE_BEGIN);
+
+				//Cold Start
+				if (m_LastMultiFileEnd == -1 && pcrPos)
+				{
+					m_IntEndTimePCR = pcrPos;
+					m_pTSFileSourceFilter->m_pPidParser->pids.dur = (__int64)ConvertPCRtoRT(m_IntEndTimePCR - m_IntStartTimePCR); 
+					m_LastMultiFileEnd = fileEnd;
+					return hr;
+				}
 
 				__int64	pcrDeltaTime = (__int64)(pcrPos - m_IntEndTimePCR);
 				//Test if we have a pcr or if the pcr is less than rollover time
@@ -1650,12 +1645,12 @@ HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 						m_rtStop = m_pTSFileSourceFilter->m_pPidParser->pids.dur;
 				}
 
-PrintTime(TEXT("UpdateDuration: m_IntBaseTimePCR"), (__int64)m_IntBaseTimePCR, 90);
-PrintTime(TEXT("UpdateDuration: m_IntStartTimePCR"), (__int64)m_IntStartTimePCR, 90);
-PrintTime(TEXT("UpdateDuration: m_IntEndTimePCR"), (__int64)m_IntEndTimePCR, 90);
-PrintTime(TEXT("UpdateDuration: pids.start"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start, 90);
-PrintTime(TEXT("UpdateDuration: pids.end"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end, 90);
-PrintTime(TEXT("UpdateDuration: pids.dur"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur, 10000);
+//PrintTime(TEXT("UpdateDuration: m_IntBaseTimePCR"), (__int64)m_IntBaseTimePCR, 90);
+//PrintTime(TEXT("UpdateDuration: m_IntStartTimePCR"), (__int64)m_IntStartTimePCR, 90);
+//PrintTime(TEXT("UpdateDuration: m_IntEndTimePCR"), (__int64)m_IntEndTimePCR, 90);
+//PrintTime(TEXT("UpdateDuration: pids.start"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start, 90);
+//PrintTime(TEXT("UpdateDuration: pids.end"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end, 90);
+//PrintTime(TEXT("UpdateDuration: pids.dur"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur, 10000);
 
 				if (!m_bSeeking)
 				{
@@ -1671,9 +1666,6 @@ PrintTime(TEXT("UpdateDuration: pids.dur"), (__int64)m_pTSFileSourceFilter->m_pP
 			//check for duration every second of size change
 			BOOL bTimeMode;
 			BOOL bTimeShifting = IsTimeShifting(pFileReader, &bTimeMode);
-
-//			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-//			REFERENCE_TIME rtStop = 0;
 
 			BOOL bLengthChanged = FALSE;
 
@@ -2188,7 +2180,7 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 //Old Capture format Additions
 //					if (m_pPidParser->pids.pcr && m_pTSFileSourceFilter->get_AutoMode()) // && !m_pPidParser->pids.opcr) 
 //***********************************************************************************************
-					if (m_pTSFileSourceFilter->get_AutoMode())
+					if (m_biMpegDemux && m_pTSFileSourceFilter->get_AutoMode())
 						pFilter->SetSyncSource(pClock);
 					muxInterface->Release();
 				}

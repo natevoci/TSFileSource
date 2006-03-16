@@ -32,8 +32,7 @@
 
 CTSFileSourceClock::CTSFileSourceClock( TCHAR *pName, LPUNKNOWN pUnk, HRESULT *phr ) :
 	CBaseReferenceClock(pName, pUnk, phr, NULL),
-	m_PauseTime(0),
-	m_DelayTime(0),
+	m_bPause(FALSE),
 	m_baseTime(0)
 {
 }
@@ -61,27 +60,22 @@ REFERENCE_TIME CTSFileSourceClock::GetPrivateTime()
 		m_baseTime = rtPrivateTime;
 	}
 
-//	if(m_PauseTime)
-//	{
-//		Sleep(m_PauseTime);
-//		m_baseTime = (REFERENCE_TIME)max(0, (__int64)((__int64)m_baseTime - (__int64)((__int64)m_PauseTime * (__int64)10000)));
-//	}
-//	m_PauseTime = 0;
+	dwTime = timeGetTime();
+	if(m_bPause)
+	{
+//		for (int i = 0; i = 1000; i++){}
+		dwTime = timeGetTime() - dwTime;
+		m_baseTime = (REFERENCE_TIME)max(0, (__int64)((__int64)m_baseTime + (__int64)((__int64)Int32x32To64(UNITS / MILLISECONDS, (DWORD)(dwTime)))));
+	}
+	m_bPause = FALSE;
 
 	rtPrivateTime -= m_baseTime;
 
     return rtPrivateTime;
 }
 
-void CTSFileSourceClock::SetPrivateTimePause(ULONG lPauseTime)
+void CTSFileSourceClock::SetClockPause(BOOL bPause)
 {
-	m_PauseTime = max(2000, lPauseTime);
-}
-
-void CTSFileSourceClock::AddPrivateTime(long lDelayTime)
-{
-	m_DelayTime = (__int64)min((__int64)20000000, (__int64)((__int64)lDelayTime * (__int64)10000));
-	m_DelayTime = (__int64)max((__int64)-20000000, (__int64)m_DelayTime);
-	m_baseTime = (REFERENCE_TIME)max(0, (__int64)((__int64)m_baseTime + m_DelayTime));
+	m_bPause = bPause;
 }
 

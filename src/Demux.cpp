@@ -121,6 +121,7 @@ HRESULT Demux::GetPeerFilters(
     pEnum->Release();
     return S_OK;
 }
+
 void Demux::AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew)
 {
     if (pNew == NULL) return;
@@ -200,6 +201,8 @@ HRESULT Demux::AOnConnect()
 	// Check if Enabled
 	if (!m_bAuto && !m_bNPControl && !m_bNPSlave)
 		return S_FALSE;
+
+	CAutoLock demuxlock(&m_DemuxLock);
 
 	m_bConnectBusyFlag = TRUE;
 	m_WasPlaying = FALSE;
@@ -539,6 +542,7 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 
 HRESULT Demux::CheckDemuxPin(IBaseFilter* pDemux, AM_MEDIA_TYPE pintype, IPin** pIPin)
 {
+	CAutoLock demuxlock(&m_DemuxLock);
 	HRESULT hr = E_INVALIDARG;
 
 	if(pDemux == NULL && *pIPin != NULL)
@@ -1235,7 +1239,7 @@ HRESULT Demux::LoadVideoPin(IPin* pIPin, ULONG pid)
 	if(pIPin == NULL)
 		return hr;
 
-	ClearDemuxPin(pIPin);
+	VetDemuxPin(pIPin, pid);
 
 	// Get the Pid Map interface of the pin
 	// and map the pids we want.
@@ -1277,7 +1281,7 @@ HRESULT Demux::LoadAudioPin(IPin* pIPin, ULONG pid)
 	if(pIPin == NULL)
 		return hr;
 
-	ClearDemuxPin(pIPin);
+	VetDemuxPin(pIPin, pid);
 
 	// Get the Pid Map interface of the pin
 	// and map the pids we want.
@@ -1326,7 +1330,7 @@ HRESULT Demux::LoadTelexPin(IPin* pIPin, ULONG pid)
 	if(pIPin == NULL)
 		return hr;
 
-	ClearDemuxPin(pIPin);
+	VetDemuxPin(pIPin, pid);
 
 	// Get the Pid Map interface of the pin
 	// and map the pids we want.
@@ -1350,12 +1354,59 @@ HRESULT Demux::LoadTelexPin(IPin* pIPin, ULONG pid)
 				muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0, 0);
 				m_SelTelexPid = pid;
 			}
-
 			muxMapPid->Release();
 			hr = S_OK;
 		}
 	}
 	return hr;
+}
+
+HRESULT Demux::VetDemuxPin(IPin* pIPin, ULONG pid)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pIPin == NULL)
+		return hr;
+
+	ULONG pids = 0;
+	IMPEG2PIDMap* muxMapPid;
+	if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid))){
+
+		IEnumPIDMap *pIEnumPIDMap;
+		if (SUCCEEDED(muxMapPid->EnumPIDMap(&pIEnumPIDMap))){
+			ULONG pNumb = 0;
+			PID_MAP pPidMap;
+			while(pIEnumPIDMap->Next(1, &pPidMap, &pNumb) == S_OK){
+				if (pid != pPidMap.ulPID)
+				{
+					pids = pPidMap.ulPID;
+					hr = muxMapPid->UnmapPID(1, &pids);
+				}
+			}
+		}
+		muxMapPid->Release();
+	}
+	else {
+
+		IMPEG2StreamIdMap* muxStreamMap;
+		if(SUCCEEDED(pIPin->QueryInterface (&muxStreamMap))){
+
+			IEnumStreamIdMap *pIEnumStreamMap;
+			if (SUCCEEDED(muxStreamMap->EnumStreamIdMap(&pIEnumStreamMap))){
+				ULONG pNumb = 0;
+				STREAM_ID_MAP pStreamIdMap;
+				while(pIEnumStreamMap->Next(1, &pStreamIdMap, &pNumb) == S_OK){
+					if (pid != pStreamIdMap.stream_id)
+					{
+						pids = pStreamIdMap.stream_id;
+						hr = muxStreamMap->UnmapStreamId(1, &pids);
+					}
+				}
+			}
+			muxStreamMap->Release();
+		}
+	}
+	return S_OK;
 }
 
 HRESULT Demux::ClearDemuxPin(IPin* pIPin)

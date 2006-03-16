@@ -102,6 +102,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_bReload = FALSE;
 	m_llLastMultiFileStart = 0;
 	m_llLastMultiFileLength = 0;
+	m_bColdStart = FALSE;
 
 }
 
@@ -243,7 +244,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 	m_pFileDuration->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
-	int count = 1;
+	int count = 0;
 
     do
     {
@@ -257,7 +258,6 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime)
 			{
 				CNetRender::UpdateNetFlow(&netArray);
-				count++;
 				if(m_State == State_Running
 					&& 1 == 1)
 				{
@@ -285,31 +285,42 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							}
 						}
 					}
-					//check pids every 5sec or quicker if no pids parsed
-					else if (count > 5 || !m_pPidParser->pidArray.Count())
+					//check pids every 4sec or quicker if no pids parsed
+					else if (count == 4 || !m_pPidParser->pidArray.Count())
 					{
 						//update the parser
-							UpdatePidParser();
-							count = 0;
+						UpdatePidParser();
 					}
 					
 					m_llLastMultiFileStart = fileStart;
 					m_llLastMultiFileLength = filelength;
 				}
+
+				//Change back to normal Auto operation if not already
+				if (count == 8 && m_pPidParser->pidArray.Count() && m_bColdStart)
+				{
+					//Change back to normal Auto operation
+					m_pDemux->set_Auto(m_bColdStart);
+					m_bColdStart = FALSE; //
+				}
+
+				count++;
+				if (count > 8)
+					count = 0;
+
 				m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 			}
 
 			if(!m_pPidParser->m_ParsingLock && m_State != State_Stopped
-				&& 1 == 1)
+			&& m_pPidParser->pidArray.Count() && 1 == 1) //cold start
 			{
 				hr = m_pPin->UpdateDuration(m_pFileDuration);
-				if (m_pDemux->CheckDemuxPids() == S_FALSE)
 				{
-					m_pDemux->AOnConnect();
-					m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+					if (!m_bColdStart)
+						if (m_pDemux->CheckDemuxPids() == S_FALSE)
+							m_pDemux->AOnConnect();
 				}
 			}
-
 			Sleep(100);
         }
 
@@ -339,7 +350,6 @@ BOOL CTSFileSourceFilter::ThreadRunning(void)
 STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void ** ppv)
 {
 	CheckPointer(ppv,E_POINTER);
-	CAutoLock lock(&m_Lock);
 
 	// Do we have this interface
 	if (riid == IID_ITSFileSource)
@@ -362,7 +372,7 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
     {
 		return GetInterface((IAMFilterMiscFlags*)this, ppv);
     }
-	if (riid == IID_IAMStreamSelect && m_pDemux->get_Auto())
+	if (riid == IID_IAMStreamSelect && (m_pDemux->get_Auto() | m_bColdStart))
 	{
 		return GetInterface((IAMStreamSelect*)this, ppv);
 	}
@@ -374,7 +384,7 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 		if ((!m_pPidParser->pids.pcr
 			&& !get_AutoMode()
 			&& m_pPidParser->get_ProgPinMode())
-			| m_pPidParser->get_AsyncMode())
+			&& m_pPidParser->get_AsyncMode())
 		{
 			return GetInterface((IAsyncReader*)this, ppv);
 		}
@@ -395,8 +405,9 @@ STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams) //IAMStreamSelect
 
 	*pcStreams = 0;
 
-	CAutoLock lock(&m_Lock);
-	if (!m_pStreamParser->StreamArray.Count())
+	if (!m_pStreamParser->StreamArray.Count() ||
+		!m_pPidParser->pidArray.Count() ||
+		m_pPidParser->m_ParsingLock) //cold start
 		return VFW_E_NOT_CONNECTED;
 
 	*pcStreams = m_pStreamParser->StreamArray.Count();
@@ -415,7 +426,9 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 						IUnknown **ppUnk) //IAMStreamSelect
 {
 
-	CAutoLock lock(&m_Lock);
+	//Check if file has been parsed
+	if (!m_pPidParser->pidArray.Count() || m_pPidParser->m_ParsingLock)
+		return E_FAIL;
 
 	m_pStreamParser->ParsePidArray();
 	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
@@ -468,12 +481,22 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStreamSelect
 {
 	//Test if ready
-	if (!m_pStreamParser->StreamArray.Count())
+	if (!m_pStreamParser->StreamArray.Count() ||
+		!m_pPidParser->pidArray.Count() ||
+		m_pPidParser->m_ParsingLock)
 		return VFW_E_NOT_CONNECTED;
 
 	//Test if out of bounds
 	if (lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return E_INVALIDARG;
+
+	//Change back to normal Auto operation
+	if (m_bColdStart)
+	{
+		//Change back to normal Auto operation
+		m_pDemux->set_Auto(m_bColdStart);
+		m_bColdStart = FALSE; //
+	}
 
 	int indexOffset = netArray.Count() + (int)(netArray.Count() != 0);
 
@@ -521,6 +544,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 			}
 		}
 	}
+
 	return S_OK;
 
 } //IAMStreamSelect
@@ -590,7 +614,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 		m_pPin->GetPositions(&start, &stop);
 
 		//Start at least 100ms into file to skip header
-		if (start == 0)
+		if (start == 0 && m_pPidParser->pidArray.Count())
 			start += 1000000;
 
 //***********************************************************************************************
@@ -640,7 +664,7 @@ HRESULT CTSFileSourceFilter::Pause()
 //m_pPin->PrintTime(TEXT("Pause"), (__int64) start, 10000);
 
 		//Start at least 100ms into file to skip header
-		if (start == 0)
+		if (start == 0 && m_pPidParser->pidArray.Count())
 			start += 1000000;
 
 //***********************************************************************************************
@@ -668,7 +692,7 @@ HRESULT CTSFileSourceFilter::Pause()
 STDMETHODIMP CTSFileSourceFilter::Stop()
 {
 	CAutoLock cObjectLock(m_pLock);
-	CAutoLock lock(&m_Lock);
+//	CAutoLock lock(&m_Lock);
 
 //	if (ThreadRunning() && ThreadExists())
 //		CAMThread::CallWorker(CMD_STOP);
@@ -920,6 +944,27 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	//If this a file start then return null.
 	if(fileSize < 2000000)
 	{
+		//Check for forced pin mode
+		if (pmt)
+		{
+			//Set for cold start
+			m_bColdStart = m_pDemux->get_Auto();
+			m_pDemux->set_Auto(FALSE);
+//			m_pPin->SetDuration(1000000);
+
+			if(MEDIATYPE_Stream == pmt->majortype)
+			{
+				//Are we in Transport mode
+				if (MEDIASUBTYPE_MPEG2_TRANSPORT == pmt->subtype)
+					m_pPidParser->set_ProgPinMode(FALSE);
+
+				//Are we in Program mode
+				else if (MEDIASUBTYPE_MPEG2_PROGRAM == pmt->subtype)
+					m_pPidParser->set_ProgPinMode(TRUE);
+
+				m_pPidParser->set_AsyncMode(FALSE);
+			}
+		}
 		CAutoLock lock(&m_Lock);
 		m_pFileReader->CloseFile();
 		delete[] wFileName;
@@ -942,6 +987,22 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 
+	//Check for forced pin mode
+	if (pmt)
+	{
+		if(MEDIATYPE_Stream == pmt->majortype)
+		{
+			//Are we in Transport mode
+			if (MEDIASUBTYPE_MPEG2_TRANSPORT == pmt->subtype)
+				m_pPidParser->set_ProgPinMode(FALSE);
+
+			//Are we in Program mode
+			else if (MEDIASUBTYPE_MPEG2_PROGRAM == pmt->subtype)
+				m_pPidParser->set_ProgPinMode(TRUE);
+
+				m_pPidParser->set_AsyncMode(FALSE);
+		}
+	}
 	return hr;
 }
 
@@ -1036,20 +1097,20 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	m_llLastMultiFileLength = fileSize;
 
 	int count = 0;
-	__int64 filsSizeSave = fileSize;
+	__int64 fileSizeSave = fileSize;
 	while(fileSize < 5000000 && count < 10)
 	{
 		count++;
 		Sleep(500);
 		m_pFileReader->GetFileSize(&fileStart, &fileSize);
-		if (fileSize <= filsSizeSave)
+		if (fileSize <= fileSizeSave)
 		{
 			NotifyEvent(EC_NEED_RESTART, NULL, NULL);
 			Sleep(1000);
 			break;
 		}
 
-		filsSizeSave = fileSize;
+		fileSizeSave = fileSize;
 	};
 
 	m_pFileReader->setFilePointer(300000, FILE_BEGIN);
@@ -1191,9 +1252,17 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(void)
 
 		if (m_pPidParser->m_TStreamID) 
 		{
-			m_pPidParser->set_SIDPid(sid); //Setup for search
+			if (sid)
+				m_pPidParser->set_SIDPid(sid); //Setup for search
+			else
+				m_pPidParser->set_SIDPid(m_pPidParser->pids.sid); //Setup for search
+
 			m_pPidParser->set_ProgramSID(); //set to same sid as before
-			m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
+
+			if (sidsave)
+				m_pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
+			else
+				m_pPidParser->m_ProgramSID = m_pPidParser->pids.sid; // restore old sid reg setting.
 		}
 						
 		m_pStreamParser->ParsePidArray();

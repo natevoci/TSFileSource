@@ -25,7 +25,7 @@
 
 #include "NetInfo.h"
 #include <crtdbg.h>
-#include <streams.h>
+//#include <streams.h>
 
 NetInfo::NetInfo() 
 {

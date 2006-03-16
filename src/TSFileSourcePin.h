@@ -135,7 +135,8 @@ protected:
 	__int64 m_llPCRDelta;
 
 	int debugcount;
-	BOOL   m_bRateControl;
+	BOOL m_bRateControl;
+	BOOL m_biMpegDemux;
 	long m_lNextPCRByteOffset;
 	long m_lPrevPCRByteOffset;
 	long m_lByteDelta;

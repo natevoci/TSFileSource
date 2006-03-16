@@ -108,7 +108,7 @@ BOOL MultiFileReader::IsFileInvalid()
 
 HRESULT MultiFileReader::GetFileSize(__int64 *pStartPosition, __int64 *pLength)
 {
-//	RefreshTSBufferFile();
+	RefreshTSBufferFile();
 	CheckPointer(pStartPosition,E_POINTER);
 	CheckPointer(pLength,E_POINTER);
 	*pStartPosition = m_startPosition;
@@ -315,7 +315,7 @@ HRESULT MultiFileReader::RefreshTSBufferFile()
 
 			nextStartPosition = file->startPosition + file->length;
 		}
-
+//Bug Report: Possible issue, seems to get a large value of fileLength greater than the BYTE Array can produce.
 		__int64 remainingLength = fileLength - sizeof(__int64) - sizeof(long) - sizeof(long);
 		LPWSTR pBuffer = (LPWSTR)new BYTE[remainingLength];
 		m_TSBufferFile.Read((LPBYTE)pBuffer, remainingLength, &bytesRead);

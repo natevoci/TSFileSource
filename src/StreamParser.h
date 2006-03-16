@@ -57,6 +57,8 @@ public:
 
 protected:
 
+	CCritSec m_StreamLock;
+
 	void LoadStreamArray(int cnt);
 	void AddStreamArray();
 	void SetStreamArray(int n);

@@ -208,7 +208,6 @@ protected:
 
 protected:
 
-//	CNetRender *m_pNetworkGraph;
 	CTSFileSourcePin *m_pPin;          // A simple rendered input pin
 	CTSFileSourceClock *m_pClock;
 	CRegStore *m_pRegStore;
@@ -219,6 +218,7 @@ protected:
 	FileReader *m_pFileReader;
 	Demux *m_pDemux;
 	BOOL m_bRotEnable;
+	BOOL m_bColdStart;
 	CCritSec m_Lock;                // Main renderer critical section
     //registration number for the RunningObjectTable
     DWORD m_dwGraphRegister;

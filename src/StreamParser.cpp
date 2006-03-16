@@ -52,6 +52,8 @@ HRESULT StreamParser::ParsePidArray()
 {
 	HRESULT hr = S_FALSE;
 
+	CAutoLock StreamLock(&m_StreamLock);
+
 	StreamArray.Clear();
 	if (!m_pPidParser->pidArray.Count())
 		return hr;
@@ -85,7 +87,7 @@ HRESULT StreamParser::ParsePidArray()
 		if (m_pPidParser->pidArray[count].chnumb == 0)
 			sprintf(szBuffer,"   ");
 		else
-			sprintf(szBuffer,"   %i : ", m_pPidParser->pidArray[count].chnumb);
+			sprintf(szBuffer,"   %i. ", m_pPidParser->pidArray[count].chnumb);
 
 		if (m_pPidParser->pidArray[count].chname[0] == 0) {
 
@@ -256,6 +258,8 @@ void StreamParser::LoadStreamArray(int cnt)
 	
 void StreamParser::SetStreamActive(int group)
 {
+	CAutoLock StreamLock(&m_StreamLock);
+
 	int count = 0;
 	while (count < StreamArray.Count())
 	{
@@ -265,13 +269,13 @@ void StreamParser::SetStreamActive(int group)
 				StreamArray[count].flags = 0;
 		}
 
-		if (StreamArray[count].group == group)
+		if (StreamArray.Count() && StreamArray[count].group == group)
 		{
 			if (StreamArray[count].Vid | StreamArray[count].H264 | StreamArray[count].Mpeg4)
 			{
 				StreamArray[count].flags = AMSTREAMSELECTINFO_ENABLED;
 			}
-			else if (StreamArray[count].Pid == m_pDemux->m_SelAudioPid)
+			else if (StreamArray[count].Pid == m_pDemux->m_SelAudioPid && m_pDemux->m_SelAudioPid)
 			{
 				StreamArray[count].flags = AMSTREAMSELECTINFO_EXCLUSIVE | AMSTREAMSELECTINFO_ENABLED; //AMSTREAMSELECTINFO_ENABLED;
 				m_StreamIndex = count;
@@ -284,6 +288,8 @@ void StreamParser::SetStreamActive(int group)
 
 bool StreamParser::IsStreamActive(int index)
 {
+	CAutoLock StreamLock(&m_StreamLock);
+
 	if (StreamArray[index].flags == AMSTREAMSELECTINFO_EXCLUSIVE)
 		return true;
 

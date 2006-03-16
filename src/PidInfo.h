@@ -69,6 +69,7 @@ public:
 
 class PidInfoArray
 {
+	
 public:
 	PidInfoArray();
 	virtual ~PidInfoArray();
@@ -82,6 +83,8 @@ public:
 
 private:
 	std::vector<PidInfo *> m_Array;
+
+	CCritSec m_ArrayLock;
 
 };
 

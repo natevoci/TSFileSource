@@ -107,6 +107,7 @@ protected:
 	HRESULT	LoadAudioPin(IPin* pIPin, ULONG pid);
 	HRESULT	LoadVideoPin(IPin* pIPin, ULONG pid);
 	HRESULT	LoadTelexPin(IPin* pIPin, ULONG pid);
+	HRESULT VetDemuxPin(IPin* pIPin, ULONG pid);
 	HRESULT	ClearDemuxPin(IPin* pIPin);
 	HRESULT	ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConnect);
 	HRESULT UpdateNetworkProvider(IBaseFilter* pNetworkProvider);
@@ -119,6 +120,7 @@ protected:
 
 	IBaseFilter *m_pTSFileSourceFilter;
 	PidParser *m_pPidParser;
+	CCritSec m_DemuxLock;
 
 	BOOL m_bAuto;
 	BOOL m_bNPControl;

@@ -23,9 +23,11 @@
 *    http://forums.dvbowners.com/
 */
 
+#include <streams.h>
 #include "PidInfo.h"
 #include <crtdbg.h>
-#include <streams.h>
+#include <WXUtil.h>
+
 
 PidInfo::PidInfo()
 {
@@ -62,7 +64,7 @@ void PidInfo::Clear()
 	opcr  = 0;
 	start = 0;
 	end   = 0;
-	dur   = 0;
+	dur   = 0; //1000000;
 	bitrate = 10000000; //Set reasonable value
 	for (int i = 0 ; i < 16 ; i++ )
 	{
@@ -151,6 +153,8 @@ PidInfoArray::~PidInfoArray()
 
 void PidInfoArray::Clear()
 {
+	CAutoLock arraylock(&m_ArrayLock);
+
 	std::vector<PidInfo *>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
 	{
@@ -161,11 +165,13 @@ void PidInfoArray::Clear()
 
 void PidInfoArray::Add(PidInfo *newPidInfo)
 {
+	CAutoLock arraylock(&m_ArrayLock);
 	m_Array.push_back(newPidInfo);
 }
 
 void PidInfoArray::RemoveAt(int nPosition)
 {
+	CAutoLock arraylock(&m_ArrayLock);
 	if ((nPosition >= 0) && (nPosition < m_Array.size()))
 	{
 		m_Array.erase(m_Array.begin() + nPosition);
@@ -174,6 +180,7 @@ void PidInfoArray::RemoveAt(int nPosition)
 
 PidInfo &PidInfoArray::operator[](int nPosition)
 {
+	CAutoLock arraylock(&m_ArrayLock);
 	int size = m_Array.size();
 	_ASSERT(nPosition >= 0);
 	_ASSERT(nPosition < size);
@@ -183,6 +190,7 @@ PidInfo &PidInfoArray::operator[](int nPosition)
 
 int PidInfoArray::Count()
 {
+	CAutoLock arraylock(&m_ArrayLock);
 	return m_Array.size();
 }
 

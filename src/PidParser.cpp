@@ -459,14 +459,14 @@ HRESULT PidParser::RefreshPids()
 			m_pFileReader->GetFileSize(&fileStart, &fileSize);
 			fileSizeSave = fileSize;
 			ParseFromFile(filestartpointer); 
-			if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0)
+			if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0 || get_ProgPinMode()) //cold start
 				return S_OK;
 		}
 	}
 	else
 	{
 		ParseFromFile(filestartpointer);
-		if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0)
+		if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0 || get_ProgPinMode()) //cold start
 			return S_OK;
 	}
 	return S_FALSE;
@@ -2143,7 +2143,8 @@ void PidParser::set_ProgPinMode(BOOL mode)
 	if (mode){
 
 		m_PacketSize = 0x800; //Set for 2048 block
-		m_pFileReader->set_DelayMode(TRUE);
+		m_pFileReader->set_DelayMode(TRUE);//cold start
+//		m_pFileReader->set_DelayMode(TRUE);
 		m_ProgPinMode = TRUE;
 	}
 	else{
@@ -2186,8 +2187,9 @@ HRESULT PidParser::set_ProgramSID()
 	m_pgmnumb = 0;
 	
 	// fail if there is only one program in file
-	if (pidArray.Count() <= 1)
+	if (!pidArray.Count())// cold start <= 1)
 		return S_FALSE;
+
 	//loop through SID's in list
 	for (int c = 0; c < pidArray.Count(); c++)
 	{

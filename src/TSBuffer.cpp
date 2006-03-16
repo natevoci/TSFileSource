@@ -97,7 +97,7 @@ HRESULT CTSBuffer::Require(long nBytes)
 			m_pFileReader->get_ReadOnly(&wReadOnly);
 			if (wReadOnly)
 			{
-				int count = 40; // 2 second max delay
+				int count = 200; // 2 second max delay
 				while (ulBytesRead < m_lTSBufferItemSize && count) 
 				{
 					::OutputDebugString(TEXT("TSBuffer::Require() Waiting for file to grow.\n"));
@@ -113,9 +113,8 @@ HRESULT CTSBuffer::Require(long nBytes)
 					}
 					else
 					{
-						m_pClock->SetPrivateTimePause(60);
-//						m_pClock->AddPrivateTime(50);
-						Sleep(50);
+						Sleep(200);
+						m_pClock->SetClockPause(TRUE); //cold start
 					}
 
 					ULONG ulNextBytesRead = 0;				
@@ -135,6 +134,8 @@ HRESULT CTSBuffer::Require(long nBytes)
 
 					ulBytesRead = ulNextBytesRead;
 				}
+//				m_pClock->SetPrivateTimePause(1); //cold start
+
 			}
 			else
 			{
