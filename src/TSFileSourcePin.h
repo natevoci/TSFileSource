@@ -63,6 +63,7 @@ public:
 	HRESULT CheckConnect(IPin *pReceivePin);
 	HRESULT CompleteConnect(IPin *pReceivePin);
 	HRESULT BreakConnect();
+	HRESULT UpdateTSBuffer();
 	HRESULT FillBuffer(IMediaSample *pSample);
 	HRESULT OnThreadStartPlay();
 	HRESULT Run(REFERENCE_TIME tStart);

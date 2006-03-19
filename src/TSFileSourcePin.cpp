@@ -72,7 +72,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_lNextPCRByteOffset = 0;
 	m_lPrevPCRByteOffset = 0;
 
-	m_lTSPacketDeliverySize = m_pTSFileSourceFilter->m_pPidParser->get_PacketSize()*1000;
+	m_lTSPacketDeliverySize = 188000;
 
 	m_DataRate = 10000000;
 	m_DataRateTotal = 0;
@@ -83,7 +83,6 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 
 	m_pTSBuffer = new CTSBuffer(m_pTSFileSourceFilter->m_pClock);
 	m_pPids = new PidInfo();
-
 	debugcount = 0;
 
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
@@ -361,6 +360,7 @@ HRESULT CTSFileSourcePin::BreakConnect()
 	m_pTSFileSourceFilter->m_pFileReader->CloseFile();
 	m_pTSFileSourceFilter->m_pFileDuration->CloseFile();
 
+	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 	m_pTSBuffer->Clear();
 	m_bSeeking = FALSE;
 	m_rtLastSeekStart = 0;
@@ -391,6 +391,20 @@ HRESULT CTSFileSourcePin::BreakConnect()
 	return hr;
 }
 
+HRESULT CTSFileSourcePin::UpdateTSBuffer()
+{
+	WORD readonly = 0;
+	m_pTSFileSourceFilter->m_pFileReader->get_ReadOnly(&readonly);
+	if (m_bSeeking || !readonly)
+	{
+		return NOERROR;
+	}
+
+	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
+	return m_pTSBuffer->UpdateBuffer();
+}
+
+
 HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 {
 	CheckPointer(pSample, E_POINTER);
@@ -409,7 +423,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		m_TSIDSave = m_pTSFileSourceFilter->m_pPidParser->m_TStreamID;
 		m_PinTypeSave  = m_pTSFileSourceFilter->m_pPidParser->get_ProgPinMode();
 	}
-
 
 	CAutoLock lock(&m_FillLock);
 
@@ -469,6 +482,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		}
 
 		//Read from buffer
+		m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
 
 		m_IntLastStreamTime = REFERENCE_TIME(cTime);
@@ -564,6 +578,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	}
 
 	//Read from buffer
+	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 	m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
 	m_lPrevPCRByteOffset -= lDataLength;
 	m_lNextPCRByteOffset -= lDataLength;
@@ -769,6 +784,7 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 {
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 	m_llPrevPCR = -1;
+	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 	m_pTSBuffer->Clear();
 	m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 	debugcount = 0;
@@ -832,9 +848,7 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 		SetDemuxClock(pClock);
 //		m_pTSFileSourceFilter->NotifyEvent(EC_CLOCK_UNSET, NULL, NULL);
 	}
-
 	return CBaseOutputPin::Run(tStart);
-
 }
 
 STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
@@ -1113,6 +1127,7 @@ HRESULT CTSFileSourcePin::ChangeRate()
 
 void CTSFileSourcePin::ClearBuffer(void)
 {
+	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 	m_pTSBuffer->Clear();
 }
 
@@ -1129,6 +1144,7 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 		m_llPrevPCR = -1;
 		if (updateStartPosition == TRUE)
 		{
+			m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 			m_pTSBuffer->Clear();
 			SetAccuratePos(m_rtStart);
 			//m_pTSFileSourceFilter->FileSeek(m_rtStart);
@@ -1890,6 +1906,7 @@ HRESULT CTSFileSourcePin::FindNextPCR(__int64 *pcrtime, long *byteOffset, long m
 	{
 		bytesToRead = min(bytesToRead, maxOffset-*byteOffset);
 
+		m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 		hr = m_pTSBuffer->ReadFromBuffer(pData, bytesToRead, *byteOffset);
 		if (FAILED(hr))
 			break;
@@ -1924,6 +1941,7 @@ HRESULT CTSFileSourcePin::FindPrevPCR(__int64 *pcrtime, long *byteOffset)
 
 		bytesToRead += m_PacketSave;
 
+		m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 		hr = m_pTSBuffer->ReadFromBuffer(pData, bytesToRead, *byteOffset);
 		if (FAILED(hr))
 			break;

@@ -140,7 +140,7 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
 {
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
 
     HRESULT hr;  // the return code from calls
     Command com;
@@ -321,7 +321,8 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							m_pDemux->AOnConnect();
 				}
 			}
-			Sleep(100);
+			m_pPin->UpdateTSBuffer();
+			Sleep(10);
         }
 
         // For all commands sent to us there must be a Reply call!
@@ -692,7 +693,7 @@ HRESULT CTSFileSourceFilter::Pause()
 STDMETHODIMP CTSFileSourceFilter::Stop()
 {
 	CAutoLock cObjectLock(m_pLock);
-//	CAutoLock lock(&m_Lock);
+	CAutoLock lock(&m_Lock);
 
 //	if (ThreadRunning() && ThreadExists())
 //		CAMThread::CallWorker(CMD_STOP);

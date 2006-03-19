@@ -148,12 +148,13 @@ PidInfoArray::PidInfoArray()
 
 PidInfoArray::~PidInfoArray()
 {
+//	CAutoLock arraylock(&m_ArrayLock);
 	Clear();
 }
 
 void PidInfoArray::Clear()
 {
-	CAutoLock arraylock(&m_ArrayLock);
+//	CAutoLock arraylock(&m_ArrayLock);
 
 	std::vector<PidInfo *>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
@@ -165,13 +166,13 @@ void PidInfoArray::Clear()
 
 void PidInfoArray::Add(PidInfo *newPidInfo)
 {
-	CAutoLock arraylock(&m_ArrayLock);
+//	CAutoLock arraylock(&m_ArrayLock);
 	m_Array.push_back(newPidInfo);
 }
 
 void PidInfoArray::RemoveAt(int nPosition)
 {
-	CAutoLock arraylock(&m_ArrayLock);
+//	CAutoLock arraylock(&m_ArrayLock);
 	if ((nPosition >= 0) && (nPosition < m_Array.size()))
 	{
 		m_Array.erase(m_Array.begin() + nPosition);
@@ -180,7 +181,7 @@ void PidInfoArray::RemoveAt(int nPosition)
 
 PidInfo &PidInfoArray::operator[](int nPosition)
 {
-	CAutoLock arraylock(&m_ArrayLock);
+//	CAutoLock arraylock(&m_ArrayLock);
 	int size = m_Array.size();
 	_ASSERT(nPosition >= 0);
 	_ASSERT(nPosition < size);
@@ -190,7 +191,7 @@ PidInfo &PidInfoArray::operator[](int nPosition)
 
 int PidInfoArray::Count()
 {
-	CAutoLock arraylock(&m_ArrayLock);
+//	CAutoLock arraylock(&m_ArrayLock);
 	return m_Array.size();
 }
 

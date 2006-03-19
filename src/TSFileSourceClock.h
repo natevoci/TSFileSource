@@ -37,6 +37,7 @@ public:
 	virtual void SetClockPause(BOOL bPause);
 
 private:
+	CCritSec m_ClockLock;
 	REFERENCE_TIME m_baseTime;
 	BOOL m_bPause;
 

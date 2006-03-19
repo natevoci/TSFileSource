@@ -42,18 +42,23 @@ public:
 
 	void Clear();
 	long Count();
+	HRESULT UpdateBuffer();
 	HRESULT Require(long nBytes);
 
 	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
 	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
+	void PrintLongLong(LPCTSTR lstring, __int64 value);
 
 protected:
 	FileReader *m_pFileReader;
 	CTSFileSourceClock *m_pClock;
 	std::vector<BYTE *> m_Array;
 	long m_lItemOffset;
+	CCritSec m_BufferLock;
 
 	long m_lTSBufferItemSize;
+	int debugcount;
+	long m_lbuflen;
 };
 
 #endif

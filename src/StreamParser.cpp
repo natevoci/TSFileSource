@@ -58,6 +58,10 @@ HRESULT StreamParser::ParsePidArray()
 	if (!m_pPidParser->pidArray.Count())
 		return hr;
 
+	if (m_pPidParser->m_ParsingLock)
+		return hr;
+
+	m_pPidParser->m_ParsingLock = TRUE;
 	int index = 0;
 
 	//Setup Network Name
@@ -244,6 +248,7 @@ HRESULT StreamParser::ParsePidArray()
 			index++;
 		}
 	}
+	m_pPidParser->m_ParsingLock = FALSE;
 
 	return S_OK;
 }

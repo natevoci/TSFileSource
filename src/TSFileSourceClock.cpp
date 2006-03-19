@@ -55,19 +55,23 @@ REFERENCE_TIME CTSFileSourceClock::GetPrivateTime()
 	REFERENCE_TIME rtPrivateTime;
     rtPrivateTime = Int32x32To64(UNITS / MILLISECONDS, (DWORD)(dwTime));
 
+//	rtPrivateTime -= (__int64)((__int64)rtPrivateTime/(__int64)100);
+
+	rtPrivateTime = (REFERENCE_TIME)(rtPrivateTime *0.99);
+
+//	int count = 0;
+//	while(m_bPause && count < 10)
+//	{
+//		CAutoLock ClockLock(&m_ClockLock);
+//		count++;
+//		Sleep(10);
+//	}
+//	m_bPause = FALSE;
+
 	if (m_baseTime == 0)
 	{
 		m_baseTime = rtPrivateTime;
 	}
-
-	dwTime = timeGetTime();
-	if(m_bPause)
-	{
-//		for (int i = 0; i = 1000; i++){}
-		dwTime = timeGetTime() - dwTime;
-		m_baseTime = (REFERENCE_TIME)max(0, (__int64)((__int64)m_baseTime + (__int64)((__int64)Int32x32To64(UNITS / MILLISECONDS, (DWORD)(dwTime)))));
-	}
-	m_bPause = FALSE;
 
 	rtPrivateTime -= m_baseTime;
 
@@ -76,6 +80,7 @@ REFERENCE_TIME CTSFileSourceClock::GetPrivateTime()
 
 void CTSFileSourceClock::SetClockPause(BOOL bPause)
 {
+	CAutoLock ClockLock(&m_ClockLock);
 	m_bPause = bPause;
 }
 
