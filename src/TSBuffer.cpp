@@ -46,12 +46,12 @@ CTSBuffer::~CTSBuffer()
 
 void CTSBuffer::SetFileReader(FileReader *pFileReader)
 {
+	CAutoLock BufferLock(&m_BufferLock);
 	m_pFileReader = pFileReader;
 }
 
 void CTSBuffer::Clear()
 {
-	CAutoLock BufferLock(&m_BufferLock);
 	std::vector<BYTE *>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
 	{
@@ -65,7 +65,6 @@ void CTSBuffer::Clear()
 
 long CTSBuffer::Count()
 {
-	CAutoLock BufferLock(&m_BufferLock);
 	long bytesAvailable = 0;
 	long itemCount = m_Array.size();
 
@@ -93,12 +92,17 @@ HRESULT CTSBuffer::UpdateBuffer()
 	return S_OK;
 }
 
+HRESULT CTSBuffer::GetRequire(long nBytes)
+{
+	CAutoLock BufferLock(&m_BufferLock);
+	return Require(nBytes);
+}
+
 HRESULT CTSBuffer::Require(long nBytes)
 {
 	if (!m_pFileReader)
 		return E_POINTER;
 
-	CAutoLock BufferLock(&m_BufferLock);
 	long bytesAvailable = Count();
 
 	while (nBytes > bytesAvailable)
@@ -248,7 +252,6 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 
 		long copyLength = min(m_lTSBufferItemSize-lOffset, lDataLength-bytesWritten);
 		{
-			CAutoLock BufferLock(&m_BufferLock);
 			memcpy(pbData + bytesWritten, item + lOffset, copyLength);
 
 			bytesWritten += copyLength;

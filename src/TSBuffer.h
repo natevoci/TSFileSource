@@ -43,6 +43,7 @@ public:
 	void Clear();
 	long Count();
 	HRESULT UpdateBuffer();
+	HRESULT GetRequire(long nBytes);
 	HRESULT Require(long nBytes);
 
 	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);

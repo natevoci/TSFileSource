@@ -57,7 +57,7 @@ REFERENCE_TIME CTSFileSourceClock::GetPrivateTime()
 
 //	rtPrivateTime -= (__int64)((__int64)rtPrivateTime/(__int64)100);
 
-	rtPrivateTime = (REFERENCE_TIME)(rtPrivateTime *0.99);
+//	rtPrivateTime = (REFERENCE_TIME)(rtPrivateTime *0.99);
 
 //	int count = 0;
 //	while(m_bPause && count < 10)

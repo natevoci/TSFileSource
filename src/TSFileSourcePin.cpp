@@ -400,6 +400,7 @@ HRESULT CTSFileSourcePin::UpdateTSBuffer()
 		return NOERROR;
 	}
 
+	CAutoLock lock(&m_FillLock);
 	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 	return m_pTSBuffer->UpdateBuffer();
 }
@@ -437,7 +438,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	lDataLength = pSample->GetActualDataLength();
 
 	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
-	hr = m_pTSBuffer->Require(lDataLength);
+	hr = m_pTSBuffer->GetRequire(lDataLength);
 	if (FAILED(hr))
 	{
 		return S_FALSE;
