@@ -361,7 +361,10 @@ HRESULT CTSFileSourcePin::BreakConnect()
 	m_pTSFileSourceFilter->m_pFileDuration->CloseFile();
 
 	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
-	m_pTSBuffer->Clear();
+	{
+		CAutoLock fillLock(&m_FillLock);
+		m_pTSBuffer->Clear();
+	}
 	m_bSeeking = FALSE;
 	m_rtLastSeekStart = 0;
 	m_llBasePCR = -1;
@@ -786,7 +789,10 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 	m_llPrevPCR = -1;
 	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
-	m_pTSBuffer->Clear();
+	{
+		CAutoLock fillLock(&m_FillLock);
+		m_pTSBuffer->Clear();
+	}
 	m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 	debugcount = 0;
 	m_rtTimeShiftPosition = 0;
@@ -1119,15 +1125,17 @@ HRESULT CTSFileSourcePin::ChangeRate()
         CAutoLock cAutoLockSeeking(CSourceSeeking::m_pLock);
         if( m_dRateSeeking <= 0 ) {
             m_dRateSeeking = 1.0;  // Reset to a reasonable value.
-            return E_FAIL;
+            return E_INVALIDARG;
         }
+//		m_pTSFileSourceFilter->m_pClock->SetClockRate(m_dRateSeeking);
     }
-    UpdateFromSeek();
+//    UpdateFromSeek();
     return S_OK;
 }
 
 void CTSFileSourcePin::ClearBuffer(void)
 {
+	CAutoLock fillLock(&m_FillLock);
 	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 	m_pTSBuffer->Clear();
 }
@@ -1223,6 +1231,7 @@ PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 		nFileIndex = (__int64)max((__int64)300000, (__int64)nFileIndex);
 		m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 
+		m_IntCurrentTimePCR = m_IntStartTimePCR + (__int64)((__int64)((__int64)seektime * (__int64)9) / (__int64)1000);
 		return S_OK;
 	}
 //***********************************************************************************************
@@ -1284,6 +1293,7 @@ PrintTime(TEXT("get first pcr failed as well SEEK ERROR AT START"), (__int64) pc
 			nFileIndex = (__int64)max((__int64)300000, (__int64)nFileIndex);
 			m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 
+			m_IntCurrentTimePCR = m_IntStartTimePCR + (__int64)((__int64)((__int64)seektime * (__int64)9) / (__int64)1000);
 			delete[] pData;
 			return S_OK;
 		}
@@ -1377,6 +1387,7 @@ PrintTime(TEXT("seekback"), (__int64) pcrPos, 90);
 		//Set pointer to locale
 		nFileIndex += (__int64)pos;
 
+		m_IntCurrentTimePCR = pcrPos;
 PrintTime(TEXT("seekend"), (__int64) pcrPos, 90);
 	}
 	else
@@ -1389,6 +1400,7 @@ PrintTime(TEXT("seekend"), (__int64) pcrPos, 90);
 		if (m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14)
 			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
 
+		m_IntCurrentTimePCR = m_IntStartTimePCR + (__int64)((__int64)((__int64)seektime * (__int64)9) / (__int64)1000);
 PrintTime(TEXT("SEEK ERROR AT END"), (__int64)pcrPos, 90);
 	}
 		nFileIndex = max(300000, nFileIndex);

@@ -52,6 +52,7 @@ void CTSBuffer::SetFileReader(FileReader *pFileReader)
 
 void CTSBuffer::Clear()
 {
+	CAutoLock BufferLock(&m_BufferLock);
 	std::vector<BYTE *>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
 	{
@@ -82,11 +83,7 @@ HRESULT CTSBuffer::UpdateBuffer()
 	long bytesAvailable = Count();
 	if (bytesAvailable < m_lTSBufferItemSize*m_lbuflen)
 	{
-		long itemCount = m_Array.size();
-		if (itemCount > 0)
-		{
-			Require(m_lTSBufferItemSize*m_lbuflen);
-		}
+		Require(m_lTSBufferItemSize*m_lbuflen);
 	}
 
 	return S_OK;
@@ -170,7 +167,6 @@ HRESULT CTSBuffer::Require(long nBytes)
 
 					ulBytesRead = ulNextBytesRead;
 				}
-
 			}
 			else
 			{
@@ -178,8 +174,8 @@ HRESULT CTSBuffer::Require(long nBytes)
 				m_lbuflen = 1;
 				return E_FAIL;
 			}
+
 			m_lbuflen--;
-			m_pClock->SetClockPause(TRUE);
 		}
 		else if (m_lbuflen < 8)
 			m_lbuflen++;

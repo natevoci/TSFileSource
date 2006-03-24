@@ -315,8 +315,14 @@ HRESULT MultiFileReader::RefreshTSBufferFile()
 
 			nextStartPosition = file->startPosition + file->length;
 		}
-//Bug Report: Possible issue, seems to get a large value of fileLength greater than the BYTE Array can produce.
 		__int64 remainingLength = fileLength - sizeof(__int64) - sizeof(long) - sizeof(long);
+
+///////////////////////////////////////
+//Bug Report: Possible issue, seems to get a large value of fileLength greater than the BYTE Array can produce.
+		if (remainingLength > 4000000)
+			return S_FALSE; //exit false until fixed
+//////////////////////////////////////
+
 		LPWSTR pBuffer = (LPWSTR)new BYTE[remainingLength];
 		m_TSBufferFile.Read((LPBYTE)pBuffer, remainingLength, &bytesRead);
 		if (bytesRead < remainingLength)

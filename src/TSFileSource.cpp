@@ -951,7 +951,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 			//Set for cold start
 			m_bColdStart = m_pDemux->get_Auto();
 			m_pDemux->set_Auto(FALSE);
-//			m_pPin->SetDuration(1000000);
+			m_pClock->SetClockRate(0.99);
 
 			if(MEDIATYPE_Stream == pmt->majortype)
 			{
@@ -1226,8 +1226,21 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(void)
 		{
 			hr = S_OK;
 
-			//Lock the parser out
-			m_pPidParser->m_ParsingLock	= TRUE;
+			//Check if we are locked out
+			int count = 0;
+			while (m_pPidParser->m_ParsingLock)
+			{
+				Sleep(10);
+				count++;
+				if (count > 100)
+				{
+					delete  pPidParser;
+					return S_FALSE;
+				}
+			}
+			//Lock the parser
+			m_pPidParser->m_ParsingLock = TRUE;
+
 			m_pPidParser->m_TStreamID = pPidParser->m_TStreamID;
 			m_pPidParser->m_NetworkID = pPidParser->m_NetworkID;
 			m_pPidParser->m_ONetworkID = pPidParser->m_ONetworkID;

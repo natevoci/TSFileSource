@@ -32,7 +32,7 @@
 
 CTSFileSourceClock::CTSFileSourceClock( TCHAR *pName, LPUNKNOWN pUnk, HRESULT *phr ) :
 	CBaseReferenceClock(pName, pUnk, phr, NULL),
-	m_bPause(FALSE),
+	m_dRateSeeking(1.0),
 	m_baseTime(0)
 {
 }
@@ -55,18 +55,7 @@ REFERENCE_TIME CTSFileSourceClock::GetPrivateTime()
 	REFERENCE_TIME rtPrivateTime;
     rtPrivateTime = Int32x32To64(UNITS / MILLISECONDS, (DWORD)(dwTime));
 
-//	rtPrivateTime -= (__int64)((__int64)rtPrivateTime/(__int64)100);
-
-//	rtPrivateTime = (REFERENCE_TIME)(rtPrivateTime *0.99);
-
-//	int count = 0;
-//	while(m_bPause && count < 10)
-//	{
-//		CAutoLock ClockLock(&m_ClockLock);
-//		count++;
-//		Sleep(10);
-//	}
-//	m_bPause = FALSE;
+	rtPrivateTime = (REFERENCE_TIME)(rtPrivateTime *m_dRateSeeking);
 
 	if (m_baseTime == 0)
 	{
@@ -78,9 +67,8 @@ REFERENCE_TIME CTSFileSourceClock::GetPrivateTime()
     return rtPrivateTime;
 }
 
-void CTSFileSourceClock::SetClockPause(BOOL bPause)
+void CTSFileSourceClock::SetClockRate(double dRateSeeking)
 {
-	CAutoLock ClockLock(&m_ClockLock);
-	m_bPause = bPause;
+	m_dRateSeeking = dRateSeeking;
 }
 

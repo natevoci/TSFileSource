@@ -34,12 +34,11 @@ public:
 
     virtual REFERENCE_TIME GetPrivateTime();
 
-	virtual void SetClockPause(BOOL bPause);
+	virtual void SetClockRate(double dRateSeeking);
 
 private:
-	CCritSec m_ClockLock;
 	REFERENCE_TIME m_baseTime;
-	BOOL m_bPause;
+	double m_dRateSeeking;
 
 };
 

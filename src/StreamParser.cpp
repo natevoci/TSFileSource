@@ -58,10 +58,23 @@ HRESULT StreamParser::ParsePidArray()
 	if (!m_pPidParser->pidArray.Count())
 		return hr;
 
-	if (m_pPidParser->m_ParsingLock)
-		return hr;
+//	if (m_pPidParser->m_ParsingLock)
+//		return hr;
 
+	//Check if we are locked out
+	int cnt = 0;
+	while (m_pPidParser->m_ParsingLock)
+	{
+		Sleep(100);
+		cnt++;
+		if (cnt > 10)
+		{
+			return S_FALSE;
+		}
+	}
+	//Lock the parser
 	m_pPidParser->m_ParsingLock = TRUE;
+
 	int index = 0;
 
 	//Setup Network Name

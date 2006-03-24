@@ -76,6 +76,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		return NOERROR;
 	}
 
+//	CAutoLock parserlock(&m_ParserLock);
 
 	//Store file pointer so we can reset it before leaving this method
 	FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
@@ -335,8 +336,11 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				| pids.aud |pids.txt | pids.ac3 
 				| pids.aac | pids.pcr | pids.opcr) == 0)
 			{
-				set_ProgPinMode(TRUE); //Set to Program Stream Mode
 				m_PacketSize = 0x800; //Set for 2048 block
+				m_pFileReader->set_DelayMode(TRUE);//cold start
+//				m_pFileReader->set_DelayMode(TRUE);
+				m_ProgPinMode = TRUE;
+
 				//Search for any A/V Pids
 				if (CheckVAStreams(pData, ulDataLength) == S_OK)
 				{
@@ -349,8 +353,11 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 						{
 							if (!(pids.vid | pids.h264 | pids.mpeg4  
 								| pids.aud  | pids.txt  | pids.ac3 
-								| pids.aac))
-								set_ProgPinMode(FALSE); //Set back to Transport Stream Mode
+								| pids.aac)) {
+									m_PacketSize = 188;
+									m_pFileReader->set_DelayMode(FALSE);
+									m_ProgPinMode = FALSE;
+							}
 						}
 						else
 							RefreshDuration(FALSE, pFileReader);
@@ -411,7 +418,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		}
 		else
 		{
-			set_AsyncMode(TRUE); //Set IAsyncReader interface Active
+			m_AsyncMode = TRUE; //Set IAsyncReader interface Active
 			hr = S_FALSE;
 		}
 	}
@@ -435,6 +442,7 @@ HRESULT PidParser::RefreshPids()
 		return NOERROR;
 	}
 
+//	CAutoLock parserlock(&m_ParserLock);
 	__int64 fileStart, fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
 	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getFilePointer());
@@ -459,14 +467,14 @@ HRESULT PidParser::RefreshPids()
 			m_pFileReader->GetFileSize(&fileStart, &fileSize);
 			fileSizeSave = fileSize;
 			ParseFromFile(filestartpointer); 
-			if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0 || get_ProgPinMode()) //cold start
+			if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0 || m_ProgPinMode) //cold start
 				return S_OK;
 		}
 	}
 	else
 	{
 		ParseFromFile(filestartpointer);
-		if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0 || get_ProgPinMode()) //cold start
+		if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0 || m_ProgPinMode) //cold start
 			return S_OK;
 	}
 	return S_FALSE;
@@ -2066,6 +2074,7 @@ void PidParser::AddTsPid(PidInfo *pidInfo, WORD pid)
 
 void PidParser::get_ChannelNumber(BYTE *pointer)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	TCHAR sz[128];
 	sprintf(sz, "%i",pids.chnumb);
 	memcpy(pointer, sz, 128);
@@ -2073,73 +2082,86 @@ void PidParser::get_ChannelNumber(BYTE *pointer)
 
 void PidParser::get_NetworkName(BYTE *pointer)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	memcpy(pointer, m_NetworkName, 128);
 	memcpy(pointer + 127, "\0", 1);
 }
 
 void PidParser::get_ONetworkName(BYTE *pointer)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	memcpy(pointer, pids.onetname, 128);
 	memcpy(pointer + 127, "\0", 1);
 }
 
 void PidParser::get_ChannelName(BYTE *pointer)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	memcpy(pointer, pids.chname, 128);
 	memcpy(pointer + 127, "\0", 1);
 }
 
 HRESULT PidParser::get_EPGFromFile()
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	return CheckEPGFromFile();
 }
 
 void PidParser::get_ShortDescr(BYTE *pointer)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	memcpy(pointer, pids.sdesc, 128);
 	memcpy(pointer + 127, "\0", 1);
 }
 
 void PidParser::get_ExtendedDescr(BYTE *pointer)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	memcpy(pointer, pids.edesc, 600);
 	memcpy(pointer + 599, "\0", 1);
 }
 
 void PidParser::get_ShortNextDescr(BYTE *pointer)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	memcpy(pointer, pids.sndesc, 128);
 	memcpy(pointer + 127, "\0", 1);
 }
 
 void PidParser::get_ExtendedNextDescr(BYTE *pointer)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	memcpy(pointer, pids.endesc, 600);
 	memcpy(pointer + 599, "\0", 1);
 }
 
 void PidParser::get_CurrentTSArray(ULONG *pPidArray)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	memcpy(pPidArray, pidArray[m_pgmnumb].TsArray, 16*sizeof(ULONG));
 }
 
 WORD PidParser::get_ProgramNumber()
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	return m_pgmnumb;
 }
 
 BOOL PidParser::get_ProgPinMode()
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	return m_ProgPinMode;
 }
 
 BOOL PidParser::get_AsyncMode()
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	return m_AsyncMode;
 }
 
 void PidParser::set_ProgPinMode(BOOL mode)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	if (mode){
 
 		m_PacketSize = 0x800; //Set for 2048 block
@@ -2157,6 +2179,7 @@ void PidParser::set_ProgPinMode(BOOL mode)
 
 void PidParser::set_AsyncMode(BOOL mode)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	if (mode)
 		m_AsyncMode = TRUE;
 	else
@@ -2165,11 +2188,13 @@ void PidParser::set_AsyncMode(BOOL mode)
 
 ULONG PidParser::get_PacketSize()
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	return m_PacketSize;
 }
 
 void PidParser::set_ProgramNumber(WORD programNumber)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	m_pgmnumb = programNumber;
 	pids.Clear();
 	pids.CopyFrom(&pidArray[m_pgmnumb]);
@@ -2177,12 +2202,14 @@ void PidParser::set_ProgramNumber(WORD programNumber)
 
 void PidParser::set_SIDPid(int bProgramSID)
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	m_ProgramSID = bProgramSID;
 	return;
 }
 
 HRESULT PidParser::set_ProgramSID()
 {
+//	CAutoLock parserlock(&m_ParserLock);
 	HRESULT hr = S_FALSE;
 	m_pgmnumb = 0;
 	

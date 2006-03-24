@@ -132,6 +132,7 @@ protected:
 	__int64 m_FileStartPointer;
 
 	FileReader *m_pFileReader;
+	CCritSec m_ParserLock;
 };
 
 #endif
