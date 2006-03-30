@@ -337,7 +337,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				| pids.aac | pids.pcr | pids.opcr) == 0)
 			{
 				m_PacketSize = 0x800; //Set for 2048 block
-				m_pFileReader->set_DelayMode(TRUE);//cold start
+				m_pFileReader->set_DelayMode(FALSE);//cold start
 //				m_pFileReader->set_DelayMode(TRUE);
 				m_ProgPinMode = TRUE;
 
@@ -2165,7 +2165,7 @@ void PidParser::set_ProgPinMode(BOOL mode)
 	if (mode){
 
 		m_PacketSize = 0x800; //Set for 2048 block
-		m_pFileReader->set_DelayMode(TRUE);//cold start
+		m_pFileReader->set_DelayMode(FALSE);//cold start
 //		m_pFileReader->set_DelayMode(TRUE);
 		m_ProgPinMode = TRUE;
 	}

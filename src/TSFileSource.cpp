@@ -536,6 +536,8 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		{
 //			m_pFileReader->set_DelayMode(TRUE);
 //			m_pFileDuration->set_DelayMode(TRUE);
+			m_pFileReader->set_DelayMode(FALSE); //Cold Start
+			m_pFileDuration->set_DelayMode(FALSE); //Cold Start
 			REFERENCE_TIME stop, start = (__int64)max(0,(__int64)(m_pPidParser->pids.dur - 20000000));
 			IMediaSeeking *pMediaSeeking;
 			if(SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
@@ -851,6 +853,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 			lstrcpyW(wFileName, netAddr->fileName);
 //			m_pFileReader->set_DelayMode(TRUE);
 //			m_pFileDuration->set_DelayMode(TRUE);
+			m_pFileReader->set_DelayMode(FALSE);
+			m_pFileDuration->set_DelayMode(FALSE);
 
 		}
 		else // If already running
@@ -874,7 +878,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	}
 
 	//Jump to a different Load method if already been set.
-	if (ThreadExists() || IsActive())
+	if (ThreadExists() || IsActive() || m_pPin->CBasePin::IsConnected())
 	{
 		hr = ReLoad(wFileName, pmt);
 		delete[] wFileName;

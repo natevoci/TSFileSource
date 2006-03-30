@@ -267,7 +267,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	//
 	// Loop until we have data or time out 
 	//
-	while(llDataFlow < 2000000 && count < 10)
+	while(llDataFlow < 20000 && count < 10) //2000000
 	{
 		Sleep(100);
 		hr = pITSFileSink->GetFileBufferSize(&llDataFlow);
@@ -291,7 +291,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	Sleep(100);
 	pITSFileSink->GetFileBufferSize(&llDataFlow);
 
-	if(llDataFlow < 2000000 || (llDataFlow < (__int64)(netAddr->buffSize + (__int64)1)))
+	if(llDataFlow < 20000 || (llDataFlow < (__int64)(netAddr->buffSize + (__int64)1)))//2000000
     {
 		DeleteNetworkGraph(netAddr);
         return VFW_E_INVALIDMEDIATYPE;//ERROR_CANNOT_MAKE;
