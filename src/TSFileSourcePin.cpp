@@ -860,6 +860,7 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 
 STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
 {
+//::OutputDebugString(TEXT("GetCurrentPosition In\n"));
 	if (pCurrent)
 	{
 		CAutoLock seekLock(&m_SeekLock);
@@ -884,6 +885,7 @@ STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
 
 STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 {
+//::OutputDebugString(TEXT("GetPositions In\n"));
 	if (pCurrent)
 	{
 		CAutoLock seekLock(&m_SeekLock);
@@ -931,6 +933,7 @@ STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags)
 {
+//::OutputDebugString(TEXT("SetPositions In\n"));
 	if(!m_rtDuration)
 		return E_FAIL;
 
@@ -993,6 +996,7 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags)
 {
+//::OutputDebugString(TEXT("setPositions In\n"));
 //PrintTime(TEXT("setPositions"), (__int64) *pCurrent, 10000);
 	if(!m_rtDuration)
 		return E_FAIL;
@@ -1035,21 +1039,27 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 				if(m_pTSFileSourceFilter->IsActive() && !m_DemuxLock)
 					SetDemuxClock(NULL);
 
-				CAutoLock fillLock(&m_FillLock);
+//::OutputDebugString(TEXT("setPositions prelock\n"));
+//				CAutoLock fillLock(&m_FillLock);
+//::OutputDebugString(TEXT("setPositions postlck\n"));
 				//Test if parser Locked
 				if (!m_pTSFileSourceFilter->m_pPidParser->m_ParsingLock){
 					//fix our pid values for this run
+					m_pTSFileSourceFilter->m_pPidParser->m_ParsingLock = TRUE;
 					m_pTSFileSourceFilter->m_pPidParser->pids.CopyTo(m_pPids); 
 					m_bASyncModeSave = m_pTSFileSourceFilter->m_pPidParser->get_AsyncMode();
 					m_PacketSave = m_pTSFileSourceFilter->m_pPidParser->get_PacketSize();
 					m_TSIDSave = m_pTSFileSourceFilter->m_pPidParser->m_TStreamID;
 					m_PinTypeSave  = m_pTSFileSourceFilter->m_pPidParser->get_ProgPinMode();
+					m_pTSFileSourceFilter->m_pPidParser->m_ParsingLock = FALSE;
 				}
 				m_LastMultiFileStart = 0;
 				m_LastMultiFileEnd = 0;
 
 				DeliverBeginFlush();
+//::OutputDebugString(TEXT("setPositions preStop\n"));
 				CSourceStream::Stop();
+//::OutputDebugString(TEXT("setPositions postStop\n"));
 				m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 				m_llPrevPCR = -1;
 
@@ -1082,6 +1092,7 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 
 STDMETHODIMP CTSFileSourcePin::GetAvailable(LONGLONG *pEarliest, LONGLONG *pLatest)
 {
+::OutputDebugString(TEXT("GetAvailable In\n"));
 	m_bGetAvailableMode = TRUE;
 
 	CAutoLock seekLock(&m_SeekLock);

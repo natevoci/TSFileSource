@@ -644,6 +644,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 
 HRESULT CTSFileSourceFilter::Pause()
 {
+//::OutputDebugString(TEXT("Pause In \n"));
 	CAutoLock cObjectLock(m_pLock);
 
 	if(!IsActive())

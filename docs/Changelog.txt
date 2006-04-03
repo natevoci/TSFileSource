@@ -1,6 +1,8 @@
 Version 2.2.0.1
 =================
 bear:
+Fixed a bug in the setPositions function that was causing a lock of the thread if it was called repeatedly quickly. re DNTVLive pause scrolling.
+Fixed a bug where the pid parser was not locked while setposition was called.
 Reduced the load delay on the network multicast render method as the filter can now do cold starts.
 Fixed a problem where the filter was unable to change pin mode if it was loaded & rendered and new file was loaded.
 Fixed a problem where the PidArray was being accessed during a clear operation and casing a crash.
