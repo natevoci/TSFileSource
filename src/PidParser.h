@@ -68,6 +68,7 @@ PidParser(FileReader *pFileReader);
 	BOOL get_AsyncMode();
 	void set_AsyncMode(BOOL mode);
 	ULONG get_PacketSize();
+	void PrintTime(LPCTSTR lstring, __int64 value, __int64 divider);
 
 	int m_NetworkID;
 	int m_ONetworkID;

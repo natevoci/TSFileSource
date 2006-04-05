@@ -28,12 +28,17 @@
 #include <crtdbg.h>
 #include <math.h>
 
-CTSBuffer::CTSBuffer(CTSFileSourceClock *pClock)
+CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 {
 	m_pFileReader = NULL;
+	m_pPidParser = 	pPidParser;
 	m_pClock = pClock;
 	m_lItemOffset = 0;
-	m_lTSBufferItemSize = 188000;
+	if (m_pPidParser->get_ProgPinMode())
+		m_lTSBufferItemSize = 102400;
+	else
+		m_lTSBufferItemSize = 188000;
+//	m_lTSBufferItemSize = 188000;
 	debugcount = 0;
 	m_lbuflen = 1;
 	Clear();
@@ -85,7 +90,6 @@ HRESULT CTSBuffer::UpdateBuffer()
 	{
 		Require(m_lTSBufferItemSize*m_lbuflen);
 	}
-
 	return S_OK;
 }
 

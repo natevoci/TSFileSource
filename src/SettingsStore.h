@@ -60,6 +60,9 @@ public:
 	BOOL getAC3ModeReg();
 	void setAC3ModeReg(BOOL bAC3);
 
+	BOOL getFixedAspectRatioReg();
+	void setFixedAspectRatioReg(BOOL bFixedAR);
+
 	BOOL getCreateTSPinOnDemuxReg();
 	void setCreateTSPinOnDemuxReg(BOOL bTSPin);
 
@@ -96,6 +99,7 @@ private:
 	BOOL 	nPSlave;
 	BOOL	mp2Mode;
 	BOOL	ac3Mode;
+	BOOL	fixedAR;
 	BOOL	tsPinMode;
 	BOOL	txtPinMode;
 	BOOL	delayMode;

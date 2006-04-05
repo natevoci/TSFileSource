@@ -58,6 +58,7 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter) :
 	m_SelTelexPid(0),
 	m_SelAudioPid(0), 
 	m_SelVideoPid(0),
+	m_bFixedAR(FALSE),
 	m_bCreateTSPinOnDemux(FALSE),
 	m_bCreateTxtPinOnDemux(FALSE)
 {
@@ -1991,10 +1992,16 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 	pintype->lSampleSize = 1;
 	pintype->formattype = FORMAT_MPEG2Video;
 	pintype->pUnk = NULL;
-//	pintype->cbFormat = sizeof(Mpeg2ProgramVideo);
-//	pintype->pbFormat = Mpeg2ProgramVideo;
-	pintype->cbFormat = sizeof(g_Mpeg2ProgramVideo);
-	pintype->pbFormat = g_Mpeg2ProgramVideo;
+	if(m_bFixedAR) //change format if fixed aspect ratio
+	{
+		pintype->cbFormat = sizeof(Mpeg2ProgramVideo);
+		pintype->pbFormat = Mpeg2ProgramVideo;
+	}
+	else
+	{
+		pintype->cbFormat = sizeof(g_Mpeg2ProgramVideo);
+		pintype->pbFormat = g_Mpeg2ProgramVideo;
+	}
 
 	return S_OK;
 }
@@ -2340,9 +2347,19 @@ void Demux::set_AC3Mode(BOOL bAC3Mode)
 	m_bAC3Mode = bAC3Mode;
 }
 
+BOOL Demux::get_FixedAspectRatio()
+{
+	return m_bFixedAR;
+}
+
 BOOL Demux::get_CreateTSPinOnDemux()
 {
 	return m_bCreateTSPinOnDemux;
+}
+
+void Demux::set_FixedAspectRatio(BOOL bFixedAR)
+{
+	m_bFixedAR = bFixedAR;
 }
 
 void Demux::set_CreateTSPinOnDemux(BOOL bCreateTSPinOnDemux)

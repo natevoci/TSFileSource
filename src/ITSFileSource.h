@@ -127,6 +127,9 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 	STDMETHOD(Load) (THIS_ LPCOLESTR pszFileName,const AM_MEDIA_TYPE *pmt) PURE;
 	STDMETHOD(GetPCRPosition) (THIS_ REFERENCE_TIME * pos) PURE;
 	STDMETHOD(ShowStreamMenu)(THIS_ HWND hwnd) PURE;
+	STDMETHOD(GetFixedAspectRatio) (THIS_ WORD * pbFixedAR) PURE;
+	STDMETHOD(SetFixedAspectRatio) (THIS_ WORD pbFixedAR) PURE;
+
 	
 };
 

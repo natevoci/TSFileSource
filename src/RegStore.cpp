@@ -144,6 +144,18 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		}
 		setStore->setMP2ModeReg(regMP2);
 
+		BOOL regFixedAR(FALSE);
+		datalen = 1;
+		type = 0;
+
+		resp = RegQueryValueEx(settingsKey, "enableFixedAR", NULL, &type, (BYTE*)&regFixedAR, &datalen);
+		if(resp != ERROR_SUCCESS)
+		{
+			RegCloseKey(settingsKey);
+			return FALSE;
+		}
+		setStore->setFixedAspectRatioReg(regFixedAR);
+
 		BOOL regTSPin(FALSE);
 		datalen = 1;
 		type = 0;
@@ -296,6 +308,9 @@ BOOL CRegStore::setSettingsInfo(CSettingsStore *setStore)
 
 		BOOL regMP2 = setStore->getMP2ModeReg();
 		resp = RegSetValueEx(settingsKey, "enableMP2", NULL, REG_BINARY, (BYTE*)&regMP2, 1);
+
+		BOOL regFixedAR = setStore->getFixedAspectRatioReg();
+		resp = RegSetValueEx(settingsKey, "enableFixedAR", NULL, REG_BINARY, (BYTE*)&regFixedAR, 1);
 
 		BOOL regTSPin = setStore->getCreateTSPinOnDemuxReg();
 		resp = RegSetValueEx(settingsKey, "enableTSPin", NULL, REG_BINARY, (BYTE*)&regTSPin, 1);

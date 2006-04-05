@@ -238,6 +238,9 @@ HRESULT MultiFileReader::get_ReadOnly(WORD *ReadOnly)
 {
 	CheckPointer(ReadOnly, E_POINTER);
 
+	if (!m_TSBufferFile.IsFileInvalid())
+		return m_TSBufferFile.get_ReadOnly(ReadOnly);
+
 	*ReadOnly = m_bReadOnly;
 	return S_OK;
 }

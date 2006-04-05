@@ -205,6 +205,8 @@ protected:
 	STDMETHODIMP ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt);
 	STDMETHODIMP GetPCRPosition(REFERENCE_TIME *pos);
 	STDMETHODIMP ShowStreamMenu(HWND hwnd);
+	STDMETHODIMP GetFixedAspectRatio(WORD *pbFixedAR);
+	STDMETHODIMP SetFixedAspectRatio(WORD pbFixedAR);
 
 protected:
 

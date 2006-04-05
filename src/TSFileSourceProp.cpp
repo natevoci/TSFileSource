@@ -400,6 +400,9 @@ BOOL CTSFileSourceProp::RefreshDialog()
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_CNT), sz);
 
+	m_pProgram->GetFixedAspectRatio(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_FIXED_AR, PidNr);
+
 	m_pProgram->GetCreateTSPinOnDemux(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_CREATETSPIN, PidNr);
 
@@ -548,6 +551,15 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_CREATETSPIN);
 					m_pProgram->SetCreateTSPinOnDemux(checked);
+					OnRefreshProgram();
+					SetDirty();
+					break;
+				}
+
+				case IDC_FIXED_AR:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_FIXED_AR);
+					m_pProgram->SetFixedAspectRatio(checked);
 					OnRefreshProgram();
 					SetDirty();
 					break;

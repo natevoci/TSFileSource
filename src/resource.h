@@ -69,6 +69,7 @@
 #define IDC_CREATETXTPIN                1043
 #define IDC_TSFSCLOCK                   1044
 #define IDC_LOAD                        1045
+#define IDC_FIXED_AR                    1046
 #define IDC_CURNUMB                     1048
 #define IDC_CURNAME                     1049
 #define IDC_CURR                        1049

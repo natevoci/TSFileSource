@@ -503,6 +503,7 @@ HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 				pidArray[i].dur = pids.dur;
 			}
 		}
+//PrintTime(TEXT("RefreshDuration1"), pids.dur, 10000);
 		return S_OK;
 	}
 //*********************************************************************************************
@@ -520,6 +521,7 @@ HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 		}
 
 	pFileReader->setFilePointer(originalFilePointer, FILE_BEGIN);
+//PrintTime(TEXT("RefreshDuration2"), pids.dur, 10000);
 
 	return S_OK;
 }
@@ -1880,6 +1882,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			if(calcDuration > 0) {
 				totalduration = calcDuration;
 				pPids->end = startPCRSave + totalduration;
+//PrintTime(TEXT("GetFileDuration get start or end pcr Failed"), pPids->end, 90);
 				break;
 			}
 			else
@@ -1911,6 +1914,9 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 
 		pPids->start = startPCRSave; //Restore to first PCR
 
+//PrintTime(TEXT("GetFileDuration got start pcr "), pPids->start, 90);
+//PrintTime(TEXT("GetFileDuration got end pcr "), pPids->end, 90);
+
 		if (pPids->end == 0)
 			pPids->end = startPCRSave + totalduration; //Set the end pcr if not set.
 
@@ -1922,10 +1928,12 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			__int64 bitRate = (__int64)((__int64)filelength * (__int64)100);
 			pids.bitrate = (__int64)(bitRate/(__int64)((__int64)totalduration/(__int64)9000));
 		}
+//PrintTime(TEXT("GetFileDuration ok"), (REFERENCE_TIME)(__int64)(((__int64)totalduration/(__int64)9) * (__int64)1000), 10000);
 		return (REFERENCE_TIME)(__int64)(((__int64)totalduration/(__int64)9) * (__int64)1000);
 	}
 
 	delete[] pData;
+//PrintTime(TEXT("GetFileDuration Failed"), 0, 10000);
 	return 0; //Duration not found
 }
 
@@ -2230,5 +2238,23 @@ HRESULT PidParser::set_ProgramSID()
 		}
 	}
 	return S_FALSE;
+}
+
+void PidParser::PrintTime(LPCTSTR lstring, __int64 value, __int64 divider)
+{
+
+	TCHAR sz[100];
+	long ms = (long)(value / divider);
+	long secs = ms / 1000;
+	long mins = secs / 60;
+	long hours = mins / 60;
+	ms = ms % 1000;
+	secs = secs % 60;
+	mins = mins % 60;
+//	wsprintf(sz, TEXT("%05i - %s %02i:%02i:%02i.%03i\n"), debugcount, lstring, hours, mins, secs, ms);
+	wsprintf(sz, TEXT("%05i - %s %02i:%02i:%02i.%03i\n"), 0, lstring, hours, mins, secs, ms);
+	::OutputDebugString(sz);
+//	debugcount++;
+//MessageBox(NULL, sz,lstring, NULL);
 }
 

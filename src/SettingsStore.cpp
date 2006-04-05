@@ -80,6 +80,11 @@ BOOL CSettingsStore::getAC3ModeReg()
 	return ac3Mode;
 }
 
+BOOL CSettingsStore::getFixedAspectRatioReg()
+{
+	return fixedAR;
+}
+
 BOOL CSettingsStore::getCreateTSPinOnDemuxReg()
 {
 	return tsPinMode;
@@ -147,6 +152,12 @@ void CSettingsStore::setMP2ModeReg(BOOL bMP2)
 void CSettingsStore::setAC3ModeReg(BOOL bAC3)
 {
 	ac3Mode = bAC3;
+	return;
+}
+
+void CSettingsStore::setFixedAspectRatioReg(BOOL bFixedAR)
+{
+	fixedAR = bFixedAR;
 	return;
 }
 

@@ -140,8 +140,6 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
 {
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
-
     HRESULT hr;  // the return code from calls
     Command com;
 
@@ -239,6 +237,7 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
 //
 HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 {
+//	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
     Command com;
 
 	m_pFileDuration->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
@@ -254,8 +253,10 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 
 			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
+			WORD bReadOnly = FALSE;
+			m_pFileDuration->get_ReadOnly(&bReadOnly);
 			//Reparse the file for service change	
-			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime)
+			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime && bReadOnly)
 			{
 				CNetRender::UpdateNetFlow(&netArray);
 				if(m_State == State_Running
@@ -311,18 +312,27 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 			}
 
-			if(!m_pPidParser->m_ParsingLock && m_State != State_Stopped
-			&& m_pPidParser->pidArray.Count() && 1 == 1) //cold start
+			if (m_State != State_Stopped && bReadOnly)
 			{
-				hr = m_pPin->UpdateDuration(m_pFileDuration);
+				if(!m_pPidParser->m_ParsingLock	&& m_pPidParser->pidArray.Count()
+					&& 1 == 1) //cold start
 				{
-					if (!m_bColdStart)
-						if (m_pDemux->CheckDemuxPids() == S_FALSE)
-							m_pDemux->AOnConnect();
+					hr = m_pPin->UpdateDuration(m_pFileDuration);
+					{
+						if (!m_bColdStart)
+							if (m_pDemux->CheckDemuxPids() == S_FALSE)
+								m_pDemux->AOnConnect();
+					}
 				}
 			}
-			m_pPin->UpdateTSBuffer();
-			Sleep(10);
+
+			if (m_State == State_Running)
+			{
+				m_pPin->UpdateTSBuffer();
+				Sleep(10);
+			}
+			else
+				Sleep(100);
         }
 
         // For all commands sent to us there must be a Reply call!
@@ -426,7 +436,6 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 						IUnknown **ppObject,
 						IUnknown **ppUnk) //IAMStreamSelect
 {
-
 	//Check if file has been parsed
 	if (!m_pPidParser->pidArray.Count() || m_pPidParser->m_ParsingLock)
 		return E_FAIL;
@@ -2023,6 +2032,23 @@ STDMETHODIMP CTSFileSourceFilter::SetRateControlMode(WORD RateControl)
 	return NOERROR;
 }
 
+STDMETHODIMP CTSFileSourceFilter::GetFixedAspectRatio(WORD *pbFixedAR)
+{
+	if(!pbFixedAR)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pbFixedAR = m_pDemux->get_FixedAspectRatio();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetFixedAspectRatio(WORD bFixedAR)
+{
+	CAutoLock lock(&m_Lock);
+	m_pDemux->set_FixedAspectRatio(bFixedAR);
+	return NOERROR;
+}
+
 STDMETHODIMP CTSFileSourceFilter::GetCreateTSPinOnDemux(WORD *pbCreatePin)
 {
 	if(!pbCreatePin)
@@ -2153,6 +2179,7 @@ STDMETHODIMP CTSFileSourceFilter::SetRegStore(LPTSTR nameReg)
 		m_pSettingsStore->setMP2ModeReg((BOOL)m_pDemux->get_MPEG2AudioMediaType());
 		m_pSettingsStore->setAudio2ModeReg((BOOL)m_pDemux->get_MPEG2Audio2Mode());
 		m_pSettingsStore->setAC3ModeReg((BOOL)m_pDemux->get_AC3Mode());
+		m_pSettingsStore->setFixedAspectRatioReg((BOOL)m_pDemux->get_FixedAspectRatio());
 		m_pSettingsStore->setCreateTSPinOnDemuxReg((BOOL)m_pDemux->get_CreateTSPinOnDemux());
 		m_pSettingsStore->setROTModeReg((int)m_bRotEnable);
 		m_pSettingsStore->setClockModeReg((BOOL)m_pDemux->get_ClockMode());
@@ -2192,6 +2219,7 @@ STDMETHODIMP CTSFileSourceFilter::GetRegStore(LPTSTR nameReg)
 			m_pDemux->set_MPEG2AudioMediaType(m_pSettingsStore->getMP2ModeReg());
 			m_pDemux->set_MPEG2Audio2Mode(m_pSettingsStore->getAudio2ModeReg());
 			m_pDemux->set_AC3Mode(m_pSettingsStore->getAC3ModeReg());
+			m_pDemux->set_FixedAspectRatio(m_pSettingsStore->getFixedAspectRatioReg());
 			m_pDemux->set_CreateTSPinOnDemux(m_pSettingsStore->getCreateTSPinOnDemuxReg());
 			m_pPin->set_RateControl(m_pSettingsStore->getRateControlModeReg());
 			m_bRotEnable = m_pSettingsStore->getROTModeReg();
