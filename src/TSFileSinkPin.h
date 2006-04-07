@@ -46,6 +46,9 @@ public:
 
     HRESULT CheckMediaType(const CMediaType *);
 
+	__int64 getNumbErrorPackets(void);
+	void setNumbErrorPackets(__int64 lpllErrors);
+
     HRESULT BreakConnect();
 
     STDMETHODIMP NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate);
@@ -55,6 +58,12 @@ private:
     REFERENCE_TIME m_tLast;             // Last sample receive time
 
     CCritSec m_ReceiveLock;
+
+//Changes by Frodo
+	void Filter(byte* rawData,long len);
+	byte  m_restBuffer[4096*16];
+	long   m_restBufferLen;
+	__int64 m_PacketErrors;
 
 };
 

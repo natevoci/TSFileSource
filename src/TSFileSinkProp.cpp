@@ -322,6 +322,9 @@ BOOL CTSFileSinkProp::RefreshDialog()
 	wsprintf(sz, TEXT("%lu"), (__int64)(lLongVal/(__int64)1048576));
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_CURSIZE), sz);
 
+	m_pProgram->GetNumbErrorPackets(&lLongVal);
+	wsprintf(sz, TEXT("%lu"), lLongVal);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_PKTERRORS), sz);
 	return TRUE;
 }
 
@@ -373,6 +376,13 @@ BOOL CTSFileSinkProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 					break ;
 				}
 
+				case IDC_RESET:
+				{
+					m_pProgram->SetNumbErrorPackets((__int64)0);
+					OnRefreshProgram ();
+					SetDirty();
+					break;
+				}
 				case IDC_CHKRESCHG:
 				{
 					m_pProgram->SetChunkReserve((__int64) ((__int64)1048576 *(__int64) GetDlgItemInt(hwnd, IDC_CHKRES, &bRet, TRUE)));

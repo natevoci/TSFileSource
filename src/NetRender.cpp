@@ -248,7 +248,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	//
 	//Wait for data to build before testing data flow
 	//
-	Sleep(500);
+	Sleep(1000);
 
 	//
 	// Get the Sink Filter Interface 

@@ -534,3 +534,18 @@ STDMETHODIMP CTSFileSink::GetFileBufferSize(__int64 *lpllsize)
 	return NOERROR;
 }
 
+STDMETHODIMP CTSFileSink::GetNumbErrorPackets(__int64 *lpllErrors)
+{
+    CheckPointer(lpllErrors, E_POINTER);
+	CAutoLock lock(&m_Lock);
+	*lpllErrors = m_pPin->getNumbErrorPackets();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSink::SetNumbErrorPackets(__int64 lpllErrors)
+{
+	CAutoLock lock(&m_Lock);
+	m_pPin->setNumbErrorPackets(lpllErrors);
+	return NOERROR;
+}
+

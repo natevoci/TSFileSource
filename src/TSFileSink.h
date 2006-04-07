@@ -101,6 +101,8 @@ protected:
 	STDMETHODIMP GetChunkReserve(__int64 *chunkSize);
 	STDMETHODIMP SetChunkReserve(__int64 chunkSize);
 	STDMETHODIMP GetFileBufferSize(__int64 *lpllsize);
+	STDMETHODIMP GetNumbErrorPackets(__int64 *lpllerrors);
+	STDMETHODIMP SetNumbErrorPackets(__int64 lpllerrors);
 
 
 

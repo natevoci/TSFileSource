@@ -1,3 +1,10 @@
+Version 2.2.0.2
+=================
+bear:
+Added some code to the TSFileSinkPin Class to drop data packets that are not in sequence.
+Added a Packet error indicator from the above code to display the error count on the property page, and via the ISTFileSink Interface.
+Added a reset button to the property page to reset the error count.
+
 Version 2.2.0.1
 =================
 bear:

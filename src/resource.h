@@ -41,6 +41,7 @@
 #define IDC_DATARATE                    1026
 #define IDC_CHKRES                      1026
 #define IDC_PREV                        1027
+#define IDC_PKTERRORS                   1027
 #define IDC_AUDIO2MODE                  1028
 #define IDC_NPCTRL                      1029
 #define IDC_MAXSIZE                     1029
@@ -62,6 +63,7 @@
 #define IDC_AAC2                        1039
 #define IDC_DEFNAME                     1039
 #define IDC_DEFCLOCK                    1040
+#define IDC_RESET                       1040
 #define IDC_DEMCLOCK                    1041
 #define IDC_DEFNAMECHG                  1041
 #define IDC_RENCLOCK                    1042
