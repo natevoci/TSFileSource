@@ -38,8 +38,10 @@ CTSFileSinkPin::CTSFileSinkPin(CTSFileSink *pTSFileSink, LPUNKNOWN pUnk, CBaseFi
 	m_pTSFileSink(pTSFileSink),
     m_tLast(0)
 {
+//Frodo code changes
     m_restBufferLen=0;
 	m_PacketErrors = 0;
+//Frodo code changes
 }
 
 CTSFileSinkPin::~CTSFileSinkPin()

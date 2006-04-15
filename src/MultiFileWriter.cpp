@@ -327,7 +327,7 @@ HRESULT MultiFileWriter::ReuseTSFile()
 		sprintf(sz, "%S", pFilename);
 		DeleteFile(sz);
 	}
-		
+
 	if FAILED(hr = m_pCurrentTSFile->OpenFile())
 	{
 		return hr;

@@ -76,6 +76,10 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pDemux = new Demux(m_pPidParser, this);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
+	m_pMpeg2DataParser = NULL;
+	m_pMpeg2DataParser = new DVBMpeg2DataParser();
+	m_pMpeg2DataParser->SetDVBTChannels(NULL);
+
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, phr);
 	if (m_pPin == NULL)
 	{
@@ -115,6 +119,13 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 		CAMThread::CallWorker(CMD_STOP);
 		CAMThread::CallWorker(CMD_EXIT);
 		CAMThread::Close();
+	}
+
+	if (m_pMpeg2DataParser)
+	{
+		m_pMpeg2DataParser->ReleaseFilter();
+		delete m_pMpeg2DataParser;
+		m_pMpeg2DataParser = NULL;
 	}
 
     if (m_dwGraphRegister)
@@ -1113,7 +1124,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 	int count = 0;
 	__int64 fileSizeSave = fileSize;
-	while(fileSize < 5000000 && count < 10)
+/*	while(fileSize < 5000000 && count < 10)
 	{
 		count++;
 		Sleep(500);
@@ -1127,8 +1138,38 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 		fileSizeSave = fileSize;
 	};
+*/
+	if(fileSize < 2000000)
+	{
+		//Check for forced pin mode
+		if (pmt)
+		{
+			//Set for cold start
+			m_bColdStart = m_pDemux->get_Auto();
+			m_pDemux->set_Auto(FALSE);
+			m_pClock->SetClockRate(0.99);
+
+			if(MEDIATYPE_Stream == pmt->majortype)
+			{
+				//Are we in Transport mode
+				if (MEDIASUBTYPE_MPEG2_TRANSPORT == pmt->subtype)
+					m_pPidParser->set_ProgPinMode(FALSE);
+
+				//Are we in Program mode
+				else if (MEDIASUBTYPE_MPEG2_PROGRAM == pmt->subtype)
+					m_pPidParser->set_ProgPinMode(TRUE);
+
+				m_pPidParser->set_AsyncMode(FALSE);
+			}
+		}
+		CAutoLock lock(&m_Lock);
+		m_pFileReader->CloseFile();
+//		delete[] wFileName;
+		return hr;
+	}
 
 	m_pFileReader->setFilePointer(300000, FILE_BEGIN);
+
 	m_pPidParser->RefreshPids();
 	LoadPgmReg();
 	m_pStreamParser->ParsePidArray();

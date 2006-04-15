@@ -50,6 +50,7 @@ class CTSFileSourceFilter;
 #include "StreamParser.h"
 #include "NetRender.h"
 #include "NetInfo.h"
+#include "DVBMpeg2DataParser.h"
 #include <comdef.h>
 
 /**********************************************
@@ -210,7 +211,8 @@ protected:
 
 protected:
 
-	CTSFileSourcePin *m_pPin;          // A simple rendered input pin
+	DVBMpeg2DataParser *m_pMpeg2DataParser;
+	CTSFileSourcePin *m_pPin;          // A simple rendered output pin
 	CTSFileSourceClock *m_pClock;
 	CRegStore *m_pRegStore;
 	CSettingsStore *m_pSettingsStore;
@@ -222,8 +224,8 @@ protected:
 	BOOL m_bRotEnable;
 	BOOL m_bColdStart;
 	CCritSec m_Lock;                // Main renderer critical section
-    //registration number for the RunningObjectTable
-    DWORD m_dwGraphRegister;
+    
+    DWORD m_dwGraphRegister;		//registration number for the RunningObjectTable
 
 	FileReader *m_pFileDuration;
 	REFERENCE_TIME m_rtLastCurrentTime;

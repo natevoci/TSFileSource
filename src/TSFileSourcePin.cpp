@@ -1017,7 +1017,7 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 
 	if (pCurrent)
 	{
-		WORD readonly = 0;
+/*		WORD readonly = 0;
 		m_pTSFileSourceFilter->m_pFileReader->get_ReadOnly(&readonly);
 		if (readonly) {
 			//wait for the Length Changed Event to complete
@@ -1026,7 +1026,7 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 				rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 			}
 		}
-
+*/
 		REFERENCE_TIME rtCurrent = *pCurrent;
 		if (CurrentFlags & AM_SEEKING_RelativePositioning)
 		{
