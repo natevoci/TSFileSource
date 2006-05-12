@@ -4,6 +4,7 @@
 //
 #define IDS_PROPPAGE_TITLE              1
 #define IDS_SINKPROPPAGE_TITLE          2
+#define IDS_INFORMATION_TITLE           3
 #define IDD_PROPPAGE                    101
 #define IDD_SINKPROPPAGE                105
 #define IDC_VIDEO                       1000
@@ -83,9 +84,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        105
+#define _APS_NEXT_RESOURCE_VALUE        109
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1050
+#define _APS_NEXT_CONTROL_VALUE         1051
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

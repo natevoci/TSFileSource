@@ -425,6 +425,8 @@ STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams) //IAMStreamSelect
 	if(!pcStreams)
 		return E_INVALIDARG;
 
+	CAutoLock cObjectLock(m_pLock);
+
 	*pcStreams = 0;
 
 	if (!m_pStreamParser->StreamArray.Count() ||
@@ -447,6 +449,8 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 						IUnknown **ppObject,
 						IUnknown **ppUnk) //IAMStreamSelect
 {
+	CAutoLock cObjectLock(m_pLock);
+
 	//Check if file has been parsed
 	if (!m_pPidParser->pidArray.Count() || m_pPidParser->m_ParsingLock)
 		return E_FAIL;
@@ -501,6 +505,8 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 
 STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStreamSelect
 {
+	CAutoLock cObjectLock(m_pLock);
+
 	//Test if ready
 	if (!m_pStreamParser->StreamArray.Count() ||
 		!m_pPidParser->pidArray.Count() ||
@@ -720,7 +726,6 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 
 //	if (ThreadRunning() && ThreadExists())
 //		CAMThread::CallWorker(CMD_STOP);
-
 	HRESULT hr = CSource::Stop();
 
 	m_pTunerEvent->UnRegisterForTunerEvents();
@@ -910,6 +915,9 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	USHORT delay;
 	m_pFileReader->get_DelayMode(&delay);
 
+	//Get ROT Mode if we had been told to previously
+	BOOL bRotEnable = m_bRotEnable;
+
 	delete m_pStreamParser;
 	delete m_pDemux;
 	delete m_pPidParser;
@@ -943,6 +951,9 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 		m_pFileReader->set_DelayMode(delay);
 		m_pFileDuration->set_DelayMode(delay);
 	}
+
+	//Set ROT Mode if we had been told to previously
+	m_bRotEnable = bRotEnable;
 
 	hr = m_pFileReader->SetFileName(wFileName);
 	if (FAILED(hr))
@@ -1064,6 +1075,9 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	USHORT delay;
 	m_pFileReader->get_DelayMode(&delay);
 
+	//Get ROT Mode if we had been told to previously
+	BOOL bRotEnable = m_bRotEnable;
+
 	delete m_pStreamParser;
 	delete m_pDemux;
 	delete m_pPidParser;
@@ -1097,6 +1111,9 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		m_pFileReader->set_DelayMode(delay);
 		m_pFileDuration->set_DelayMode(delay);
 	}
+
+	//Set ROT Mode if we had been told to previously
+	m_bRotEnable = bRotEnable;
 
 	hr = m_pFileReader->SetFileName(pszFileName);
 	if (FAILED(hr))
@@ -2335,6 +2352,7 @@ STDMETHODIMP CTSFileSourceFilter::ShowFilterProperties()
 			refCount = piFilter2->Release();
 		}
 		refCount = piEnumFilters2->Release();
+
 	}
 //	CloseHandle(phWnd);
 	return NOERROR;

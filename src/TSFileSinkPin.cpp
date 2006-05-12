@@ -23,6 +23,8 @@
 *    http://forums.dvbowners.com/
 */
 
+#include <math.h>
+#include <crtdbg.h>
 #include <streams.h>
 #include "TSFileSink.h"
 #include "TSFileSinkGuids.h"
@@ -39,13 +41,40 @@ CTSFileSinkPin::CTSFileSinkPin(CTSFileSink *pTSFileSink, LPUNKNOWN pUnk, CBaseFi
     m_tLast(0)
 {
 //Frodo code changes
-    m_restBufferLen=0;
+    m_restBufferLen = 0;
 	m_PacketErrors = 0;
 //Frodo code changes
+
+	m_writeBufferSize = 4096*32;
+	m_writeBuffer = new BYTE[m_writeBufferSize];
+    m_writeBufferLen = 0;
+
+	m_WriteSampleSize = 0;
+	m_WriteBufferSize = 0;
+	m_WriteThreadActive = FALSE;
+
 }
 
 CTSFileSinkPin::~CTSFileSinkPin()
 {
+	delete[] m_writeBuffer;
+	Clear();
+}
+
+void CTSFileSinkPin::Clear()
+{
+	StopThread(500);
+	CAutoLock BufferLock(&m_BufferLock);
+	std::vector<BUFFERINFO>::iterator it = m_Array.begin();
+	for ( ; it != m_Array.end() ; it++ )
+	{
+		delete[] *(&it->sample);
+	}
+	m_Array.clear();
+
+	m_WriteSampleSize = 0;
+	m_WriteBufferSize = 0;
+	m_WriteThreadActive = FALSE;
 }
 
 HRESULT CTSFileSinkPin::CheckMediaType(const CMediaType *)
@@ -55,12 +84,24 @@ HRESULT CTSFileSinkPin::CheckMediaType(const CMediaType *)
 
 HRESULT CTSFileSinkPin::BreakConnect()
 {
+	Clear();
+
     if (m_pTSFileSink->m_pPosition != NULL) {
         m_pTSFileSink->m_pPosition->ForceRefresh();
     }
+//Frodo code changes
     m_restBufferLen=0;
+//Frodo code changes
+	m_writeBufferSize = sizeof(m_writeBuffer);
+    m_writeBufferLen = 0;
 
     return CRenderedInputPin::BreakConnect();
+}
+
+HRESULT CTSFileSinkPin::Run(REFERENCE_TIME tStart)
+{
+	StartThread();
+	return CBaseInputPin::Run(tStart);
 }
 
 STDMETHODIMP CTSFileSinkPin::ReceiveCanBlock()
@@ -69,8 +110,9 @@ STDMETHODIMP CTSFileSinkPin::ReceiveCanBlock()
 }
 
 //Frodo code changes
-void CTSFileSinkPin::Filter(byte* pbData,long sampleLen)
+HRESULT CTSFileSinkPin::Filter(byte* pbData,long sampleLen)
 {
+	HRESULT hr;
 	int packet = 0;
 	BOOL bProg = FALSE;
 	_AMMediaType *mtype = &m_mt;
@@ -90,8 +132,7 @@ void CTSFileSinkPin::Filter(byte* pbData,long sampleLen)
 	else
 	{
 		//Write raw data method
-		m_pTSFileSink->Write(pbData, sampleLen);
-		return;
+		return WriteBufferSample(pbData, sampleLen);
 	}
 
 	int off=-1;
@@ -114,7 +155,8 @@ void CTSFileSinkPin::Filter(byte* pbData,long sampleLen)
 					//check if this is indeed a transport packet  
 					if(m_restBuffer[0]==0x47)   
 					{     
-						m_pTSFileSink->Write(m_restBuffer,packet);   
+						if FAILED(hr = WriteBufferSample(m_restBuffer,packet))
+							return hr;
 					}
 
 					//set offset ...   
@@ -134,7 +176,8 @@ void CTSFileSinkPin::Filter(byte* pbData,long sampleLen)
 					| (0xFF&pbData[2])<<8
 					| (0xFF&pbData[3])) == 0x1BA)
 					{
-						m_pTSFileSink->Write(m_restBuffer,packet);   
+						if FAILED(hr = WriteBufferSample(m_restBuffer,packet))   
+							return hr;
 					}
 
 					//set offset ...   
@@ -254,9 +297,14 @@ void CTSFileSinkPin::Filter(byte* pbData,long sampleLen)
 	};
 
 	if (pos)
-		m_pTSFileSink->Write(&pData[0], pos);
+		if FAILED(hr = WriteBufferSample(&pData[0], pos))
+		{
+			delete [] pData;
+			return hr;
+		}
 
 	delete [] pData;
+//	off = t;
 
     //calculate if there's a incomplete transport packet at end of media sample   
 	m_restBufferLen=(sampleLen-off); 
@@ -271,9 +319,142 @@ void CTSFileSinkPin::Filter(byte* pbData,long sampleLen)
 			memcpy(m_restBuffer,&pbData[sampleLen-m_restBufferLen],m_restBufferLen); 
 		}  
 	}
+	return S_OK;
+}//Frodo code changes
+
+void CTSFileSinkPin::ThreadProc()
+{
+	m_WriteThreadActive = TRUE;
+
+//	DWORD procAffinity = 0;
+//	DWORD sysAffinity = 0;
+//	if (GetProcessAffinityMask(GetCurrentProcess(), &procAffinity, &sysAffinity))
+//		if (sysAffinity > 1)
+//			SetThreadAffinityMask(GetCurrentThread(), 0x01);
+//		else
+//			sysAffinity = 0;
+
+	int threadPriority = GetThreadPriority(GetCurrentThread());
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+	
+	while (!ThreadIsStopping(0))
+	{
+		BYTE *item = NULL;
+		long sampleLen = 0;
+		{
+			CAutoLock BufferLock(&m_BufferLock);
+			if (m_Array.size())
+			{
+				std::vector<BUFFERINFO>::iterator it = m_Array.begin();
+				item = *(&it->sample);
+				sampleLen = *(&it->size);
+				m_Array.erase(it);
+				m_WriteBufferSize -= sampleLen;
+			}
+			else
+				Sleep(1);
+		}
+		if (item)
+		{
+			HRESULT hr = m_pTSFileSink->Write(item, sampleLen);
+			delete[] item;
+			if (FAILED(hr))
+			{
+				CAutoLock BufferLock(&m_BufferLock);
+				::OutputDebugString(TEXT("DWDumpInputPin::ThreadProc:Write Fail."));
+				std::vector<BUFFERINFO>::iterator it = m_Array.begin();
+				for ( ; it != m_Array.end() ; it++ )
+				{
+					delete[] *(&it->sample);
+				}
+				m_Array.clear();
+				m_WriteBufferSize = 0;
+			}
+		}
+//		Sleep(1);
+	}
+	Clear();
+	return;
 }
 
-//Frodo code changes
+HRESULT CTSFileSinkPin::WriteBufferSample(byte* pbData,long sampleLen)
+{
+	HRESULT hr;
+	long bufferLen = 32768/2;
+	//
+	//Only start buffering if the buffer thread is active
+	//
+	if (!m_WriteThreadActive)
+	{
+		int threadPriority = GetThreadPriority(GetCurrentThread());
+		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+		hr = m_pTSFileSink->Write(pbData, sampleLen);
+		SetThreadPriority(GetCurrentThread(), threadPriority);
+		return hr;
+	}
+
+	//
+	//If buffer thread is active and the buffer is not full
+	//
+	if(m_WriteThreadActive && m_WriteBufferSize + sampleLen < 64000000)
+	{
+		//use the sample packet size for the buffer
+		if(sampleLen <= bufferLen)
+		{
+			BUFFERINFO newItem;
+			newItem.sample = new BYTE[sampleLen];
+			//Return if we are out of memory
+			if (!newItem.sample)
+			{
+				::OutputDebugString(TEXT("DWDumpInputPin::WriteBufferSample:Out of Memory."));
+				return S_OK;
+			}
+			//store the sample in the temp buffer
+			memcpy(newItem.sample, &pbData[0], sampleLen);
+			newItem.size = sampleLen;
+			CAutoLock BufferLock(&m_BufferLock);
+			m_Array.push_back(newItem);
+			m_WriteBufferSize += sampleLen;
+		}
+		else
+		{
+			long pos = 0;
+			//break up the sample into smaller packets
+			for (long i = sampleLen; i > 0; i -= bufferLen)
+			{
+				long size = ((i/bufferLen) != 0)*bufferLen + ((i/bufferLen) == 0)*i;
+				BUFFERINFO newItem;
+				newItem.sample = new BYTE[size];
+				//Return if we are out of memory
+				if (!newItem.sample)
+				{
+					::OutputDebugString(TEXT("DWDumpInputPin::WriteBufferSample:Out of Memory."));
+					return S_OK;
+				}
+				//store the sample in the temp buffer
+				memcpy(newItem.sample, &pbData[pos], size);
+				newItem.size = size;
+				CAutoLock BufferLock(&m_BufferLock);
+				m_Array.push_back(newItem);
+				m_WriteBufferSize += size;
+				pos += size;
+			}
+		}
+		return S_OK;
+	}
+	//else clear the buffer
+	::OutputDebugString(TEXT("DWDumpInputPin::WriteBufferSample:Buffer Full error."));
+	CAutoLock BufferLock(&m_BufferLock);
+	::OutputDebugString(TEXT("DWDumpInputPin::ThreadProc:Write Fail."));
+	std::vector<BUFFERINFO>::iterator it = m_Array.begin();
+	for ( ; it != m_Array.end() ; it++ )
+	{
+		delete[] *(&it->sample);
+	}
+	m_Array.clear();
+	m_WriteBufferSize = 0;
+	return S_OK;
+}
 
 STDMETHODIMP CTSFileSinkPin::Receive(IMediaSample *pSample)
 {
@@ -298,18 +479,21 @@ STDMETHODIMP CTSFileSinkPin::Receive(IMediaSample *pSample)
         return hr;
     }
 
-//Frodo code changes
-//    return m_pTSFileSink->Write(pbData, pSample->GetActualDataLength());
+//	return m_pTSFileSink->Write(pbData, pSample->GetActualDataLength());
+	return WriteBufferSample(pbData,pSample->GetActualDataLength()); 
 
-	Filter(pbData,pSample->GetActualDataLength()); 
+//Frodo code changes
+//	return m_pTSFileSink->Write(pbData, pSample->GetActualDataLength());
+
+//	return Filter(pbData,pSample->GetActualDataLength()); 
 	
-	return S_OK;
 //Frodo code changes
 
 }
 
 STDMETHODIMP CTSFileSinkPin::EndOfStream(void)
 {
+	Clear();
     CAutoLock lock(&m_ReceiveLock);
     return CRenderedInputPin::EndOfStream();
 
@@ -317,8 +501,11 @@ STDMETHODIMP CTSFileSinkPin::EndOfStream(void)
 
 STDMETHODIMP CTSFileSinkPin::NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate)
 {
+	Clear();
 	m_PacketErrors = 0;
 	m_restBufferLen=0;
+	m_writeBufferSize = sizeof(m_writeBuffer);
+    m_writeBufferLen = 0;
 	m_tLast = 0;
     return S_OK;
 
@@ -332,4 +519,24 @@ __int64 CTSFileSinkPin::getNumbErrorPackets()
 void CTSFileSinkPin::setNumbErrorPackets(__int64 lpllErrors)
 {
     m_PacketErrors = lpllErrors;
+}
+
+void CTSFileSinkPin::PrintLongLong(LPCTSTR lstring, __int64 value)
+{
+	TCHAR sz[100];
+	double dVal = value;
+	double len = log10(dVal);
+	int pos = len;
+	sz[pos+1] = '\0';
+	while (pos >= 0)
+	{
+		int val = value % 10;
+		sz[pos] = '0' + val;
+		value /= 10;
+		pos--;
+	}
+	TCHAR szout[100];
+	wsprintf(szout, TEXT("%05i - %s %s\n"), debugcount, lstring, sz);
+	::OutputDebugString(szout);
+	debugcount++;
 }

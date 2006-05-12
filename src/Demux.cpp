@@ -1805,6 +1805,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 
 					if (pIPin) pIPin->Release();
 					muxInterface->Release();
+					pinInfo.pFilter->Release();
 					return S_FALSE;
 				}
 				else
@@ -2006,6 +2007,8 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 	return S_OK;
 }
 static GUID H264_SubType = {0x8D2D71CB, 0x243F, 0x45E3, {0xB2, 0xD8, 0x5F, 0xD7, 0x96, 0x7E, 0xC0, 0x9B}};
+//static GUID MEDIASUBTYPE_H264 = {0x8D2D71CB, 0x243F, 0x45E3, {0xB2, 0xD8, 0x5F, 0xD7, 0x96, 0x7E, 0xC0, 0x9B}};
+
 
 HRESULT Demux::GetH264Media(AM_MEDIA_TYPE *pintype)
 
@@ -2127,7 +2130,10 @@ HRESULT Demux::IsStopped()
 		IMediaFilter* pMediaFilter = NULL;
 		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
 		if (!pMediaFilter)
+		{
+			Info.pGraph->Release();
 			return m_pTSFileSourceFilter->GetState(200, &state);
+		}
 		else
 			pMediaFilter->Release();
 
@@ -2137,6 +2143,7 @@ HRESULT Demux::IsStopped()
 			hr = pMediaControl->GetState(200, (OAFilterState*)&state);
 			pMediaControl->Release();
 		}
+
 		Info.pGraph->Release();
 	
 		if (hr == S_OK && state == State_Stopped)
@@ -2161,7 +2168,10 @@ HRESULT Demux::IsPlaying()
 		IMediaFilter* pMediaFilter = NULL;
 		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
 		if (!pMediaFilter)
+		{
+			Info.pGraph->Release();
 			return m_pTSFileSourceFilter->GetState(200, &state);
+		}
 		else
 			pMediaFilter->Release();
 
@@ -2171,6 +2181,7 @@ HRESULT Demux::IsPlaying()
 			hr = pMediaControl->GetState(200, (OAFilterState*)&state);
 			pMediaControl->Release();
 		}
+
 		Info.pGraph->Release();
 	
 		if (hr == S_OK && state == State_Running)
@@ -2195,7 +2206,10 @@ HRESULT Demux::IsPaused()
 		IMediaFilter* pMediaFilter = NULL;
 		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
 		if (!pMediaFilter)
+		{
+			Info.pGraph->Release();
 			return m_pTSFileSourceFilter->GetState(200, &state);
+		}
 		else
 			pMediaFilter->Release();
 
@@ -2230,7 +2244,10 @@ HRESULT Demux::DoStop()
 		IMediaFilter* pMediaFilter = NULL;
 		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
 		if (!pMediaFilter)
+		{
+			Info.pGraph->Release();
 			return m_pTSFileSourceFilter->Stop();
+		}
 		else
 			pMediaFilter->Release();
 
@@ -2240,6 +2257,7 @@ HRESULT Demux::DoStop()
 			hr = pMediaControl->Stop(); 
 			pMediaControl->Release();
 		}
+
 		Info.pGraph->Release();
 
 		if (FAILED(hr))
@@ -2259,7 +2277,10 @@ HRESULT Demux::DoStart()
 		IMediaFilter* pMediaFilter = NULL;
 		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
 		if (!pMediaFilter)
+		{
+			Info.pGraph->Release();
 			return m_pTSFileSourceFilter->Run(NULL);
+		}
 		else
 			pMediaFilter->Release();
 
@@ -2269,6 +2290,7 @@ HRESULT Demux::DoStart()
 			hr = pMediaControl->Run();
 			pMediaControl->Release();
 		}
+
 		Info.pGraph->Release();
 
 		if (FAILED(hr))
@@ -2288,7 +2310,10 @@ HRESULT Demux::DoPause()
 		IMediaFilter* pMediaFilter = NULL;
 		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
 		if (!pMediaFilter)
+		{
+			Info.pGraph->Release();
 			return m_pTSFileSourceFilter->Pause();
+		}
 		else
 			pMediaFilter->Release();
 
@@ -2298,6 +2323,7 @@ HRESULT Demux::DoPause()
 			hr = pMediaControl->Pause();
 			pMediaControl->Release();
 		}
+
 		Info.pGraph->Release();
 
 		if (FAILED(hr))
@@ -2445,6 +2471,7 @@ HRESULT Demux::RemoveFilterChain(IBaseFilter *pStartFilter, IBaseFilter *pEndFil
 			hr = pFilterChain->RemoveChain(pStartFilter, pEndFilter);
 			pFilterChain->Release();
 		}
+
 		Info.pGraph->Release();
 	}
 	return hr;
@@ -2463,6 +2490,7 @@ HRESULT Demux::RenderFilterPin(IPin *pIPin)
 			hr = pGraphBuilder->Render(pIPin);
 			pGraphBuilder->Release();
 		}
+
 		Info.pGraph->Release();
 	}
 	return hr;
@@ -2478,7 +2506,6 @@ HRESULT Demux::ReconnectFilterPin(IPin *pIPin)
 		hr = Info.pGraph->Reconnect(pIPin);
 		Info.pGraph->Release();
 	}
-
 	return hr;
 }
 

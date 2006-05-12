@@ -47,6 +47,7 @@ CUnknown * WINAPI CTSFileSourceProp::CreateInstance(LPUNKNOWN pUnk, HRESULT *pHr
 
 CTSFileSourceProp::CTSFileSourceProp(IUnknown *pUnk) :
 	CBasePropertyPage(NAME("TSFileSourceProp"), pUnk, IDD_PROPPAGE, IDS_PROPPAGE_TITLE),
+//	CBasePropertyPage(NAME("TSFileSourceProp"), pUnk, IDD_INFO, IDS_INFORMATION_TITLE),
 	m_pProgram(0)
 {
 }

@@ -134,6 +134,10 @@ SOURCE=.\src\StreamInfo.cpp
 
 SOURCE=.\src\StreamParser.cpp
 # End Source File
+# Begin Source File
+
+SOURCE=.\src\TSThread.cpp
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
@@ -186,14 +190,14 @@ SOURCE=.\src\StreamParser.h
 
 SOURCE=.\src\TSFileSource.def
 # End Source File
+# Begin Source File
+
+SOURCE=.\src\TSThread.h
+# End Source File
 # End Group
 # Begin Group "Resource Files"
 
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
-# Begin Source File
-
-SOURCE=.\TSFileSource.reg
-# End Source File
 # End Group
 # Begin Group "TSFileSource"
 

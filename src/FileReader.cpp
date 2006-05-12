@@ -131,12 +131,13 @@ HRESULT FileReader::OpenFile()
 		m_hFile = CreateFile((LPCTSTR) pFileName,		// The filename
 							GENERIC_READ,				// File access
 							FILE_SHARE_READ |
-							FILE_SHARE_WRITE,			// Share access
+							FILE_SHARE_WRITE,   // Share access
 							NULL,						// Security
 							OPEN_EXISTING,				// Open flags
-//							FILE_ATTRIBUTE_NORMAL,		// More flags
-							FILE_ATTRIBUTE_NORMAL |
-							FILE_FLAG_SEQUENTIAL_SCAN,	// More flags
+							FILE_ATTRIBUTE_NORMAL,		// More flags
+//							FILE_ATTRIBUTE_NORMAL |
+//							FILE_FLAG_RANDOM_ACCESS,	// More flags
+//							FILE_FLAG_SEQUENTIAL_SCAN,	// More flags
 							NULL);						// Template
 
 		if (m_hFile == INVALID_HANDLE_VALUE)
@@ -159,6 +160,7 @@ HRESULT FileReader::OpenFile()
 			NULL,      // Security
 			OPEN_EXISTING,    // Open flags
 			FILE_ATTRIBUTE_NORMAL, // More flags
+//			FILE_FLAG_SEQUENTIAL_SCAN,	// More flags
 //			FILE_ATTRIBUTE_NORMAL |
 //			FILE_FLAG_RANDOM_ACCESS,	// More flags
 			NULL);

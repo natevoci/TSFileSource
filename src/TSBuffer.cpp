@@ -187,6 +187,7 @@ HRESULT CTSBuffer::Require(long nBytes)
 		if(m_lbuflen < 1)
 			m_lbuflen = 1;
 
+//CAutoLock BufferLock(&m_BufferLock);
 		m_Array.push_back(newItem);
 		bytesAvailable += m_lTSBufferItemSize;
 	}
@@ -206,6 +207,9 @@ HRESULT CTSBuffer::DequeFromBuffer(BYTE *pbData, long lDataLength)
 	long bytesWritten = 0;
 	while (bytesWritten < lDataLength)
 	{
+		if(!m_Array.size() || m_Array.size() <= 0)
+			return E_FAIL;
+
 		BYTE *item = m_Array.at(0);
 
 		long copyLength = min(m_lTSBufferItemSize-m_lItemOffset, lDataLength-bytesWritten);
@@ -247,6 +251,8 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 			lOffset -= m_lTSBufferItemSize;
 		}
 
+		if(!m_Array.size() || m_Array.size() <= itemIndex)
+			return E_FAIL;
 
 		BYTE *item = m_Array.at(itemIndex);
 

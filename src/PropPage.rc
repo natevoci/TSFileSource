@@ -64,11 +64,11 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_AUS
 // Dialog
 //
 
-IDD_PROPPAGE DIALOG DISCARDABLE  0, 0, 302, 212
+IDD_PROPPAGE DIALOG DISCARDABLE  0, 0, 302, 247
 STYLE DS_MODALFRAME | WS_CHILD
 FONT 8, "MS Sans Serif"
 BEGIN
-    GROUPBOX        "Program Infomation",IDC_STATIC,7,7,111,205,BS_CENTER
+    GROUPBOX        "Program Infomation",IDC_STATIC,7,7,111,207,BS_CENTER
     LTEXT           "Duration",IDC_STATIC,13,16,30,10
     EDITTEXT        IDC_DURATION,13,26,99,13,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "PCR ~ PTS",IDC_STATIC,14,41,49,8
@@ -157,13 +157,16 @@ BEGIN
     EDITTEXT        IDC_CURR,14,49,48,12,ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Force 720x576 A.R.",IDC_FIXED_AR,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,210,44,85,10
+    CTEXT           "TSFileSource Version 2.2.0.2 Final\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
+                    IDC_STATIC,7,220,288,26
+    GROUPBOX        "Description",IDC_STATIC,7,212,288,34
 END
 
-IDD_SINKPROPPAGE DIALOG DISCARDABLE  0, 0, 239, 166
+IDD_SINKPROPPAGE DIALOG DISCARDABLE  0, 0, 302, 212
 STYLE DS_MODALFRAME | WS_CHILD
 FONT 8, "MS Sans Serif"
 BEGIN
-    GROUPBOX        "Regestry Infomation",IDC_STATIC,7,7,111,138,BS_CENTER
+    GROUPBOX        "Registry Infomation",IDC_STATIC,7,7,111,138,BS_CENTER
     LTEXT           "Chunk Reserve",IDC_STATIC,13,16,77,10
     PUSHBUTTON      "&Save Registry Settings",IDC_SAVE,13,148,96,13
     EDITTEXT        IDC_CHKRES,14,26,39,12,ES_AUTOHSCROLL
@@ -182,23 +185,26 @@ BEGIN
     LTEXT           "Default File Name",IDC_STATIC,13,115,77,10
     EDITTEXT        IDC_DEFNAME,13,124,65,12,ES_AUTOHSCROLL
     PUSHBUTTON      "&Change",IDC_DEFNAMECHG,83,125,30,12,WS_GROUP
-    GROUPBOX        "Status Infomation",IDC_STATIC,121,7,111,137,BS_CENTER
-    EDITTEXT        IDC_CURNUMB,205,26,20,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Current File Number",IDC_STATIC,127,27,68,10
-    EDITTEXT        IDC_CURNAME,127,102,66,12,ES_AUTOHSCROLL
-    LTEXT           "Current File Name",IDC_STATIC,127,91,77,10
-    EDITTEXT        IDC_NUMBADD,205,42,20,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Number Files Added",IDC_STATIC,127,44,67,10
-    EDITTEXT        IDC_NUMBREM,205,58,20,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Number Removed",IDC_STATIC,127,59,66,10
-    PUSHBUTTON      "&Change",IDC_CURNAMECHG,197,102,29,12,WS_GROUP
-    PUSHBUTTON      "&Refresh Page",IDC_REFRESH,128,148,96,13
-    EDITTEXT        IDC_CURSIZE,127,124,66,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Current Buffer Size",IDC_STATIC,127,115,77,10
-    LTEXT           "MBytes",IDC_STATIC,197,126,24,10
-    EDITTEXT        IDC_PKTERRORS,127,78,66,12,ES_AUTOHSCROLL
-    LTEXT           "Packet Errors",IDC_STATIC,127,68,60,10
-    PUSHBUTTON      "&Reset",IDC_RESET,197,79,29,12,WS_GROUP
+    GROUPBOX        "Status Infomation",IDC_STATIC,184,7,111,137,BS_CENTER
+    EDITTEXT        IDC_CURNUMB,267,25,20,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Current File Number",IDC_STATIC,189,26,68,10
+    EDITTEXT        IDC_CURNAME,189,102,66,12,ES_AUTOHSCROLL
+    LTEXT           "Current File Name",IDC_STATIC,189,90,77,10
+    EDITTEXT        IDC_NUMBADD,267,41,20,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Number Files Added",IDC_STATIC,189,44,67,10
+    EDITTEXT        IDC_NUMBREM,267,57,20,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Number Removed",IDC_STATIC,189,58,66,10
+    PUSHBUTTON      "&Change",IDC_CURNAMECHG,259,102,29,12,WS_GROUP
+    PUSHBUTTON      "&Refresh Page",IDC_REFRESH,190,148,96,13
+    EDITTEXT        IDC_CURSIZE,189,124,66,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Current Buffer Size",IDC_STATIC,189,114,77,10
+    LTEXT           "MBytes",IDC_STATIC,259,126,24,10
+    EDITTEXT        IDC_PKTERRORS,189,78,66,12,ES_AUTOHSCROLL
+    LTEXT           "Packet Errors",IDC_STATIC,189,68,60,10
+    PUSHBUTTON      "&Reset",IDC_RESET,259,78,29,12,WS_GROUP
+    CTEXT           "TSFileSink of TSFileSource Version 2.2.0.2 Final\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
+                    IDC_STATIC,7,175,288,26
+    GROUPBOX        "Description",IDC_STATIC,7,165,288,43
 END
 
 
@@ -215,14 +221,15 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 295
         TOPMARGIN, 7
+        BOTTOMMARGIN, 246
     END
 
     IDD_SINKPROPPAGE, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 232
+        RIGHTMARGIN, 295
         TOPMARGIN, 7
-        BOTTOMMARGIN, 162
+        BOTTOMMARGIN, 208
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -283,6 +290,7 @@ STRINGTABLE DISCARDABLE
 BEGIN
     IDS_PROPPAGE_TITLE      "TSFileSource Filter Properties"
     IDS_SINKPROPPAGE_TITLE  "TSFileSink Filter Properties"
+    IDS_INFORMATION_TITLE   "TSFileSource Filter Description"
 END
 
 #endif    // English (Australia) resources

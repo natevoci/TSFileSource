@@ -63,7 +63,6 @@ private:
 	BOOL ThreadRunning(void);
     Command GetRequest(void) { return (Command) CAMThread::GetRequest(); }
     BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
-
 };
 
 #endif

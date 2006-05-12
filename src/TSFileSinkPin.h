@@ -26,7 +26,15 @@
 #ifndef TSFILESINKPIN_H
 #define TSFILESINKPIN_H
 
-//#include "TSFileSink.h"	//included in .cpp file
+#include <vector>
+#include "TSThread.h"	
+
+typedef struct BufferInfo
+{
+	BYTE *sample;
+	long size;
+
+} BUFFERINFO;
 
 /**********************************************
  *
@@ -34,7 +42,7 @@
  *
  **********************************************/
 
-class CTSFileSinkPin : public CRenderedInputPin
+class CTSFileSinkPin : public CRenderedInputPin, public TSThread
 {
 public:
 	CTSFileSinkPin(CTSFileSink *pTSFileSink, LPUNKNOWN pUnk, CBaseFilter *pFilter, CCritSec *pLock, HRESULT *phr);
@@ -50,8 +58,11 @@ public:
 	void setNumbErrorPackets(__int64 lpllErrors);
 
     HRESULT BreakConnect();
+	HRESULT Run(REFERENCE_TIME tStart);
 
     STDMETHODIMP NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate);
+	virtual void ThreadProc();
+	void Clear();
 
 private:
 	CTSFileSink * const m_pTSFileSink;
@@ -59,11 +70,25 @@ private:
 
     CCritSec m_ReceiveLock;
 
+	std::vector<BUFFERINFO> m_Array;
+	__int64 m_writeBufferSize;
+	CCritSec m_BufferLock;
+
 //Changes by Frodo
-	void Filter(byte* rawData,long len);
-	byte  m_restBuffer[4096*16];
-	long   m_restBufferLen;
+	HRESULT Filter(byte* rawData,long len);
+	HRESULT WriteBufferSample(byte* pbData,long sampleLen);
+
+	BYTE  m_restBuffer[4096];
+	long  m_restBufferLen;
+	long  m_writeBufferLen;
+	BYTE*  m_writeBuffer;
 	__int64 m_PacketErrors;
+
+	long  m_WriteSampleSize;
+	long  m_WriteBufferSize;
+	void PrintLongLong(LPCTSTR lstring, __int64 value);
+	BOOL m_WriteThreadActive;
+	int debugcount;
 
 };
 

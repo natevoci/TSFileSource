@@ -122,8 +122,9 @@ HRESULT FileWriter::OpenFile()
 						 FILE_SHARE_READ,       // Share access
 						 NULL,                  // Security
 						 OPEN_ALWAYS,           // Open flags
-						 (DWORD) FILE_FLAG_WRITE_THROUGH,             // More flags
-//						 (DWORD) 0,             // More flags
+//						 (DWORD) FILE_FLAG_RANDOM_ACCESS,
+//						 (DWORD) FILE_FLAG_WRITE_THROUGH,             // More flags
+						 (DWORD) 0,             // More flags
 						 NULL);                 // Template
 
 	if (m_hFile == INVALID_HANDLE_VALUE)
