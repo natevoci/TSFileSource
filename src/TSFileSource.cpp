@@ -254,7 +254,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 	m_pFileDuration->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
-	int count = 0;
+	int count = 1;
 
     do
     {
@@ -270,8 +270,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime && bReadOnly)
 			{
 				CNetRender::UpdateNetFlow(&netArray);
-				if(m_State == State_Running
-					&& 1 == 1)
+				if(m_State == State_Running	&& TRUE)
 				{
 					__int64 fileStart, filelength;
 					m_pFileDuration->GetFileSize(&fileStart, &filelength);
@@ -283,7 +282,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 					if((bMultiMode & ((__int64)(fileStart + (__int64)5000000) < m_llLastMultiFileStart))
 						|| (bMultiMode & (fileStart == 0) & ((__int64)(filelength + (__int64)5000000) < m_llLastMultiFileLength))
 						|| (!bMultiMode & ((__int64)(filelength + (__int64)5000000) < m_llLastMultiFileLength))
-						&& 1 == 1)
+						&& TRUE)
 					{
 						LPOLESTR pszFileName;
 						if (m_pFileDuration->GetFileName(&pszFileName) == S_OK)
@@ -298,7 +297,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 						}
 					}
 					//check pids every 4sec or quicker if no pids parsed
-					else if (count == 4 || !m_pPidParser->pidArray.Count())
+					else if (count == 5 || !m_pPidParser->pidArray.Count())
 					{
 						//update the parser
 						UpdatePidParser();
@@ -309,7 +308,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				}
 
 				//Change back to normal Auto operation if not already
-				if (count == 8 && m_pPidParser->pidArray.Count() && m_bColdStart)
+				if (count == 10 && m_pPidParser->pidArray.Count() && m_bColdStart)
 				{
 					//Change back to normal Auto operation
 					m_pDemux->set_Auto(m_bColdStart);
@@ -317,7 +316,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				}
 
 				count++;
-				if (count > 8)
+				if (count > 10)
 					count = 0;
 
 				m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
@@ -326,7 +325,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 			if (m_State != State_Stopped && bReadOnly)
 			{
 				if(!m_pPidParser->m_ParsingLock	&& m_pPidParser->pidArray.Count()
-					&& 1 == 1) //cold start
+					&& TRUE) //cold start
 				{
 					hr = m_pPin->UpdateDuration(m_pFileDuration);
 					{
@@ -372,6 +371,8 @@ BOOL CTSFileSourceFilter::ThreadRunning(void)
 STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void ** ppv)
 {
 	CheckPointer(ppv,E_POINTER);
+
+	CAutoLock lock(&m_Lock);
 
 	// Do we have this interface
 	if (riid == IID_ITSFileSource)
@@ -425,7 +426,7 @@ STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams) //IAMStreamSelect
 	if(!pcStreams)
 		return E_INVALIDARG;
 
-	CAutoLock cObjectLock(m_pLock);
+	CAutoLock lock(&m_Lock);
 
 	*pcStreams = 0;
 
@@ -435,7 +436,7 @@ STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams) //IAMStreamSelect
 		return VFW_E_NOT_CONNECTED;
 
 	*pcStreams = m_pStreamParser->StreamArray.Count();
-	
+
 	return S_OK;
 } //IAMStreamSelect
 
@@ -449,7 +450,7 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 						IUnknown **ppObject,
 						IUnknown **ppUnk) //IAMStreamSelect
 {
-	CAutoLock cObjectLock(m_pLock);
+	CAutoLock lock(&m_Lock);
 
 	//Check if file has been parsed
 	if (!m_pPidParser->pidArray.Count() || m_pPidParser->m_ParsingLock)
@@ -505,7 +506,7 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 
 STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStreamSelect
 {
-	CAutoLock cObjectLock(m_pLock);
+	CAutoLock lock(&m_Lock);
 
 	//Test if ready
 	if (!m_pStreamParser->StreamArray.Count() ||
@@ -609,7 +610,8 @@ STDMETHODIMP CTSFileSourceFilter::FindPin(LPCWSTR Id, IPin ** ppPin)
 
 void CTSFileSourceFilter::ResetStreamTime(void)
 {
-	CAutoLock cObjectLock(m_pLock);
+	CAutoLock lock(&m_Lock);
+//	CAutoLock cObjectLock(m_pLock);
 	CRefTime cTime;
 	StreamTime(cTime);
 	m_tStart = REFERENCE_TIME(m_tStart) + REFERENCE_TIME(cTime);
@@ -721,8 +723,8 @@ HRESULT CTSFileSourceFilter::Pause()
 
 STDMETHODIMP CTSFileSourceFilter::Stop()
 {
-	CAutoLock cObjectLock(m_pLock);
 	CAutoLock lock(&m_Lock);
+	CAutoLock cObjectLock(m_pLock);
 
 //	if (ThreadRunning() && ThreadExists())
 //		CAMThread::CallWorker(CMD_STOP);
@@ -804,6 +806,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 {
 	// Is this a valid filename supplied
 	CheckPointer(pszFileName,E_POINTER);
+
+//	CAutoLock cObjectLock(m_pLock);
 
 	LPOLESTR wFileName = new WCHAR[lstrlenW(pszFileName)+1];
 	lstrcpyW(wFileName, pszFileName);
@@ -1276,7 +1280,7 @@ HRESULT CTSFileSourceFilter::Refresh()
 
 HRESULT CTSFileSourceFilter::UpdatePidParser(void)
 {
-	CAutoLock lock(&m_Lock);
+//	CAutoLock lock(&m_Lock);
 	HRESULT hr = S_FALSE;// if an error occurs.
 
 	PidParser *pPidParser = new PidParser(m_pFileReader);

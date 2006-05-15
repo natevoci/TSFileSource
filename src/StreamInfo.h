@@ -70,6 +70,7 @@ public:
 	int Count();
 
 private:
+	CCritSec m_StreamInfoLock;
 	std::vector<StreamInfo *> m_Array;
 
 };

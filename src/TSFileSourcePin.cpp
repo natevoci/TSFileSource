@@ -1746,7 +1746,7 @@ PrintTime(TEXT("UpdateDuration6"), (__int64) m_rtDuration, 10000);
 			//check for valid values
 			if ((m_pTSFileSourceFilter->m_pPidParser->pids.pcr | m_pTSFileSourceFilter->m_pPidParser->get_ProgPinMode())
 				&& m_IntEndTimePCR
-				&& 1 == 1){
+				&& TRUE){
 				//check for duration every second of size change
 				if(((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime))
 				{
@@ -1798,7 +1798,7 @@ PrintTime(TEXT("UpdateDuration6"), (__int64) m_rtDuration, 10000);
 				}
 			}
 			else if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime
-				&& 1 == 1)
+				&& TRUE)
 			{
 				//update all of the pid array times from a file parse.
 				if (!m_bSeeking)
@@ -2256,7 +2256,7 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 //Old Capture format Additions
 //					if (m_pPidParser->pids.pcr && m_pTSFileSourceFilter->get_AutoMode()) // && !m_pPidParser->pids.opcr) 
 //***********************************************************************************************
-					if (m_biMpegDemux && m_pTSFileSourceFilter->get_AutoMode())
+					if (TRUE && m_biMpegDemux && m_pTSFileSourceFilter->get_AutoMode())
 						pFilter->SetSyncSource(pClock);
 					muxInterface->Release();
 				}
