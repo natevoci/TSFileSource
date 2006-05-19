@@ -624,7 +624,7 @@ HRESULT PidParser::ParsePAT(PBYTE pData, ULONG lDataLength, long pos)
 					PidInfo *newPidInfo = new PidInfo();
 
 					newPidInfo->sid =
-						(WORD)(0x1F & pData[b + 1]) << 8 | (0xFF & pData[b + 2]);
+						(WORD)(0xFF & pData[b + 1]) << 8 | (0xFF & pData[b + 2]);
 
 					newPidInfo->pmt =
 						(WORD)(0x1F & pData[b + 3]) << 8 | (0xFF & pData[b + 4]);
@@ -1657,7 +1657,8 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 				{
 					//Search ID Array for the SID Value
 					if (pidArray[n].sid == (((0xFF & m_pDummy[i]) << 8) | (0xFF & m_pDummy[i + 1]))
-						&& 0xFD80 == (((0xFF & m_pDummy[i + 2]) << 8) | (0x80 & m_pDummy[i + 3])))
+						&& 0xFD00 == (((0xFD & m_pDummy[i + 2]) << 8) | (0x7F & m_pDummy[i + 3])))
+//						&& 0xFD80 == (((0xFF & m_pDummy[i + 2]) << 8) | (0x80 & m_pDummy[i + 3])))
 //						&& 0xFD80 == (((0xFF & m_pDummy[i + 2]) << 8) | (0xFF & m_pDummy[i + 3])))
 					{
 						int a = i + 9;
@@ -1920,7 +1921,6 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 		if (pPids->end == 0)
 			pPids->end = startPCRSave + totalduration; //Set the end pcr if not set.
 
-		delete[] pData;
 		__int64 duration = (__int64)(((__int64)totalduration/(__int64)9) * (__int64)1000);
 
 		if (totalduration > 0 && !bBitRateOK)
@@ -1929,6 +1929,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			pids.bitrate = (__int64)(bitRate/(__int64)((__int64)totalduration/(__int64)9000));
 		}
 //PrintTime(TEXT("GetFileDuration ok"), (REFERENCE_TIME)(__int64)(((__int64)totalduration/(__int64)9) * (__int64)1000), 10000);
+		delete[] pData;
 		return (REFERENCE_TIME)(__int64)(((__int64)totalduration/(__int64)9) * (__int64)1000);
 	}
 

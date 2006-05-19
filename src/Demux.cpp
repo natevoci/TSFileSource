@@ -1064,6 +1064,27 @@ HRESULT Demux::NewTsPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
+		//the following should not happen if it is a MS Demux
+		if(pIPin == NULL)
+		{
+			IBaseFilter *pIBaseFilter = NULL;
+			hr = muxInterface->QueryInterface(IID_IBaseFilter, (void **)&pIBaseFilter);
+			if (FAILED(hr) || pIBaseFilter == NULL)
+				return hr;
+
+			pIBaseFilter->FindPin(pinName ,&pIPin);
+			pIBaseFilter->Release();
+			if(pIPin == NULL)
+				return hr;
+			
+			hr = muxInterface->SetOutputPinMediaType(pinName, &type);
+			if FAILED(hr)
+			{
+				pIPin->Release();
+				return hr;
+			}
+		}
+
 		hr = LoadTsPin(pIPin);
 		pIPin->Release();
 		hr = S_OK;
@@ -1102,6 +1123,27 @@ HRESULT Demux::NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
+		//the following should not happen if it is a MS Demux
+		if(pIPin == NULL)
+		{
+			IBaseFilter *pIBaseFilter = NULL;
+			hr = muxInterface->QueryInterface(IID_IBaseFilter, (void **)&pIBaseFilter);
+			if (FAILED(hr) || pIBaseFilter == NULL)
+				return hr;
+
+			pIBaseFilter->FindPin(pinName ,&pIPin);
+			pIBaseFilter->Release();
+			if(pIPin == NULL)
+				return hr;
+			
+			hr = muxInterface->SetOutputPinMediaType(pinName, &type);
+			if FAILED(hr)
+			{
+				pIPin->Release();
+				return hr;
+			}
+		}
+
 		hr = LoadVideoPin(pIPin, (ULONG)pPid);
 		pIPin->Release();
 		hr = S_OK;
@@ -1133,6 +1175,27 @@ HRESULT Demux::NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
+		//the following should not happen if it is a MS Demux
+		if(pIPin == NULL)
+		{
+			IBaseFilter *pIBaseFilter = NULL;
+			hr = muxInterface->QueryInterface(IID_IBaseFilter, (void **)&pIBaseFilter);
+			if (FAILED(hr) || pIBaseFilter == NULL)
+				return hr;
+
+			pIBaseFilter->FindPin(pinName ,&pIPin);
+			pIBaseFilter->Release();
+			if(pIPin == NULL)
+				return hr;
+			
+			hr = muxInterface->SetOutputPinMediaType(pinName, &type);
+			if FAILED(hr)
+			{
+				pIPin->Release();
+				return hr;
+			}
+		}
+
 		hr = LoadAudioPin(pIPin, (ULONG)pPid);
 		pIPin->Release();
 		hr = S_OK;
@@ -1157,6 +1220,27 @@ HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
+		//the following should not happen if it is a MS Demux
+		if(pIPin == NULL)
+		{
+			IBaseFilter *pIBaseFilter = NULL;
+			hr = muxInterface->QueryInterface(IID_IBaseFilter, (void **)&pIBaseFilter);
+			if (FAILED(hr) || pIBaseFilter == NULL)
+				return hr;
+
+			pIBaseFilter->FindPin(pinName ,&pIPin);
+			pIBaseFilter->Release();
+			if(pIPin == NULL)
+				return hr;
+			
+			hr = muxInterface->SetOutputPinMediaType(pinName, &type);
+			if FAILED(hr)
+			{
+				pIPin->Release();
+				return hr;
+			}
+		}
+
 		hr = LoadAudioPin(pIPin, (ULONG)pPid);
 		pIPin->Release();
 		hr = S_OK;
@@ -1181,6 +1265,27 @@ HRESULT Demux::NewAACPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
+		//the following should not happen if it is a MS Demux
+		if(pIPin == NULL)
+		{
+			IBaseFilter *pIBaseFilter = NULL;
+			hr = muxInterface->QueryInterface(IID_IBaseFilter, (void **)&pIBaseFilter);
+			if (FAILED(hr) || pIBaseFilter == NULL)
+				return hr;
+
+			pIBaseFilter->FindPin(pinName ,&pIPin);
+			pIBaseFilter->Release();
+			if(pIPin == NULL)
+				return hr;
+			
+			hr = muxInterface->SetOutputPinMediaType(pinName, &type);
+			if FAILED(hr)
+			{
+				pIPin->Release();
+				return hr;
+			}
+		}
+
 		hr = LoadAudioPin(pIPin, (ULONG)pPid);
 		pIPin->Release();
 		hr = S_OK;
@@ -1205,6 +1310,27 @@ HRESULT Demux::NewTelexPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	IPin* pIPin = NULL;
 	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
 	{
+		//the following should not happen if it is a MS Demux
+		if(pIPin == NULL)
+		{
+			IBaseFilter *pIBaseFilter = NULL;
+			hr = muxInterface->QueryInterface(IID_IBaseFilter, (void **)&pIBaseFilter);
+			if (FAILED(hr) || pIBaseFilter == NULL)
+				return hr;
+
+			pIBaseFilter->FindPin(pinName ,&pIPin);
+			pIBaseFilter->Release();
+			if(pIPin == NULL)
+				return hr;
+			
+			hr = muxInterface->SetOutputPinMediaType(pinName, &type);
+			if FAILED(hr)
+			{
+				pIPin->Release();
+				return hr;
+			}
+		}
+
 		hr = LoadTelexPin(pIPin, (ULONG)pPid);
 		pIPin->Release();
 		hr = S_OK;

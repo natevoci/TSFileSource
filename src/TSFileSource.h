@@ -92,6 +92,7 @@ public:
 	STDMETHODIMP FindPin(LPCWSTR Id, IPin ** ppPin);
 
 	void ResetStreamTime(void);
+	BOOL is_Active(void);
 	STDMETHODIMP Run(REFERENCE_TIME tStart);
 	STDMETHODIMP Pause();
 	STDMETHODIMP Stop();
@@ -105,7 +106,6 @@ public:
 	HRESULT RefreshPids();
 	HRESULT RefreshDuration();
 	STDMETHODIMP ShowFilterProperties();
-	STDMETHODIMP SetTunerEvent(void);
 	STDMETHODIMP Refresh();
 	HRESULT UpdatePidParser(void);
 	BOOL get_AutoMode();
@@ -188,6 +188,7 @@ protected:
 	STDMETHODIMP SetBitRate(long Rate);
 	STDMETHODIMP SetRegStore(LPTSTR nameReg);
 	STDMETHODIMP GetRegStore(LPTSTR nameReg);
+	STDMETHODIMP SetTunerEvent(void);
 	STDMETHODIMP SetRegSettings();
 	STDMETHODIMP GetRegSettings();
 	STDMETHODIMP SetRegProgram();
@@ -211,6 +212,13 @@ protected:
 
 protected:
 
+	HRESULT load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt);
+	HRESULT set_PgmNumb(WORD PgmNumb);
+	HRESULT set_TunerEvent(void);
+	HRESULT set_RegProgram();
+	HRESULT showEPGInfo();
+
+
 	DVBMpeg2DataParser *m_pMpeg2DataParser;
 	CTSFileSourcePin *m_pPin;          // A simple rendered output pin
 	CTSFileSourceClock *m_pClock;
@@ -224,6 +232,7 @@ protected:
 	BOOL m_bRotEnable;
 	BOOL m_bColdStart;
 	CCritSec m_Lock;                // Main renderer critical section
+	CCritSec m_SelectLock;                // Main renderer critical section
     
     DWORD m_dwGraphRegister;		//registration number for the RunningObjectTable
 

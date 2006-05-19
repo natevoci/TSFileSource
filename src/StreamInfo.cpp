@@ -89,7 +89,7 @@ StreamInfoArray::~StreamInfoArray()
 
 void StreamInfoArray::Clear()
 {
-	CAutoLock StreamInfoLock(&m_StreamInfoLock);
+//	CAutoLock StreamInfoLock(&m_StreamInfoLock);
 	std::vector<StreamInfo *>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
 	{
@@ -100,13 +100,13 @@ void StreamInfoArray::Clear()
 
 void StreamInfoArray::Add(StreamInfo *newStreamInfo)
 {
-	CAutoLock StreamInfoLock(&m_StreamInfoLock);
+//	CAutoLock StreamInfoLock(&m_StreamInfoLock);
 	m_Array.push_back(newStreamInfo);
 }
 
 void StreamInfoArray::RemoveAt(int nPosition)
 {
-	CAutoLock StreamInfoLock(&m_StreamInfoLock);
+//	CAutoLock StreamInfoLock(&m_StreamInfoLock);
 	if ((nPosition >= 0) && (nPosition < m_Array.size()))
 	{
 		m_Array.erase(m_Array.begin() + nPosition);
@@ -115,7 +115,7 @@ void StreamInfoArray::RemoveAt(int nPosition)
 
 StreamInfo &StreamInfoArray::operator[](int nPosition)
 {
-	CAutoLock StreamInfoLock(&m_StreamInfoLock);
+//	CAutoLock StreamInfoLock(&m_StreamInfoLock);
 	int size = m_Array.size();
 	_ASSERT(nPosition >= 0);
 	_ASSERT(nPosition < size);
@@ -125,7 +125,7 @@ StreamInfo &StreamInfoArray::operator[](int nPosition)
 
 int StreamInfoArray::Count()
 {
-	CAutoLock StreamInfoLock(&m_StreamInfoLock);
+//	CAutoLock StreamInfoLock(&m_StreamInfoLock);
 	return m_Array.size();
 }
 

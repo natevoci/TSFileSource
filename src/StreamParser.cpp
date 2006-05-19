@@ -326,6 +326,7 @@ void StreamParser::SetStreamArray(int n)
 {
 	if ((n < 0) || (n >= StreamArray.Count()))
 		return;
+
 	StreamInfo *StreamInfo = &StreamArray[n];
 
 	StreamInfo->CopyFrom(&streams);

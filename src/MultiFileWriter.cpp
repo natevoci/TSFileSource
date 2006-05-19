@@ -475,6 +475,7 @@ void MultiFileWriter::setRegFileName(LPTSTR fileName)
 	m_pTSRegFileName = new TCHAR[1+lstrlen(fileName)];
 	if (m_pTSRegFileName == NULL)
 		return;// E_OUTOFMEMORY;
+
 	lstrcpy(m_pTSRegFileName, fileName);
 }
 
@@ -499,6 +500,7 @@ void MultiFileWriter::setBufferFileName(LPWSTR fileName)
 	m_pTSBufferFileName = new WCHAR[1+lstrlenW(fileName)];
 	if (m_pTSBufferFileName == NULL)
 		return;// E_OUTOFMEMORY;
+
 	lstrcpyW(m_pTSBufferFileName, fileName);
 }
 

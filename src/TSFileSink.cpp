@@ -373,6 +373,7 @@ STDMETHODIMP CTSFileSink::GetRegFileName(LPTSTR fileName)
 {
     CheckPointer(fileName, E_POINTER);
 	CAutoLock lock(&m_Lock);
+
 	sprintf((char *)fileName, "%s", m_pRegFileName);
 //	sprintf((char *)fileName, "%s", m_pFileWriter->getRegFileName());
     return NOERROR;
@@ -405,7 +406,20 @@ STDMETHODIMP CTSFileSink::GetBufferFileName(LPWSTR fileName)
 {
     CheckPointer(fileName, E_POINTER);
 	CAutoLock lock(&m_Lock);
-	sprintf((char *)fileName, "%S", m_pFileName);
+
+	// Take a copy of the filename
+	if (fileName)
+	{
+		sprintf((char *)fileName, "%S", m_pFileName);
+		return NOERROR;
+	}
+
+	fileName = new WCHAR[1+wcslen(m_pFileName)];
+	if (m_pFileName == NULL)
+		return E_OUTOFMEMORY;
+	
+	lstrcpyW(fileName, m_pFileName);
+//	sprintf((char *)fileName, "%S", m_pFileName);
 //	sprintf((char *)fileName, "%S", m_pFileWriter->getBufferFileName());
     return NOERROR;
 }

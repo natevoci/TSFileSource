@@ -291,7 +291,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							if (pFileName != NULL)
 							{
 								lstrcpyW(pFileName, pszFileName);
-								Load(pFileName, NULL);
+								load(pFileName, NULL);
 								delete[] pFileName;
 							}
 						}
@@ -300,6 +300,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 					else if (count == 5 || !m_pPidParser->pidArray.Count())
 					{
 						//update the parser
+						CAutoLock SelectLock(&m_SelectLock);
 						UpdatePidParser();
 					}
 					
@@ -331,7 +332,9 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 					{
 						if (!m_bColdStart)
 							if (m_pDemux->CheckDemuxPids() == S_FALSE)
+							{
 								m_pDemux->AOnConnect();
+							}
 					}
 				}
 			}
@@ -426,7 +429,7 @@ STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams) //IAMStreamSelect
 	if(!pcStreams)
 		return E_INVALIDARG;
 
-	CAutoLock lock(&m_Lock);
+	CAutoLock SelectLock(&m_SelectLock);
 
 	*pcStreams = 0;
 
@@ -450,7 +453,7 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 						IUnknown **ppObject,
 						IUnknown **ppUnk) //IAMStreamSelect
 {
-	CAutoLock lock(&m_Lock);
+	CAutoLock SelectLock(&m_SelectLock);
 
 	//Check if file has been parsed
 	if (!m_pPidParser->pidArray.Count() || m_pPidParser->m_ParsingLock)
@@ -506,7 +509,7 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 
 STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStreamSelect
 {
-	CAutoLock lock(&m_Lock);
+	CAutoLock SelectLock(&m_SelectLock);
 
 	//Test if ready
 	if (!m_pStreamParser->StreamArray.Count() ||
@@ -518,18 +521,10 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 	if (lIndex >= m_pStreamParser->StreamArray.Count() || lIndex < 0)
 		return E_INVALIDARG;
 
-	//Change back to normal Auto operation
-	if (m_bColdStart)
-	{
-		//Change back to normal Auto operation
-		m_pDemux->set_Auto(m_bColdStart);
-		m_bColdStart = FALSE; //
-	}
-
 	int indexOffset = netArray.Count() + (int)(netArray.Count() != 0);
 
 	if (!lIndex)
-		ShowEPGInfo();
+		showEPGInfo();
 	else if (lIndex && lIndex < m_pStreamParser->StreamArray.Count() - indexOffset - 2){
 
 		m_pDemux->m_StreamVid = m_pStreamParser->StreamArray[lIndex].Vid;
@@ -539,7 +534,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamMP2 = m_pStreamParser->StreamArray[lIndex].Aud;
 		m_pDemux->m_StreamAAC = m_pStreamParser->StreamArray[lIndex].AAC;
 		m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
-		SetPgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
+		set_PgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
 		m_pStreamParser->SetStreamActive(m_pStreamParser->StreamArray[lIndex].group);
 		m_pDemux->m_StreamVid = 0;
 		m_pDemux->m_StreamH264 = 0;
@@ -547,19 +542,19 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamMP2 = 0;
 		m_pDemux->m_StreamAud2 = 0;
 		m_pDemux->m_StreamAAC = 0;
-		SetRegProgram();
+		set_RegProgram();
 	}
 	else if (lIndex == m_pStreamParser->StreamArray.Count() - indexOffset - 2) //File Menu title
 	{}
 	else if (lIndex == m_pStreamParser->StreamArray.Count() - indexOffset - 1) //Load file Browser
-		Load(L"", NULL);
+	{	load(L"", NULL);}
 	else if (lIndex == m_pStreamParser->StreamArray.Count() - indexOffset) //Multicasting title
 	{}
 	else if (lIndex > m_pStreamParser->StreamArray.Count() - indexOffset) //Select multicast streams
 	{
 		WCHAR wfilename[MAX_PATH];
 		lstrcpyW(wfilename, netArray[lIndex - (m_pStreamParser->StreamArray.Count() - netArray.Count())].fileName);
-		if (SUCCEEDED(Load(wfilename, NULL)))
+		if (SUCCEEDED(load(wfilename, NULL)))
 		{
 //			m_pFileReader->set_DelayMode(TRUE);
 //			m_pFileDuration->set_DelayMode(TRUE);
@@ -573,6 +568,14 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 				pMediaSeeking->Release();
 			}
 		}
+	}
+
+	//Change back to normal Auto operation
+	if (m_bColdStart)
+	{
+		//Change back to normal Auto operation
+		m_pDemux->set_Auto(m_bColdStart);
+		m_bColdStart = FALSE; //
 	}
 
 	return S_OK;
@@ -610,19 +613,21 @@ STDMETHODIMP CTSFileSourceFilter::FindPin(LPCWSTR Id, IPin ** ppPin)
 
 void CTSFileSourceFilter::ResetStreamTime(void)
 {
-	CAutoLock lock(&m_Lock);
-//	CAutoLock cObjectLock(m_pLock);
 	CRefTime cTime;
 	StreamTime(cTime);
 	m_tStart = REFERENCE_TIME(m_tStart) + REFERENCE_TIME(cTime);
 }
 
+BOOL CTSFileSourceFilter::is_Active(void)
+{
+	return ((m_State == State_Paused) || (m_State == State_Running));
+}
 
 STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 {
 	CAutoLock cObjectLock(m_pLock);
 
-	if(IsActive() == State_Stopped)
+	if(!is_Active())
 	{
 		if (m_pFileReader->IsFileInvalid())
 		{
@@ -662,11 +667,12 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 		}
 
-		SetTunerEvent();
+		set_TunerEvent();
 
 		if (!ThreadRunning() && ThreadExists())
 			CAMThread::CallWorker(CMD_RUN);
 	}
+
 	return CSource::Run(tStart);
 }
 
@@ -675,7 +681,7 @@ HRESULT CTSFileSourceFilter::Pause()
 //::OutputDebugString(TEXT("Pause In \n"));
 	CAutoLock cObjectLock(m_pLock);
 
-	if(!IsActive())
+	if(!is_Active())
 	{
 		if (m_pFileReader->IsFileInvalid())
 		{
@@ -712,7 +718,7 @@ HRESULT CTSFileSourceFilter::Pause()
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 		}
 
-		SetTunerEvent();
+		set_TunerEvent();
 
 		if (!ThreadRunning() && ThreadExists())
 			CAMThread::CallWorker(CMD_PAUSE);
@@ -804,10 +810,15 @@ STDMETHODIMP CTSFileSourceFilter::GetPages(CAUUID *pPages)
 
 STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt)
 {
+	CAutoLock SelectLock(&m_SelectLock);
+	return load(pszFileName, pmt);
+}
+
+HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt)
+{
 	// Is this a valid filename supplied
 	CheckPointer(pszFileName,E_POINTER);
 
-//	CAutoLock cObjectLock(m_pLock);
 
 	LPOLESTR wFileName = new WCHAR[lstrlenW(pszFileName)+1];
 	lstrcpyW(wFileName, pszFileName);
@@ -908,7 +919,7 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	}
 
 	//Jump to a different Load method if already been set.
-	if (ThreadExists() || IsActive() || m_pPin->CBasePin::IsConnected())
+	if (ThreadExists() || is_Active() || m_pPin->CBasePin::IsConnected())
 	{
 		hr = ReLoad(wFileName, pmt);
 		delete[] wFileName;
@@ -1006,7 +1017,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 				m_pPidParser->set_AsyncMode(FALSE);
 			}
 		}
-		CAutoLock lock(&m_Lock);
+		CAutoLock cObjectLock(m_pLock);
+//		CAutoLock lock(&m_Lock);
 		m_pFileReader->CloseFile();
 		delete[] wFileName;
 		return hr;
@@ -1019,7 +1031,8 @@ STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYP
 	LoadPgmReg();
 	RefreshDuration();
 
-	CAutoLock lock(&m_Lock);
+	CAutoLock cObjectLock(m_pLock);
+//	CAutoLock lock(&m_Lock);
 	m_pFileReader->CloseFile();
 	delete[] wFileName;
 
@@ -1183,9 +1196,9 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 				m_pPidParser->set_AsyncMode(FALSE);
 			}
 		}
-		CAutoLock lock(&m_Lock);
+		CAutoLock cObjectLock(m_pLock);
+//		CAutoLock lock(&m_Lock);
 		m_pFileReader->CloseFile();
-//		delete[] wFileName;
 		return hr;
 	}
 
@@ -1207,7 +1220,8 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	}
 
 	{
-		CAutoLock lock(&m_Lock);
+		CAutoLock cObjectLock(m_pLock);
+//		CAutoLock lock(&m_Lock);
 		m_pDemux->AOnConnect();
 	}
 	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
@@ -1216,13 +1230,15 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 	if (bState_Paused || bState_Running)
 	{
-		CAutoLock lock(&m_Lock);
+		CAutoLock cObjectLock(m_pLock);
+//		CAutoLock lock(&m_Lock);
 		m_pDemux->DoStart();
 	}
 				
 	if (bState_Paused)
 	{
-		CAutoLock lock(&m_Lock);
+		CAutoLock cObjectLock(m_pLock);
+//		CAutoLock lock(&m_Lock);
 		m_pDemux->DoPause();
 	}
 
@@ -1236,7 +1252,8 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	}
 
 	{
-		CAutoLock lock(&m_Lock);
+		CAutoLock cObjectLock(m_pLock);
+//		CAutoLock lock(&m_Lock);
 		NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);	
 	}
 
@@ -1376,7 +1393,7 @@ HRESULT CTSFileSourceFilter::RefreshPids()
 {
 	HRESULT hr;
 
-	CAutoLock lock(&m_Lock);
+//	CAutoLock lock(&m_Lock);
 	hr = m_pPidParser->ParseFromFile(m_pFileReader->getFilePointer());
 	m_pStreamParser->ParsePidArray();
 	return hr;
@@ -1629,7 +1646,7 @@ STDMETHODIMP CTSFileSourceFilter::GetDuration(REFERENCE_TIME *dur)
 
 }
 
-STDMETHODIMP CTSFileSourceFilter::GetChannelNumber (BYTE *pointer)
+STDMETHODIMP CTSFileSourceFilter::GetChannelNumber(BYTE *pointer)
 {
 	if (!pointer)
 		  return E_INVALIDARG;
@@ -1640,7 +1657,7 @@ STDMETHODIMP CTSFileSourceFilter::GetChannelNumber (BYTE *pointer)
 	return NOERROR;
 }
 
-STDMETHODIMP CTSFileSourceFilter::GetNetworkName (BYTE *pointer)
+STDMETHODIMP CTSFileSourceFilter::GetNetworkName(BYTE *pointer)
 {
 	if (!pointer)
 		  return E_INVALIDARG;
@@ -1662,7 +1679,7 @@ STDMETHODIMP CTSFileSourceFilter::GetONetworkName (BYTE *pointer)
 	return NOERROR;
 }
 
-STDMETHODIMP CTSFileSourceFilter::GetChannelName (BYTE *pointer)
+STDMETHODIMP CTSFileSourceFilter::GetChannelName(BYTE *pointer)
 {
 	if (!pointer)
 		  return E_INVALIDARG;
@@ -1750,7 +1767,11 @@ STDMETHODIMP CTSFileSourceFilter::GetPgmCount(WORD *pPgmCount)
 STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 {
 	CAutoLock lock(&m_Lock);
+	return set_PgmNumb(PgmNumb);
+}
 
+HRESULT CTSFileSourceFilter::set_PgmNumb(WORD PgmNumb)
+{
 	//If only one program don't change it
 	if (m_pPidParser->pidArray.Count() < 1)
 		return NOERROR;
@@ -2048,15 +2069,19 @@ STDMETHODIMP CTSFileSourceFilter::SetNPSlave(WORD NPSlave)
 	return NOERROR;
 }
 
-STDMETHODIMP CTSFileSourceFilter::SetTunerEvent(void)
+HRESULT CTSFileSourceFilter::set_TunerEvent(void)
 {
-	CAutoLock lock(&m_Lock);
-
 	if (SUCCEEDED(m_pTunerEvent->HookupGraphEventService(GetFilterGraph())))
 	{
 		m_pTunerEvent->RegisterForTunerEvents();
 	}
 	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetTunerEvent(void)
+{
+	CAutoLock lock(&m_Lock);
+	return set_TunerEvent();
 }
 
 STDMETHODIMP CTSFileSourceFilter::GetDelayMode(WORD *DelayMode)
@@ -2308,7 +2333,7 @@ STDMETHODIMP CTSFileSourceFilter::GetRegSettings()
     return NOERROR;
 }
 
-STDMETHODIMP CTSFileSourceFilter::SetRegProgram()
+HRESULT CTSFileSourceFilter::set_RegProgram()
 {
 	if (m_pPidParser->pids.sid && m_pPidParser->m_TStreamID)
 	{
@@ -2319,44 +2344,57 @@ STDMETHODIMP CTSFileSourceFilter::SetRegProgram()
     return NOERROR;
 }
 
+STDMETHODIMP CTSFileSourceFilter::SetRegProgram()
+{
+	CAutoLock lock(&m_Lock);
+	return set_RegProgram();
+}
+
 STDMETHODIMP CTSFileSourceFilter::ShowFilterProperties()
 {
+	CAutoLock cObjectLock(m_pLock);
 
 //    HWND    phWnd = (HWND)CreateEvent(NULL, FALSE, FALSE, NULL);
 
 	ULONG refCount;
-	IEnumFilters * piEnumFilters2 = NULL;
-	if SUCCEEDED(GetFilterGraph()->EnumFilters(&piEnumFilters2))
+	IEnumFilters * piEnumFilters = NULL;
+	if SUCCEEDED(GetFilterGraph()->EnumFilters(&piEnumFilters))
 	{
-		IBaseFilter * piFilter2;
-		while (piEnumFilters2->Next(1, &piFilter2, 0) == NOERROR )
+		IBaseFilter * pFilter;
+		while (piEnumFilters->Next(1, &pFilter, 0) == NOERROR )
 		{
-			ISpecifyPropertyPages* piProp2 = NULL;
-			if ((piFilter2->QueryInterface(IID_ISpecifyPropertyPages, (void **)&piProp2) == S_OK) && (piProp2 != NULL))
+			ISpecifyPropertyPages* piProp = NULL;
+			if ((pFilter->QueryInterface(IID_ISpecifyPropertyPages, (void **)&piProp) == S_OK) && (piProp != NULL))
 			{
-				FILTER_INFO filterInfo2;
-				piFilter2->QueryFilterInfo(&filterInfo2);
-				LPOLESTR fileName;
-				m_pFileReader->GetFileName(&fileName);
-			
-				if (!wcsicmp(fileName, filterInfo2.achName))
+				FILTER_INFO filterInfo;
+				if (pFilter->QueryFilterInfo(&filterInfo) == S_OK)
 				{
-					IUnknown *piFilterUnk;
-					piFilter2->QueryInterface(IID_IUnknown, (void **)&piFilterUnk);
-
-					CAUUID caGUID;
-					piProp2->GetPages(&caGUID);
-					piProp2->Release();
-					OleCreatePropertyFrame(0, 0, 0, filterInfo2.achName, 1, &piFilterUnk, caGUID.cElems, caGUID.pElems, 0, 0, NULL);
-					piFilterUnk->Release();
-					CoTaskMemFree(caGUID.pElems);
+					LPOLESTR fileName = NULL;
+					m_pFileReader->GetFileName(&fileName);
+			
+					if (fileName && !wcsicmp(fileName, filterInfo.achName))
+					{
+						CAUUID caGUID;
+						piProp->GetPages(&caGUID);
+						if(caGUID.cElems)
+						{
+							IUnknown *piFilterUnk = NULL;
+							if (pFilter->QueryInterface(IID_IUnknown, (void **)&piFilterUnk) == S_OK)
+							{
+								OleCreatePropertyFrame(0, 0, 0, filterInfo.achName, 1, &piFilterUnk, caGUID.cElems, caGUID.pElems, 0, 0, NULL);
+								piFilterUnk->Release();
+							}
+							CoTaskMemFree(caGUID.pElems);
+						}
+					}
+					filterInfo.pGraph->Release(); 
 				}
-				piProp2->Release();
+				piProp->Release();
 			}
-			refCount = piFilter2->Release();
+			refCount = pFilter->Release();
+			pFilter = NULL;
 		}
-		refCount = piEnumFilters2->Release();
-
+		refCount = piEnumFilters->Release();
 	}
 //	CloseHandle(phWnd);
 	return NOERROR;
@@ -2487,8 +2525,13 @@ HRESULT CTSFileSourceFilter::GetObjectFromROT(WCHAR* wsFullName, IUnknown **ppUn
 
 HRESULT CTSFileSourceFilter::ShowEPGInfo()
 {
-	HRESULT hr = GetEPGFromFile();
+	CAutoLock lock(&m_Lock);
+	return showEPGInfo();
+}
 
+HRESULT CTSFileSourceFilter::showEPGInfo()
+{
+	HRESULT hr = m_pPidParser->get_EPGFromFile();
 	if (hr == S_OK)
 	{
 		unsigned char netname[128] = "";
@@ -2499,14 +2542,14 @@ HRESULT CTSFileSourceFilter::ShowEPGInfo()
 		unsigned char Extendeddescripor[600] ="";
 		unsigned char shortnextdescripor[128] ="";
 		unsigned char Extendednextdescripor[600] ="";
-		GetNetworkName((unsigned char*)&netname);
-		GetONetworkName((unsigned char*)&onetname);
-		GetChannelName((unsigned char*)&chname);
-		GetChannelNumber((unsigned char*)&chnumb);
-		GetShortDescr((unsigned char*)&shortdescripor);
-		GetExtendedDescr((unsigned char*)&Extendeddescripor);
-		GetShortNextDescr((unsigned char*)&shortnextdescripor);
-		GetExtendedNextDescr((unsigned char*)&Extendednextdescripor);
+		m_pPidParser->get_NetworkName((unsigned char*)&netname);
+		m_pPidParser->get_ONetworkName((unsigned char*)&onetname);
+		m_pPidParser->get_ChannelName((unsigned char*)&chname);
+		m_pPidParser->get_ChannelNumber((unsigned char*)&chnumb);
+		m_pPidParser->get_ShortDescr((unsigned char*)&shortdescripor);
+		m_pPidParser->get_ExtendedDescr((unsigned char*)&Extendeddescripor);
+		m_pPidParser->get_ShortNextDescr((unsigned char*)&shortnextdescripor);
+		m_pPidParser->get_ExtendedNextDescr((unsigned char*)&Extendednextdescripor);
 		TCHAR szBuffer[(6*128)+ (2*600)];
 		sprintf(szBuffer, "Network Name:- %s\n"
 		"ONetwork Name:- %s\n"
@@ -2544,6 +2587,7 @@ STDMETHODIMP CTSFileSourceFilter::GetPCRPosition(REFERENCE_TIME *pos)
 
 STDMETHODIMP CTSFileSourceFilter::ShowStreamMenu(HWND hwnd)
 {
+	CAutoLock lock(&m_Lock);
 	HRESULT hr;
 
 	POINT mouse;

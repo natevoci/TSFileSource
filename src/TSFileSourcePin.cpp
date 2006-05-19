@@ -1050,7 +1050,7 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 //			{	
 				m_bSeeking = TRUE;
 
-				if(m_pTSFileSourceFilter->IsActive() && !m_DemuxLock)
+				if(m_pTSFileSourceFilter->is_Active() && !m_DemuxLock)
 					SetDemuxClock(NULL);
 
 //::OutputDebugString(TEXT("setPositions prelock\n"));
@@ -1172,7 +1172,7 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 		m_bSeeking = TRUE;
 		CAutoLock fillLock(&m_FillLock);
 		CAutoLock seekLock(&m_SeekLock);
-		if(m_pTSFileSourceFilter->IsActive() && !m_DemuxLock)
+		if(m_pTSFileSourceFilter->is_Active() && !m_DemuxLock)
 			SetDemuxClock(NULL);
 		DeliverBeginFlush();
 		m_llPrevPCR = -1;
@@ -2398,7 +2398,7 @@ HRESULT CTSFileSourcePin::ReNewDemux()
 							}
 						}
 					}
-					delete[] pName;
+					if (pName) delete[] pName;
 				}
 				pFilter->Release();
 				pFilter = NULL;
