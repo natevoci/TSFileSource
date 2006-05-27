@@ -648,22 +648,24 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 	WORD EsDescLen;
 	WORD StreamType;
 	WORD privatepid = 0;
+	WORD sectionLen = 0;
 
 	if ((0x30&pData[pos+3])==0x10 && pData[pos+4] == 0 && pData[pos+5] == 2 && (0xf0&pData[pos+6])==0xb0)
 	{
 		pids.pmt      = (WORD)(0x1F & pData[pos+1 ])<<8 | (0xFF & pData[pos+2 ]);
 		pids.pcr      = (WORD)(0x1F & pData[pos+13])<<8 | (0xFF & pData[pos+14]);
 		pids.sid      = (WORD)(0xFF & pData[pos+8 ])<<8 | (0xFF & pData[pos+9 ]);
+		sectionLen	  = (WORD)min(182, (WORD)((0x0F & pData[pos+6])<<8 | (0xFF & pData[pos+7])));
 		channeloffset = (WORD)(0x0F & pData[pos+15])<<8 | (0xFF & pData[pos+16]);
 
-		for (long b=17+channeloffset+pos; b<pos+182; b=b+5)
+		for (long b=17+channeloffset+pos; b<pos+sectionLen; b=b+5)
 		{
 			if ( (0xe0&pData[b+1]) == 0xe0 )
 			{
-				pid = (0x1F & pData[b+1])<<8 | (0xFF & pData[b+2]);
-				EsDescLen = (0x0F&pData[b+3]<<8 | 0xFF&pData[b+4]);
+				pid = (WORD)(0x1F & pData[b+1])<<8 | (0xFF & pData[b+2]);
+				EsDescLen = (WORD)(0x0F&pData[b+3]<<8 | 0xFF&pData[b+4]);
 
-				StreamType = (0xFF&pData[b]);
+				StreamType = (WORD)(0xFF&pData[b]);
 
 				if (StreamType == 0x02)
 				{

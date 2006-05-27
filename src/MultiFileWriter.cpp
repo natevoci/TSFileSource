@@ -26,6 +26,8 @@
 #include <streams.h>
 #include "MultiFileWriter.h"
 #include <atlbase.h>
+#include <windows.h>
+#include <stdio.h>
 
 MultiFileWriter::MultiFileWriter() :
 	m_hTSBufferFile(INVALID_HANDLE_VALUE),
@@ -90,6 +92,11 @@ HRESULT MultiFileWriter::OpenFile(LPCWSTR pszFileName)
 		return E_OUTOFMEMORY;
 	lstrcpyW(m_pTSBufferFileName, pszFileName);
 	
+	//check disk space first
+	__int64 llDiskSpaceAvailable = 0;
+	if (SUCCEEDED(GetAvailableDiskSpace(&llDiskSpaceAvailable)) && (__int64)llDiskSpaceAvailable < (__int64)(m_maxTSFileSize*2))
+		return E_FAIL;
+
 	TCHAR *pFileName = NULL;
 
 	// Try to open the file
@@ -225,6 +232,13 @@ HRESULT MultiFileWriter::PrepareTSFile()
 		}
 	}
 	else */
+
+	__int64 llDiskSpaceAvailable = 0;
+	if (SUCCEEDED(GetAvailableDiskSpace(&llDiskSpaceAvailable)) && (__int64)llDiskSpaceAvailable < (__int64)(m_maxTSFileSize*2))
+	{
+		hr = ReuseTSFile();
+	}
+	else
 	{
 		if (m_tsFileNames.size() >= m_minTSFiles) 
 		{
@@ -452,6 +466,39 @@ BOOL MultiFileWriter::IsFileLocked(LPWSTR pFilename)
 
 	CloseHandle(hFile);
 	return FALSE;
+}
+
+HRESULT MultiFileWriter::GetAvailableDiskSpace(__int64* llAvailableDiskSpace)
+{
+	if (!llAvailableDiskSpace)
+		return E_INVALIDARG;
+
+	HRESULT hr;
+
+	char	*pszDrive = NULL;
+	char	szDrive[4];
+	if (m_pTSBufferFileName[1] == ':')
+	{
+		szDrive[0] = m_pTSBufferFileName[0];
+		szDrive[1] = ':';
+		szDrive[2] = '\\';
+		szDrive[3] = '\0';
+		pszDrive = szDrive;
+	}
+
+	ULARGE_INTEGER uliDiskSpaceAvailable;
+	ULARGE_INTEGER uliDiskSpaceTotal;
+	ULARGE_INTEGER uliDiskSpaceFree;
+	uliDiskSpaceAvailable.QuadPart= 0;
+	uliDiskSpaceTotal.QuadPart= 0;
+	uliDiskSpaceFree.QuadPart= 0;
+	hr = GetDiskFreeSpaceEx(pszDrive, &uliDiskSpaceAvailable, &uliDiskSpaceTotal, &uliDiskSpaceFree);
+	if SUCCEEDED(hr)
+		*llAvailableDiskSpace = uliDiskSpaceAvailable.QuadPart;
+	else
+		*llAvailableDiskSpace = 0;
+
+	return hr;
 }
 
 LPTSTR MultiFileWriter::getRegFileName(void)

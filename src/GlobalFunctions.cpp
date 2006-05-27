@@ -20,6 +20,21 @@
  *	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+/* Something to consider using
+struct PinInfo : public PIN_INFO
+{
+   PinInfo() { pFilter = NULL; }
+   ~PinInfo() { SAFE_RELEASE( pFilter );}
+};
+
+
+struct FilterInfo : public FILTER_INFO
+{
+   FilterInfo() { pFilter = NULL; }
+   ~FilterInfo() { SAFE_RELEASE( pGraph );}
+};
+*/
+
 #include "StdAfx.h"
 #include "GlobalFunctions.h"
 

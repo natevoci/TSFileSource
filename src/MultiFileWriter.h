@@ -41,6 +41,7 @@ public:
 	HRESULT GetFileSize(__int64 *lpllsize);
 	
 	HRESULT Write(PBYTE pbData, ULONG lDataLength);
+	HRESULT GetAvailableDiskSpace(__int64* llAvailableDiskSpace);
 
 	LPTSTR getRegFileName(void);
 	void setRegFileName(LPTSTR fileName);
