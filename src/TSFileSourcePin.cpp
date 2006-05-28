@@ -287,9 +287,18 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 			CComPtr<IMpeg2Demultiplexer> muxInterface;
 			if(SUCCEEDED(pInfo.pFilter->QueryInterface (&muxInterface)))
 			{
-				pInfo.pFilter->Release();
-				m_biMpegDemux = TRUE;
-				return hr;
+				// Create out new pin to make sure the interface is real
+				CComPtr<IPin>pIPin = NULL;
+				AM_MEDIA_TYPE pintype;
+				ZeroMemory(&pintype, sizeof(AM_MEDIA_TYPE));
+				hr = muxInterface->CreateOutputPin(&pintype, L"MS" ,&pIPin);
+				if (SUCCEEDED(hr) && pIPin != NULL)
+				{
+					hr = muxInterface->DeleteOutputPin(L"MS");
+					pInfo.pFilter->Release();
+					m_biMpegDemux = TRUE;
+					return hr;
+				}
 			}
 
 			//Test for a filter with "MPEG-2" on input pin label

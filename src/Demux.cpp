@@ -1062,7 +1062,8 @@ HRESULT Demux::NewTsPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	GetTSMedia(&type);
 
 	IPin* pIPin = NULL;
-	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
+	hr = muxInterface->CreateOutputPin(&type, pinName ,&pIPin);
+	if(SUCCEEDED(hr) || hr == VFW_E_DUPLICATE_NAME)
 	{
 		//the following should not happen if it is a MS Demux
 		if(pIPin == NULL)
@@ -1121,7 +1122,8 @@ HRESULT Demux::NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 
 	// Create out new pin 
 	IPin* pIPin = NULL;
-	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
+	hr = muxInterface->CreateOutputPin(&type, pinName ,&pIPin);
+	if(SUCCEEDED(hr) || hr == VFW_E_DUPLICATE_NAME)
 	{
 		//the following should not happen if it is a MS Demux
 		if(pIPin == NULL)
@@ -1173,7 +1175,8 @@ HRESULT Demux::NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 		GetMP1Media(&type);
 
 	IPin* pIPin = NULL;
-	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
+	hr = muxInterface->CreateOutputPin(&type, pinName ,&pIPin);
+	if(SUCCEEDED(hr) || hr == VFW_E_DUPLICATE_NAME)
 	{
 		//the following should not happen if it is a MS Demux
 		if(pIPin == NULL)
@@ -1218,7 +1221,8 @@ HRESULT Demux::NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	GetAC3Media(&type);
 
 	IPin* pIPin = NULL;
-	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
+	hr = muxInterface->CreateOutputPin(&type, pinName ,&pIPin);
+	if(SUCCEEDED(hr) || hr == VFW_E_DUPLICATE_NAME)
 	{
 		//the following should not happen if it is a MS Demux
 		if(pIPin == NULL)
@@ -1263,7 +1267,8 @@ HRESULT Demux::NewAACPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	GetAACMedia(&type);
 
 	IPin* pIPin = NULL;
-	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
+	hr = muxInterface->CreateOutputPin(&type, pinName ,&pIPin);
+	if(SUCCEEDED(hr) || hr == VFW_E_DUPLICATE_NAME)
 	{
 		//the following should not happen if it is a MS Demux
 		if(pIPin == NULL)
@@ -1308,7 +1313,8 @@ HRESULT Demux::NewTelexPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	GetTelexMedia(&type);
 
 	IPin* pIPin = NULL;
-	if(SUCCEEDED(muxInterface->CreateOutputPin(&type, pinName ,&pIPin)))
+	hr = muxInterface->CreateOutputPin(&type, pinName ,&pIPin);
+	if(SUCCEEDED(hr) || hr == VFW_E_DUPLICATE_NAME)
 	{
 		//the following should not happen if it is a MS Demux
 		if(pIPin == NULL)

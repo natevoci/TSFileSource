@@ -1064,6 +1064,21 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 {
 	HRESULT hr;
 
+	//Test the file incase it doesn't exist,
+	//also loads it into the File buffer for a smoother change over.
+	FileReader *pFileReader = new FileReader();
+
+	hr = pFileReader->SetFileName(pszFileName);
+	if (FAILED(hr))
+		return hr;
+
+	hr = pFileReader->OpenFile();
+	if (FAILED(hr))
+		return VFW_E_INVALIDMEDIATYPE;
+
+	pFileReader->CloseFile();
+	delete pFileReader;
+
 	BOOL wasThreadRunning = FALSE;
 	if (ThreadRunning() && ThreadExists()) {
 
