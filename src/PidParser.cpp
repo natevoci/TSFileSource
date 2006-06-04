@@ -41,6 +41,7 @@ PidParser::PidParser(FileReader *pFileReader)
 	m_pFileReader = pFileReader;
 	m_PacketSize = 188; //Start with Transport packet size 
 	m_ATSCFlag = false;
+	m_NitPid = 0x10;
 	m_NetworkID = 0; //NID store
 	ZeroMemory(m_NetworkName, 128);
 	m_ONetworkID = 0; //ONID store
@@ -124,6 +125,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	pids.Clear();
 	
 	m_ATSCFlag = false;
+	m_NitPid = 0x10;
 	m_NetworkID = 0; //NID store
 	ZeroMemory(m_NetworkName, 128);
 	m_ONetworkID = 0; //ONID store
@@ -599,27 +601,24 @@ HRESULT PidParser::ParsePAT(PBYTE pData, ULONG lDataLength, long pos)
 {
 	HRESULT hr = S_FALSE;
 
-	int channeloffset;
+	int sectionLen;
 
 	if ( (0x30 & pData[pos + 3]) == 0x10 && pData[pos + 4] == 0 &&
 		  pData[pos + 5] == 0 && (0xf0 & pData[pos + 6]) == 0xB0 ) {
 
 		if ((((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x00){
 
-			channeloffset = (WORD)(0x0F & pData[pos + 15]) << 8 | (0xFF & pData[pos + 16]);
+			sectionLen = (WORD)(((0x0F & pData[pos + 6]) << 8) | (0xFF & pData[pos + 7]));
 			m_TStreamID = ((0xFF & pData[pos + 8]) << 8) | (0xFF & pData[pos + 9]); //Get TSID Pid
-			int Numb = (((0xFF & pData[pos + 7]) - channeloffset + 8 - 5) / 4); //Get number of programs
 
-			//If no Program PMT Info as with an ATSC
-			if (Numb < 1)
+			for (long b = pos + 7 + 5 ; b < pos + sectionLen + 7 - 4 ; b = b + 4) //less 4 crc bytes
 			{
-				//Set flag to disable searching for NID
-				m_ATSCFlag = true;
-			}
-
-			for (long b = channeloffset + pos; b < pos + 182 ; b = b + 4)
-			{
-				if ( ((0xe0 & pData[b + 3]) == 0xe0) && (pData[b + 3]) != 0xff )
+				//Get Program value and skip if nit pid
+				if ((((0xFF & pData[b + 1]) << 8) | (0xFF & pData[b + 2])) == 0)
+				{
+					m_NitPid = (WORD)(0x1F & pData[b + 3]) << 8 | (0xFF & pData[b + 4]);
+				}
+				else if (((0xe0 & pData[b + 3]) == 0xe0) && ((pData[b + 3]) != 0xff))
 				{
 					PidInfo *newPidInfo = new PidInfo();
 
@@ -632,10 +631,16 @@ HRESULT PidParser::ParsePAT(PBYTE pData, ULONG lDataLength, long pos)
 					pidArray.Add(newPidInfo);
 				}
 			}
+
+			//If no Program PMT Info as with an ATSC
 			if (pidArray.Count() != 0)
 			{
+				//Set flag to enable searching for NID
+				m_ATSCFlag = false;
 				return S_OK;
 			}
+			//Set flag to disable searching for NID
+			m_ATSCFlag = true;
 		}
 	}
 	return hr;
@@ -655,6 +660,7 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 		pids.pmt      = (WORD)(0x1F & pData[pos+1 ])<<8 | (0xFF & pData[pos+2 ]);
 		pids.pcr      = (WORD)(0x1F & pData[pos+13])<<8 | (0xFF & pData[pos+14]);
 		pids.sid      = (WORD)(0xFF & pData[pos+8 ])<<8 | (0xFF & pData[pos+9 ]);
+		pids.chnumb    = pids.sid; //We do this to make up a channel number incase we don't parse the correct one later
 		sectionLen	  = (WORD)min(182, (WORD)((0x0F & pData[pos+6])<<8 | (0xFF & pData[pos+7])));
 		channeloffset = (WORD)(0x0F & pData[pos+15])<<8 | (0xFF & pData[pos+16]);
 
@@ -1511,9 +1517,9 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 				for (int i = 0 ; i < m_buflen; i++)
 				{
 					if (((m_pDummy[i]<<8)|m_pDummy[i+1]) == pidArray[n].sid
-						&& m_pDummy[i+2] == 0xFC)
+						&& ((0xFC & m_pDummy[i+2]) == 0xFC))
 					{
-						pidArray[n].chnumb = m_pDummy[i+3];
+						pidArray[n].chnumb = (int)((0x03 & m_pDummy[i+2])| m_pDummy[i+3]);
 						break;
 					}
 				};
@@ -1536,12 +1542,12 @@ bool PidParser::CheckForNID(PBYTE pData, int pos, bool *extpacket, int *sectlen)
 	int b = pos; //Set pos for Start Packet ID
 	int endpos = pos + m_PacketSize; //Set to exclude crc bytes
 
-	//Test if we have an NID discriptor
+	//Test if we have an NID descriptor
 	if (pData[pos + 4] == 0
 		&& (*extpacket == false) // parse the first packet only 
 		&& pData[pos + 5] == 0x40 
 		&& (0xF0 & pData[pos + 6]) == 0xF0
-		&& (((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x10 
+		&& (((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == m_NitPid //0x10
 		&& (((0x1F & pData[pos + 11]) << 8)|(0xFF & pData[pos + 12])) == 0	//yes if we have the NID flag
 		)
 	{
@@ -1565,7 +1571,7 @@ bool PidParser::CheckForNID(PBYTE pData, int pos, bool *extpacket, int *sectlen)
 	else if ((*extpacket == true) // second time past this test
 			&& (0xF0 & pData[pos + 3]) == 0x10 
 			&& (0xF0 & pData[pos + 1]) == 0x00 
-			&& (((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x10
+			&& (((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == m_NitPid //0x10
 			)
 	{
 		b += 4; //set for extended packet ID

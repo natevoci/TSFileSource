@@ -1123,7 +1123,19 @@ STDMETHODIMP CTSFileSourcePin::GetAvailable(LONGLONG *pEarliest, LONGLONG *pLate
 	CheckPointer(pLatest,E_POINTER);
 
 	if(!m_pTSFileSourceFilter->m_pFileReader)
-		return CSourceSeeking::GetAvailable(pEarliest, pLatest);
+	{
+		if (m_rtDuration)
+		{
+			*pEarliest = max(0,(__int64)(ConvertPCRtoRT(m_IntStartTimePCR	- m_IntBaseTimePCR)));
+			*pLatest = max(0,(__int64)(ConvertPCRtoRT(m_IntEndTimePCR - m_IntBaseTimePCR)));
+			return S_OK;
+		}
+		else
+			return CSourceSeeking::GetAvailable(pEarliest, pLatest);
+
+
+//		return CSourceSeeking::GetAvailable(pEarliest, pLatest);
+	}
 
 	//Get the FileReader Type
 	WORD bMultiMode;

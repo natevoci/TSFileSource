@@ -70,6 +70,7 @@ PidParser(FileReader *pFileReader);
 	ULONG get_PacketSize();
 	void PrintTime(LPCTSTR lstring, __int64 value, __int64 divider);
 
+	int m_NitPid;
 	int m_NetworkID;
 	int m_ONetworkID;
 	int m_TStreamID;

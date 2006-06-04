@@ -586,6 +586,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 CBasePin * CTSFileSourceFilter::GetPin(int n)
 {
 	if (n == 0) {
+		ASSERT(m_pPin);
 		return m_pPin;
 	} else {
 		return NULL;
@@ -599,13 +600,17 @@ int CTSFileSourceFilter::GetPinCount()
 
 STDMETHODIMP CTSFileSourceFilter::FindPin(LPCWSTR Id, IPin ** ppPin)
 {
-	if (ppPin == NULL)
-		return E_POINTER;
+    CheckPointer(ppPin,E_POINTER);
+    ValidateReadWritePtr(ppPin,sizeof(IPin *));
 
 	CAutoLock lock(&m_Lock);
 	if (!wcscmp(Id, m_pPin->CBasePin::Name())) {
+
 		*ppPin = m_pPin;
-		return S_OK;
+		if (*ppPin!=NULL){
+			(*ppPin)->AddRef();
+			return NOERROR;
+		}
 	}
 
 	return CSource::FindPin(Id, ppPin);
