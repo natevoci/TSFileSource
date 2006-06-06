@@ -1168,7 +1168,7 @@ HRESULT PidParser::CheckVAStreams(PBYTE pData, ULONG ulDataLength)
 			start = 0x40&pData[b+4];
 			addlength = 14 + (0x07&pData[b+13]);
 
-			if (start == 0x40&& pData[b+2+addlength] == 0x01) {
+			if (start == 0x40 && pData[b+2+addlength] == 0x01) {
 
 				pesID = ( (255&pData[b+addlength])<<24
 						| (255&pData[b+1+addlength])<<16
