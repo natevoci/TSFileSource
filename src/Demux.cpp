@@ -2248,7 +2248,7 @@ HRESULT Demux::Sleeps(ULONG Duration, long TimeOut[])
 	}
 	return hr;
 }
-
+/*
 HRESULT Demux::IsStopped()
 {
 	HRESULT hr = S_FALSE;
@@ -2364,6 +2364,138 @@ HRESULT Demux::IsPaused()
 	}
 	return S_FALSE;
 }
+*/
+HRESULT Demux::IsStopped()
+{
+	HRESULT hr = S_FALSE;
+
+	FILTER_STATE state = State_Stopped;
+
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		// Get IMediaFilter interface
+		IMediaFilter* pMediaFilter = NULL;
+		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
+		if (!pMediaFilter)
+		{
+			Info.pGraph->Release();
+			hr = m_pTSFileSourceFilter->GetState(200, &state);
+			if (state == State_Stopped)
+			{
+				if (hr == S_OK || hr == VFW_S_STATE_INTERMEDIATE || VFW_S_CANT_CUE)
+					return S_OK;
+			}
+		}
+		else
+			pMediaFilter->Release();
+
+		IMediaControl *pMediaControl;
+		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+		{
+			hr = pMediaControl->GetState(200, (OAFilterState*)&state);
+			pMediaControl->Release();
+		}
+
+		Info.pGraph->Release();
+
+		if (state == State_Stopped)
+		{
+			if (hr == S_OK || hr == VFW_S_STATE_INTERMEDIATE || VFW_S_CANT_CUE)
+				return S_OK;
+		}
+	} 
+	return S_FALSE;
+}
+
+HRESULT Demux::IsPlaying()
+{
+	HRESULT hr = S_FALSE;
+
+	FILTER_STATE state = State_Stopped;
+
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		// Get IMediaFilter interface
+		IMediaFilter* pMediaFilter = NULL;
+		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
+		if (!pMediaFilter)
+		{
+			Info.pGraph->Release();
+			hr =  m_pTSFileSourceFilter->GetState(200, &state);
+			if (state == State_Running)
+			{
+				if (hr == S_OK || hr == VFW_S_STATE_INTERMEDIATE || VFW_S_CANT_CUE)
+					return S_OK;
+			}
+
+			return S_FALSE;
+		}
+		else
+			pMediaFilter->Release();
+
+		IMediaControl *pMediaControl = NULL;
+		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+		{
+			hr = pMediaControl->GetState(200, (OAFilterState*)&state);
+			pMediaControl->Release();
+		}
+
+		Info.pGraph->Release();
+	
+		if (state == State_Running)
+		{
+			if (hr == S_OK || hr == VFW_S_STATE_INTERMEDIATE || VFW_S_CANT_CUE)
+				return S_OK;
+		}
+	}
+	return S_FALSE;
+}
+
+HRESULT Demux::IsPaused()
+{
+	HRESULT hr = S_FALSE;
+
+	FILTER_STATE state = State_Stopped;
+
+	FILTER_INFO Info;
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	{
+		// Get IMediaFilter interface
+		IMediaFilter* pMediaFilter = NULL;
+		hr = Info.pGraph->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
+		if (!pMediaFilter)
+		{
+			Info.pGraph->Release();
+			hr = m_pTSFileSourceFilter->GetState(200, &state);
+			if (state == State_Paused)
+			{
+				if (hr == S_OK || hr == VFW_S_STATE_INTERMEDIATE || VFW_S_CANT_CUE)
+					return S_OK;
+			}
+		}
+		else
+			pMediaFilter->Release();
+
+		IMediaControl *pMediaControl;
+		if (SUCCEEDED(Info.pGraph->QueryInterface(IID_IMediaControl, (void **) &pMediaControl)))
+		{
+			hr = pMediaControl->GetState(200, (OAFilterState*)&state);
+			pMediaControl->Release();
+		}
+		Info.pGraph->Release();
+
+		hr = pMediaControl->GetState(200, (OAFilterState*)&state);
+		if (state == State_Paused)
+		{
+			if (hr == S_OK || hr == VFW_S_STATE_INTERMEDIATE || VFW_S_CANT_CUE)
+				return S_OK;
+		}
+	}
+	return S_FALSE;
+}
+
 
 HRESULT Demux::DoStop()
 {

@@ -157,7 +157,7 @@ BEGIN
     EDITTEXT        IDC_CURR,14,49,48,12,ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Force 720x576 A.R.",IDC_FIXED_AR,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,210,44,85,10
-    CTEXT           "TSFileSource Version 2.2.0.4 Final\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
+    CTEXT           "TSFileSource Version 2.2.0.5 Beta 2\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,7,220,288,26
     GROUPBOX        "Description",IDC_STATIC,7,212,288,34
 END
@@ -202,7 +202,7 @@ BEGIN
     EDITTEXT        IDC_PKTERRORS,189,78,66,12,ES_AUTOHSCROLL
     LTEXT           "Packet Errors",IDC_STATIC,189,68,60,10
     PUSHBUTTON      "&Reset",IDC_RESET,259,78,29,12,WS_GROUP
-    CTEXT           "TSFileSink of TSFileSource Version 2.2.0.4  Final\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
+    CTEXT           "TSFileSink of TSFileSource Version 2.2.0.5 Beta 2\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,7,175,288,26
     GROUPBOX        "Description",IDC_STATIC,7,165,288,43
 END
@@ -242,8 +242,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,2,0,4
- PRODUCTVERSION 2,2,0,4
+ FILEVERSION 2,2,0,5
+ PRODUCTVERSION 2,2,0,5
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -261,14 +261,14 @@ BEGIN
             VALUE "Comments", "Push Source & TimeShifting File Writer filter for MPEG-2 Transport Stream Files.(BDA Compatable)\0"
             VALUE "CompanyName", "\0"
             VALUE "FileDescription", "TS File Source(AU)\0"
-            VALUE "FileVersion", "2, 2, 0, 4\0"
+            VALUE "FileVersion", "2, 2, 0, 5\0"
             VALUE "InternalName", "TS File Source(AU)\0"
             VALUE "LegalCopyright", "This filter is published under Gnu Public Licence © 2003. Written by DH & bear@forums.dvbowners.com & nate@forums.dvbowners.com.\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "TSFileSource.ax\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "TS File Source(AU)\0"
-            VALUE "ProductVersion", "2, 2, 0, 4\0"
+            VALUE "ProductVersion", "2, 2, 0, 5\0"
             VALUE "SpecialBuild", "\0"
         END
     END
