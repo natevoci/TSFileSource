@@ -107,7 +107,7 @@ public:
 	HRESULT RefreshDuration();
 	STDMETHODIMP ShowFilterProperties();
 	STDMETHODIMP Refresh();
-	HRESULT UpdatePidParser(void);
+	HRESULT UpdatePidParser(FileReader *pFileReader);
 	BOOL get_AutoMode();
 	BOOL get_PinMode();
 	NetInfoArray netArray;

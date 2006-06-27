@@ -33,6 +33,7 @@
 #include "TSFileSourceGuids.h"
 #include "DvbFormats.h"
 #include <math.h>
+#include "global.h"
 
 //#define USE_EVENT
 #ifndef USE_EVENT
@@ -77,6 +78,8 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	else
 		m_lTSPacketDeliverySize = 188000;
 
+//	m_lTSPacketDeliverySize = 32768*4;
+
 	m_DataRate = 10000000;
 	m_DataRateTotal = 0;
 	m_BitRateCycle = 0;
@@ -102,6 +105,7 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	m_IntCurrentTimePCR = 0;
 	m_IntEndTimePCR = 0;
 	m_biMpegDemux = 0;
+	m_currPosition = 0;
 }
 
 CTSFileSourcePin::~CTSFileSourcePin()
@@ -309,11 +313,10 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 				return hr;
 			}
 
-			pInfo.pFilter->Release();
-
 			FILTER_INFO pFilterInfo;
 			if (SUCCEEDED(pInfo.pFilter->QueryFilterInfo(&pFilterInfo)))
 			{
+				pInfo.pFilter->Release();
 				pFilterInfo.pGraph->Release();
 
 				//Test for an infinite tee filter
@@ -323,6 +326,8 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 					return hr;
 				}
 			}
+			else
+				pInfo.pFilter->Release();
 		}
 		m_biMpegDemux = FALSE;
 		return E_FAIL;
@@ -369,6 +374,8 @@ HRESULT CTSFileSourcePin::BreakConnect()
 	if (FAILED(hr))
 		return hr;
 
+	m_pTSBuffer->StopBufferThread();
+
 	DisconnectDemux();
 
 	m_pTSFileSourceFilter->m_pFileReader->CloseFile();
@@ -408,20 +415,21 @@ HRESULT CTSFileSourcePin::BreakConnect()
 	return hr;
 }
 
-HRESULT CTSFileSourcePin::UpdateTSBuffer()
+/*
+HRESULT CTSFileSourcePin::StartTSBufferThread()
 {
+	return S_OK;
 	WORD readonly = 0;
 	m_pTSFileSourceFilter->m_pFileReader->get_ReadOnly(&readonly);
-	if (m_bSeeking || !readonly)
+	if (!m_bSeeking)// && readonly)
 	{
-		return NOERROR;
+		CAutoLock lock(&m_FillLock);
+//		m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
+//		m_pTSBuffer->StartBufferThread(m_pTSFileSourceFilter->m_pFileReader);
 	}
-
-	CAutoLock lock(&m_FillLock);
-	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
-	return m_pTSBuffer->UpdateBuffer();
+	return S_OK;
 }
-
+*/
 
 HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 {
@@ -431,6 +439,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	{
 		return NOERROR;
 	}
+
 
 	//Test if parser Locked
 	if (!m_pTSFileSourceFilter->m_pPidParser->m_ParsingLock){
@@ -444,7 +453,10 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		m_pTSFileSourceFilter->m_pPidParser->m_ParsingLock = FALSE;
 	}
 
+	m_pTSBuffer->StopBufferThread();
 	CAutoLock lock(&m_FillLock);
+
+	BoostThread Boost;
 
 	// Access the sample's data buffer
 	PBYTE pData;
@@ -457,7 +469,8 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	lDataLength = pSample->GetActualDataLength();
 
 	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
-	hr = m_pTSBuffer->GetRequire(lDataLength);
+//	m_pTSFileSourceFilter->m_pFileReader->setFilePointer(m_currPosition, FILE_BEGIN);
+	hr = m_pTSBuffer->Require(lDataLength);
 	if (FAILED(hr))
 	{
 		return S_FALSE;
@@ -797,11 +810,14 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	m_IntCurrentTimePCR = m_llPrevPCR;
 	m_pTSFileSourceFilter->m_pPidParser->pids.bitrate = m_DataRate;
 
+	m_pTSBuffer->StartBufferThread();
+
 	return NOERROR;
 }
 
 HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 {
+	m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 	m_llPrevPCR = -1;
 	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
@@ -1055,7 +1071,7 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 
 		if (!(CurrentFlags & AM_SEEKING_NoFlush) && (CurrentFlags & AM_SEEKING_PositioningBitsMask))
 		{
-//			if (ThreadExists())
+//			if (CAMThread::ThreadExists())
 //			{	
 				m_bSeeking = TRUE;
 
@@ -1188,7 +1204,7 @@ void CTSFileSourcePin::ClearBuffer(void)
 
 void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 {
-	if (ThreadExists())
+	if (CAMThread::ThreadExists())
 	{	
 		m_bSeeking = TRUE;
 		CAutoLock fillLock(&m_FillLock);
@@ -1214,6 +1230,8 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 {
 //PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
+	BoostThread Boost;
+
 	HRESULT hr;
 
 	//Return as quick as possible if cold starting
@@ -1223,6 +1241,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	{
 		__int64 nFileIndex = (__int64)min((__int64)-filelength, (__int64)(300000 - filelength));
 		m_pTSFileSourceFilter->m_pFileReader->setFilePointer(nFileIndex, FILE_END);
+		m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 
 		return S_OK;
 	}
@@ -1276,6 +1295,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 
 		nFileIndex = (__int64)max((__int64)300000, (__int64)nFileIndex);
 		m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+		m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 
 		m_IntCurrentTimePCR = m_IntStartTimePCR + (__int64)((__int64)((__int64)seektime * (__int64)9) / (__int64)1000);
 		return S_OK;
@@ -1287,7 +1307,9 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 //PrintTime(TEXT("our pcr Byte Rate"), (__int64)pcrByteRate, 90);
 
 ////Multireader fixed 	__int64	pcrDuration = (__int64)((__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur * (__int64)9) / (__int64)1000);
-		__int64	pcrDuration = (__int64)max(0, (__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end - (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start));
+	__int64	pcrDuration = (__int64)max(0, (__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end - (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start));
+	if ((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end < (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start)
+		pcrDuration = (__int64)((__int64)((__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur * (__int64)9) / (__int64)1000);
 //PrintTime(TEXT("our pcr pid.start time for reference"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start, 90);
 //PrintTime(TEXT("our pcr pid.end time for reference"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end, 90);
 //PrintTime(TEXT("our pcr duration"), (__int64)pcrDuration, 90);
@@ -1338,6 +1360,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 
 			nFileIndex = (__int64)max((__int64)300000, (__int64)nFileIndex);
 			m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+			m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 
 			m_IntCurrentTimePCR = m_IntStartTimePCR + (__int64)((__int64)((__int64)seektime * (__int64)9) / (__int64)1000);
 			delete[] pData;
@@ -1451,6 +1474,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	}
 		nFileIndex = max(300000, nFileIndex);
 		m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+		m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 
 	delete[] pData;
 
@@ -1547,15 +1571,16 @@ PrintTime(TEXT("UpdateDuration1"), (__int64) m_rtDuration, 10000);
 			//Get CSourceSeeking current time.
 			CSourceSeeking::GetPositions(&rtCurrentTime, &rtStop);
 			//Test if we had been seeking recently and wait 2sec if so.
-			if ((REFERENCE_TIME)(m_rtLastSeekStart + (REFERENCE_TIME)20000000) > rtCurrentTime)
-			{
-				if(m_rtLastSeekStart)// || rtCurrentTime)
-				{
-//				if (m_IntEndTimePCR != -1) //cold start
-PrintTime(TEXT("UpdateDuration2"), (__int64) m_rtDuration, 10000);
-					return hr;
-				}
-			}
+//			if ((REFERENCE_TIME)(m_rtLastSeekStart + (REFERENCE_TIME)20000000) > rtCurrentTime
+//				&& m_rtLastSeekStart < (REFERENCE_TIME)20000000)
+//			{
+//				if(m_rtLastSeekStart)// || rtCurrentTime)
+//				{
+////////				if (m_IntEndTimePCR != -1) //cold start
+//PrintTime(TEXT("UpdateDuration2"), (__int64) m_rtDuration, 10000);
+//					return hr;
+//				}
+//			}
 
 			//Check if Cold Start
 			if(!m_IntBaseTimePCR && !m_IntStartTimePCR && !m_IntEndTimePCR)
@@ -1567,7 +1592,7 @@ PrintTime(TEXT("UpdateDuration2"), (__int64) m_rtDuration, 10000);
 			BOOL bLengthChanged = FALSE;
 			BOOL bStartChanged = FALSE;
 			ULONG ulBytesRead = 0;
-			LONG lDataLength = 188000;
+			LONG lDataLength = 1880000;
 			__int64 pcrPos;
 			ULONG pos = 0;
 
@@ -2338,7 +2363,7 @@ HRESULT CTSFileSourcePin::ReNewDemux()
 					DisconnectOutputPins(PinInfo.pFilter);
 					//Reconnect the Tee Filter pins
 					IGraphBuilder *pGraphBuilder;
-					if(SUCCEEDED((IBaseFilter*)m_pTSFileSourceFilter->GetFilterGraph()->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
+					if(m_pTSFileSourceFilter->GetFilterGraph() && SUCCEEDED((IBaseFilter*)m_pTSFileSourceFilter->GetFilterGraph()->QueryInterface(IID_IGraphBuilder, (void **) &pGraphBuilder)))
 					{
 						pGraphBuilder->Connect((IPin*)this, pTPin);
 						pGraphBuilder->Release();

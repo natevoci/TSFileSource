@@ -164,6 +164,19 @@ HRESULT FileWriter::CloseFile()
 
 }
 
+HRESULT FileWriter::FlushFile()
+{
+	if (m_hFile == INVALID_HANDLE_VALUE)
+	{
+		return S_OK;
+	}
+
+	FlushFileBuffers(m_hFile);
+
+	return S_OK;
+
+}
+
 BOOL FileWriter::IsFileInvalid()
 {
 	return (m_hFile == INVALID_HANDLE_VALUE);

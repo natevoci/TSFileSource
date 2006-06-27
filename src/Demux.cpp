@@ -2152,12 +2152,10 @@ HRESULT Demux::GetH264Media(AM_MEDIA_TYPE *pintype)
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Video;
-//	pintype->subtype = FOURCCMap(MAKEFOURCC('h','2','6','4'));
 	pintype->subtype = H264_SubType;
 	pintype->bFixedSizeSamples = FALSE;
 	pintype->bTemporalCompression = TRUE;
 	pintype->lSampleSize = 1;
-
 	pintype->formattype = FORMAT_VideoInfo;
 	pintype->pUnk = NULL;
 	pintype->cbFormat = sizeof(H264VideoFormat);
@@ -2175,15 +2173,14 @@ HRESULT Demux::GetMpeg4Media(AM_MEDIA_TYPE *pintype)
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Video;
-	pintype->subtype = FOURCCMap(MAKEFOURCC('h','2','6','4'));
+	pintype->subtype = FOURCCMap(MAKEFOURCC('A','V','C','1'));
 	pintype->bFixedSizeSamples = FALSE;
 	pintype->bTemporalCompression = TRUE;
 	pintype->lSampleSize = 1;
-
-	pintype->formattype = FORMAT_VideoInfo;
+	pintype->formattype = FORMAT_MPEG2Video;
 	pintype->pUnk = NULL;
-	pintype->cbFormat = sizeof(H264VideoFormat);
-	pintype->pbFormat = H264VideoFormat;
+	pintype->cbFormat = sizeof(g_Mpeg2ProgramVideo);
+	pintype->pbFormat = g_Mpeg2ProgramVideo;
 
 	return S_OK;
 }
@@ -2820,6 +2817,7 @@ HRESULT Demux::SetReferenceClock(IBaseFilter *pFilter)
 				}
 				pClock->Release();
 			}
+			Info.pGraph->Release();
 		}
 		else // If Null pFilter set default clock
 		{

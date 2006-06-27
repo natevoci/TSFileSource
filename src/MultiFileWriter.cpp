@@ -213,6 +213,8 @@ HRESULT MultiFileWriter::PrepareTSFile()
 
 	::OutputDebugString(TEXT("PrepareTSFile()\n"));
 
+//	m_pCurrentTSFile->FlushFile())
+
 	// Make sure the old file is closed
 	m_pCurrentTSFile->CloseFile();
 

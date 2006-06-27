@@ -148,6 +148,10 @@ SOURCE=.\src\DvbFormats.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\Global.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\NetInfo.h
 # End Source File
 # Begin Source File

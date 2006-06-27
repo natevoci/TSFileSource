@@ -32,6 +32,7 @@
 #include "TSFileSourceProp.h"
 #include "resource.h"
 #include <string>
+#include "global.h"
 
 
 CUnknown * WINAPI CTSFileSourceProp::CreateInstance(LPUNKNOWN pUnk, HRESULT *pHr)
@@ -56,7 +57,7 @@ CTSFileSourceProp::~CTSFileSourceProp(void)
 {
 	//Make sure the worker thread is stopped before we exit.
 	//Also closes the files.m_hThread
-	if (ThreadExists())
+	if (CAMThread::ThreadExists())
 	{
 		CAMThread::CallWorker(CMD_STOP);
 		CAMThread::CallWorker(CMD_EXIT);
@@ -69,7 +70,7 @@ CTSFileSourceProp::~CTSFileSourceProp(void)
 
 DWORD CTSFileSourceProp::ThreadProc(void)
 {
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+	BrakeThread Brake;
 
     HRESULT hr;  // the return code from calls
     Command com;
@@ -206,7 +207,7 @@ HRESULT CTSFileSourceProp::OnConnect(IUnknown *pUnk)
 	ASSERT(m_pProgram);
 
 	CAMThread::Create();			 //Create our update thread
-	if (ThreadExists())
+	if (CAMThread::ThreadExists())
 		CAMThread::CallWorker(CMD_INIT); //Initalize our update thread
 
 	return NOERROR;
@@ -214,7 +215,7 @@ HRESULT CTSFileSourceProp::OnConnect(IUnknown *pUnk)
 
 HRESULT CTSFileSourceProp::OnDisconnect(void)
 {
-	if (ThreadExists())
+	if (CAMThread::ThreadExists())
 	{
 		CAMThread::CallWorker(CMD_STOP);
 		CAMThread::CallWorker(CMD_EXIT);
@@ -495,7 +496,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 			if (m_bThreadRunning)
 			{
 				CAMThread::CallWorker(CMD_STOP);
-				while (m_bThreadRunning){};
+				while (m_bThreadRunning){Sleep(100);};
 				m_pProgram->ShowStreamMenu(hwnd);
 				OnRefreshProgram () ;
 				CAMThread::CallWorker(CMD_PAUSE);
@@ -677,7 +678,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					if (m_bThreadRunning)
 					{
 						CAMThread::CallWorker(CMD_STOP);
-						while (m_bThreadRunning){};
+						while (m_bThreadRunning){Sleep(100);};
 						m_pProgram->Load(L"", NULL);
 						CAMThread::CallWorker(CMD_PAUSE);
 					}

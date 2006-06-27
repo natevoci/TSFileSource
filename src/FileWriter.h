@@ -39,6 +39,7 @@ public:
 	HRESULT CloseFile();
 	HRESULT Write(PBYTE pbData, ULONG lDataLength);
 
+	HRESULT FlushFile();
 	BOOL IsFileInvalid();
 
 	DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);

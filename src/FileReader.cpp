@@ -25,6 +25,7 @@
 
 #include <streams.h>
 #include "FileReader.h"
+#include "global.h"
 
 FileReader::FileReader() :
 	m_hFile(INVALID_HANDLE_VALUE),
@@ -41,6 +42,7 @@ FileReader::FileReader() :
 
 FileReader::~FileReader()
 {
+//	FlushFile();
 	CloseFile();
 	if (m_pFileName)
 		delete m_pFileName;
@@ -100,6 +102,8 @@ HRESULT FileReader::OpenFile()
 	if (m_pFileName == NULL) {
 		return ERROR_INVALID_NAME;
 	}
+
+//	BoostThread Boost;
 
 	// Convert the UNICODE filename if necessary
 
@@ -181,11 +185,13 @@ HRESULT FileReader::CloseFile()
 	// Must lock this section to prevent problems related to
 	// closing the file while still receiving data in Receive()
 
-
 	if (m_hFile == INVALID_HANDLE_VALUE) {
 
 		return S_OK;
 	}
+
+//	BoostThread Boost;
+//	FlushFile();
 
 	CloseHandle(m_hFile);
 	m_hFile = INVALID_HANDLE_VALUE; // Invalidate the file
@@ -199,6 +205,30 @@ HRESULT FileReader::CloseFile()
 
 } // CloseFile
 
+HRESULT FileReader::FlushFile()
+{
+	if (m_hFile == INVALID_HANDLE_VALUE) {
+
+		return S_OK;
+	}
+
+//	BoostThread Boost;
+
+	FlushFileBuffers(m_hFile);
+	::SetFilePointer(m_hFile, 0, NULL, FILE_END);
+
+	if (m_hInfoFile == INVALID_HANDLE_VALUE) {
+
+		return S_OK;
+	}
+
+	FlushFileBuffers(m_hInfoFile);
+	::SetFilePointer(m_hInfoFile, 0, NULL, FILE_END);
+
+	return NOERROR;
+
+} // FlushFile
+
 BOOL FileReader::IsFileInvalid()
 {
 	return (m_hFile == INVALID_HANDLE_VALUE);
@@ -209,6 +239,8 @@ HRESULT FileReader::GetFileSize(__int64 *pStartPosition, __int64 *pLength)
 	CheckPointer(pStartPosition,E_POINTER);
 	CheckPointer(pLength,E_POINTER);
 	
+//	BoostThread Boost;
+
 	GetStartPosition(pStartPosition);
 
 	//Do not get file size if static file or first time 
@@ -258,6 +290,8 @@ HRESULT FileReader::GetInfoFileSize(__int64 *lpllsize)
 		DWORD dwSizeLow;
 		DWORD dwSizeHigh;
 
+//		BoostThread Boost;
+
 		dwSizeLow = ::GetFileSize(m_hInfoFile, &dwSizeHigh);
 		if ((dwSizeLow == 0xFFFFFFFF) && (GetLastError() != NO_ERROR ))
 		{
@@ -281,6 +315,8 @@ HRESULT FileReader::GetStartPosition(__int64 *lpllpos)
 		
 		if (m_hInfoFile != INVALID_HANDLE_VALUE)
 		{
+//			BoostThread Boost;
+	
 			__int64 size = 0;
 			GetInfoFileSize(&size);
 			//Check if timeshift info file
@@ -310,6 +346,8 @@ HRESULT FileReader::GetStartPosition(__int64 *lpllpos)
 
 DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 {
+//	BoostThread Boost;
+
 	LARGE_INTEGER li;
 
 	if (dwMoveMethod == FILE_END && m_hInfoFile != INVALID_HANDLE_VALUE)
@@ -371,6 +409,8 @@ DWORD FileReader::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 
 __int64 FileReader::GetFilePointer()
 {
+//	BoostThread Boost;
+
 	LARGE_INTEGER li;
 	li.QuadPart = 0;
 	li.LowPart = ::SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
@@ -400,6 +440,8 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 	// If the file has already been closed, don't continue
 	if (m_hFile == INVALID_HANDLE_VALUE)
 		return S_FALSE;
+
+//	BoostThread Boost;
 
 	//Get File Position
 	LARGE_INTEGER li;
@@ -476,13 +518,17 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 
 HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod)
 {
+//	BoostThread Boost;
+
 	//If end method then we want llDistanceToMove to be the end of the buffer that we read.
 	if (dwMoveMethod == FILE_END)
 		llDistanceToMove = 0 - llDistanceToMove - lDataLength;
 
 	SetFilePointer(llDistanceToMove, dwMoveMethod);
 
-	return Read(pbData, lDataLength, dwReadBytes);
+//	return Read(pbData, lDataLength, dwReadBytes);
+	HRESULT hr = Read(pbData, lDataLength, dwReadBytes);
+	return hr;
 }
 
 HRESULT FileReader::get_ReadOnly(WORD *ReadOnly)

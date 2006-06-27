@@ -51,6 +51,7 @@ public:
 	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pLength);
 	HRESULT GetInfoFileSize(__int64 *lpllsize);
 	HRESULT GetStartPosition(__int64 *lpllpos);
+	HRESULT FlushFile();
 	virtual BOOL IsFileInvalid();
 	virtual DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual __int64 GetFilePointer();

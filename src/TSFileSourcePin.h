@@ -37,15 +37,16 @@ typedef CGenericList<IBaseFilter> CFilterList;
 #include "TSFileSource.h"
 #include "PidParser.h"
 #include "TSBuffer.h"
+#include "TSFileSourcePinThread.h"	
+ 
 
 /**********************************************
  *
  *  CTSFileSourcePin Class
  *
  **********************************************/
-
 class CTSFileSourcePin : public CSourceStream,
-						 public CSourceSeeking
+						 public CSourceSeeking					 
 {
 public:
 	CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter, HRESULT *phr);
@@ -63,7 +64,7 @@ public:
 	HRESULT CheckConnect(IPin *pReceivePin);
 	HRESULT CompleteConnect(IPin *pReceivePin);
 	HRESULT BreakConnect();
-	HRESULT UpdateTSBuffer();
+//	HRESULT StartTSBufferThread();
 	HRESULT FillBuffer(IMediaSample *pSample);
 	HRESULT OnThreadStartPlay();
 	HRESULT Run(REFERENCE_TIME tStart);
@@ -162,6 +163,7 @@ protected:
 	int m_TSIDSave;
 	int m_PinTypeSave;
 	BOOL m_bGetAvailableMode;
+	__int64 m_currPosition;
 
 public:
 	BOOL	m_DemuxLock;
@@ -171,5 +173,6 @@ public:
 	__int64 m_IntEndTimePCR;
 
 };
+
 
 #endif

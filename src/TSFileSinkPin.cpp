@@ -32,6 +32,8 @@
 #include "KS.H"
 #include "KSMEDIA.H"
 #include "BDAMedia.h"
+#include "global.h"
+
 //////////////////////////////////////////////////////////////////////
 // CTSFileSinkPin
 //////////////////////////////////////////////////////////////////////
@@ -328,36 +330,35 @@ void CTSFileSinkPin::ThreadProc()
 {
 	m_WriteThreadActive = TRUE;
 
-//	DWORD procAffinity = 0;
-//	DWORD sysAffinity = 0;
-//	if (GetProcessAffinityMask(GetCurrentProcess(), &procAffinity, &sysAffinity))
-//		if (sysAffinity > 1)
-//			SetThreadAffinityMask(GetCurrentThread(), 0x01);
-//		else
-//			sysAffinity = 0;
-
-	int threadPriority = GetThreadPriority(GetCurrentThread());
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+	BoostThread Boost;
 	
 	while (!ThreadIsStopping(0))
 	{
 		BYTE *item = NULL;
 		long sampleLen = 0;
+		long size = 0;
 		{
 			CAutoLock BufferLock(&m_BufferLock);
-			if (m_Array.size())
-			{
-				std::vector<BUFFERINFO*>::iterator it = m_Array.begin();
-				BUFFERINFO *bufferInfo = *it;
-				item = bufferInfo->sample;
-				sampleLen = bufferInfo->size;
-				m_Array.erase(it);
-				delete bufferInfo;
-				m_WriteBufferSize -= sampleLen;
-			}
-			else
-				Sleep(1);
+			size = m_Array.size();
 		}
+
+		if (size)
+		{
+			CAutoLock BufferLock(&m_BufferLock);
+			std::vector<BUFFERINFO*>::iterator it = m_Array.begin();
+			BUFFERINFO *bufferInfo = *it;
+			item = bufferInfo->sample;
+			sampleLen = bufferInfo->size;
+			m_Array.erase(it);
+			delete bufferInfo;
+			m_WriteBufferSize -= sampleLen;
+		}
+		else
+		{
+			Sleep(1);
+			continue;
+		}
+
 		if (item)
 		{
 			HRESULT hr = m_pTSFileSink->Write(item, sampleLen);
@@ -386,16 +387,15 @@ void CTSFileSinkPin::ThreadProc()
 HRESULT CTSFileSinkPin::WriteBufferSample(byte* pbData,long sampleLen)
 {
 	HRESULT hr;
-	long bufferLen = 32768/2;
+	long bufferLen = 32768;// /2;
 	//
 	//Only start buffering if the buffer thread is active
 	//
 	if (!m_WriteThreadActive)
 	{
-		int threadPriority = GetThreadPriority(GetCurrentThread());
-		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+		BoostThread Boost;
+
 		hr = m_pTSFileSink->Write(pbData, sampleLen);
-		SetThreadPriority(GetCurrentThread(), threadPriority);
 		return hr;
 	}
 

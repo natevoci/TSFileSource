@@ -1,6 +1,8 @@
 Version 2.2.0.5
 =================
 bear:
+- Added in some thread boosting to make quicker loading & seeking.
+- Added in a seperate thread to the TSBuffer class.
 - Updated the log fileWriter class with a buffer thread.
 - Fixed a problem with the Demux code so the filter will now work better when changing streams.
 

@@ -31,6 +31,8 @@
 #include <streams.h>
 #include "TSFileSinkProp.h"
 #include "resource.h"
+#include "global.h"
+
 
 CUnknown * WINAPI CTSFileSinkProp::CreateInstance(LPUNKNOWN pUnk, HRESULT *pHr)
 {
@@ -53,7 +55,7 @@ CTSFileSinkProp::~CTSFileSinkProp(void)
 {
 	//Make sure the worker thread is stopped before we exit.
 	//Also closes the files.m_hThread
-	if (ThreadExists())
+	if (CAMThread::ThreadExists())
 	{
 		CAMThread::CallWorker(CMD_STOP);
 		CAMThread::CallWorker(CMD_EXIT);
@@ -66,7 +68,7 @@ CTSFileSinkProp::~CTSFileSinkProp(void)
 
 DWORD CTSFileSinkProp::ThreadProc(void)
 {
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+	BrakeThread Brake;
 
     HRESULT hr;  // the return code from calls
     Command com;
@@ -200,7 +202,7 @@ HRESULT CTSFileSinkProp::OnConnect(IUnknown *pUnk)
 	ASSERT(m_pProgram);
 
 	CAMThread::Create();			 //Create our update thread
-	if (ThreadExists())
+	if (CAMThread::ThreadExists())
 		CAMThread::CallWorker(CMD_INIT); //Initalize our update thread
 
 	return NOERROR;
@@ -208,7 +210,7 @@ HRESULT CTSFileSinkProp::OnConnect(IUnknown *pUnk)
 
 HRESULT CTSFileSinkProp::OnDisconnect(void)
 {
-	if (ThreadExists())
+	if (CAMThread::ThreadExists())
 	{
 		CAMThread::CallWorker(CMD_STOP);
 		CAMThread::CallWorker(CMD_EXIT);

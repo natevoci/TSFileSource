@@ -23,6 +23,8 @@
 #include "LogMessageWriter.h"
 #include "GlobalFunctions.h"
 #include "LogFileWriter.h"
+#include "global.h"
+
 
 //////////////////////////////////////////////////////////////////////
 // LogMessageWriter
@@ -37,12 +39,10 @@ LogMessageWriter::LogMessageWriter()
 
 LogMessageWriter::~LogMessageWriter()
 {
-	CAutoLock logFileLock(&m_logFileLock);
 	if (m_WriteThreadActive)
-		StopThread(0);
+		StopThread();
 
-	FlushLogBuffer();
-
+//	CAutoLock logFileLock(&m_logFileLock);
 	if (m_logFilename)
 	{
 		delete[] m_logFilename;
@@ -69,8 +69,7 @@ void LogMessageWriter::ThreadProc(void)
 {
 	m_WriteThreadActive = TRUE;
 
-	int threadPriority = GetThreadPriority(GetCurrentThread());
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+	BrakeThread Brake;
 	
 	while (!ThreadIsStopping(100))
 	{
@@ -78,7 +77,7 @@ void LogMessageWriter::ThreadProc(void)
 		Sleep(100);
 	}
 
-	m_WriteThreadActive = FALSE;
+//	m_WriteThreadActive = FALSE;
 
 	return;
 }
@@ -95,6 +94,7 @@ void LogMessageWriter::FlushLogBuffer(int logSize)
 	USES_CONVERSION;
 	if (m_logFilename)
 	{
+		CAutoLock logFileLock(&m_logFileLock);
 		LogFileWriter file;
 		if SUCCEEDED(file.Open(m_logFilename, TRUE))
 		{
@@ -148,17 +148,22 @@ void LogMessageWriter::FlushLogBuffer(int logSize)
 
 void LogMessageWriter::SetLogBufferLimit(int logBufferLimit)
 {
+	CAutoLock logFileLock(&m_logFileLock);
+	CAutoLock BufferLock(&m_BufferLock);
 	m_LogBufferLimit = logBufferLimit;
 }
 
 int LogMessageWriter::GetLogBufferLimit(void)
 {
+	CAutoLock logFileLock(&m_logFileLock);
+	CAutoLock BufferLock(&m_BufferLock);
 	return m_LogBufferLimit;
 }
 
 void LogMessageWriter::SetFilename(LPWSTR filename)
 {
 	CAutoLock logFileLock(&m_logFileLock);
+	CAutoLock BufferLock(&m_BufferLock);
 
 	if ((wcslen(filename) > 2) &&
 		((filename[1] == ':') ||
@@ -187,6 +192,8 @@ void LogMessageWriter::Write(LPWSTR pStr)
 	{
 		if(!m_WriteThreadActive)
 		{
+			m_WriteThreadActive = TRUE;
+			::OutputDebugString(TEXT("LogMessageWriter::Write:StartThread."));
 			StartThread();
 		}
 

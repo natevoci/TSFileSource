@@ -340,6 +340,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 			{
 				m_PacketSize = 0x800; //Set for 2048 block
 				m_pFileReader->set_DelayMode(FALSE);//cold start
+				pFileReader->set_DelayMode(FALSE);//cold start
 //				m_pFileReader->set_DelayMode(TRUE);
 				m_ProgPinMode = TRUE;
 
@@ -357,6 +358,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 								| pids.aud  | pids.txt  | pids.ac3 
 								| pids.aac)) {
 									m_PacketSize = 188;
+									pFileReader->set_DelayMode(FALSE);
 									m_pFileReader->set_DelayMode(FALSE);
 									m_ProgPinMode = FALSE;
 							}
