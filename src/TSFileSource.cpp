@@ -248,17 +248,16 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
 //
 HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 {
-	AbnormalThread Abnormal;
-
     Command com;
 
-	m_pFileDuration->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
+	m_pFileReader->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
 	int count = 1;
 
     do
     {
+		AbnormalThread Abnormal;
         while(!CheckRequest(&com))
         {
 			HRESULT hr = S_OK;// if an error occurs.
@@ -266,7 +265,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
 			WORD bReadOnly = FALSE;
-			m_pFileDuration->get_ReadOnly(&bReadOnly);
+			m_pFileReader->get_ReadOnly(&bReadOnly);
 			//Reparse the file for service change	
 			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime && bReadOnly)
 			{
@@ -301,7 +300,6 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 					else if (count == 5 || !m_pPidParser->pidArray.Count())
 					{
 						//update the parser
-//						CAutoLock SelectLock(&m_SelectLock);
 						UpdatePidParser(m_pFileReader);
 					}
 					
@@ -314,7 +312,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				{
 					//Change back to normal Auto operation
 					m_pDemux->set_Auto(m_bColdStart);
-					m_bColdStart = FALSE; //
+					m_bColdStart = FALSE; 
 				}
 
 				count++;
@@ -337,16 +335,13 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 								m_pDemux->AOnConnect();
 							}
 					}
-//					m_pFileDuration->setFilePointer(m_pFileReader->getFilePointer(), FILE_BEGIN);
 				}
 			}
-//			m_pFileDuration->setFilePointer(m_pFileReader->getFilePointer(), FILE_BEGIN);
-			m_pFileDuration->SetFilePointer(0, FILE_END);
-//			m_pFileDuration->setFilePointer((__int64)max(0,m_pFileReader->getFilePointer()-100000), FILE_BEGIN);
-
-
-//			if (m_State == State_Running)
-//				m_pPin->StartTSBufferThread();
+			//randomly park the file pointer to help minimise HDD clogging
+			if (rtCurrentTime&1)
+				m_pFileDuration->SetFilePointer(0, FILE_END);
+			else
+				m_pFileDuration->SetFilePointer(0, FILE_BEGIN);
 
 			Sleep(100);
         }

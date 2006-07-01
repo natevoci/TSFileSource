@@ -395,6 +395,12 @@ HRESULT MultiFileWriter::WriteTSBufferFile()
 	wchar_t temp = 0;
 	WriteFile(m_hTSBufferFile, &temp, sizeof(temp), &written, NULL);
 
+	//randomly park the file pointer to help minimise HDD clogging
+//	if(m_pCurrentTSFile && m_pCurrentTSFile->GetFilePointer()&1)
+		SetFilePointer(m_hTSBufferFile, 0, NULL, FILE_END);
+//	else
+//		SetFilePointer(m_hTSBufferFile, 0, NULL, FILE_BEGIN);
+
 	return S_OK;
 }
 

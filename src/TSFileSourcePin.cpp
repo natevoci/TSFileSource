@@ -415,22 +415,6 @@ HRESULT CTSFileSourcePin::BreakConnect()
 	return hr;
 }
 
-/*
-HRESULT CTSFileSourcePin::StartTSBufferThread()
-{
-	return S_OK;
-	WORD readonly = 0;
-	m_pTSFileSourceFilter->m_pFileReader->get_ReadOnly(&readonly);
-	if (!m_bSeeking)// && readonly)
-	{
-		CAutoLock lock(&m_FillLock);
-//		m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
-//		m_pTSBuffer->StartBufferThread(m_pTSFileSourceFilter->m_pFileReader);
-	}
-	return S_OK;
-}
-*/
-
 HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 {
 	CheckPointer(pSample, E_POINTER);
@@ -469,7 +453,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	lDataLength = pSample->GetActualDataLength();
 
 	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
-//	m_pTSFileSourceFilter->m_pFileReader->setFilePointer(m_currPosition, FILE_BEGIN);
 	hr = m_pTSBuffer->Require(lDataLength);
 	if (FAILED(hr))
 	{

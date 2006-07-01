@@ -38,7 +38,7 @@ struct BoostThread
 		   if ((int)GetPriorityClass(GetCurrentProcess()) != IDLE_PRIORITY_CLASS)
 		   {
 				m_nPriority = GetThreadPriority(GetCurrentThread());
-				SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL - 2);
+				SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL - 1);
 		   }
 		#endif
    }

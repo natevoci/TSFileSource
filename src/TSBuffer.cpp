@@ -40,8 +40,6 @@ CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 	else
 		m_lTSBufferItemSize = 188000;
 
-//	m_lTSBufferItemSize = 16384;
-
 	debugcount = 0;
 	m_lbuflen = 0;
 	m_BufferThreadActive = FALSE;
@@ -57,15 +55,12 @@ void CTSBuffer::SetFileReader(FileReader *pFileReader)
 	if (!pFileReader)
 		return;
 
-//	CAutoLock BufferLock(&m_BufferLock);
-//	CAutoLock ReadLock(&m_ReadLock);
 	m_pFileReader = pFileReader;
 }
 
 void CTSBuffer::Clear()
 {
 	StopBufferThread();
-//	m_pFileReader = NULL;
 	CAutoLock BufferLock(&m_BufferLock);
 	std::vector<BYTE *>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
@@ -99,44 +94,21 @@ void CTSBuffer::StartBufferThread()
 	if ((int)GetPriorityClass(GetCurrentProcess()) == IDLE_PRIORITY_CLASS)
 		return;
 
-//	CAutoLock BufferLock(&m_BufferLock);
-//	if (m_pFileBufferReader != pFileReader)
-//	{
-//		if (m_BufferThreadActive)
-//		{
-//			StopThread(0);
-//			m_BufferThreadActive = FALSE;
-//		}
-
-//		m_pFileBufferReader = pFileReader;
-//	}
-
 	if (!m_BufferThreadActive)
 	{
 		StartThread();
 		m_BufferThreadActive = TRUE;
-//		m_bThreadPaused = FALSE;
 	}
 }
-
-//void CTSBuffer::PauseBufferThread(BOOL bThreadPaused)
-//{
-//	CAutoLock BufferLock(&m_BufferLock);
-//	m_bThreadPaused = bThreadPaused; 
-//}
-
 
 void CTSBuffer::StopBufferThread()
 {
 	if (!m_BufferThreadActive)
 		return;
 
-//	CAutoLock BufferLock(&m_BufferLock);
 	StopThread(0);
 
-//	m_bThreadPaused = FALSE;
 	m_BufferThreadActive = FALSE;
-//	m_pFileBufferReader = NULL;
 }
 
 void CTSBuffer::ThreadProc()
@@ -151,12 +123,7 @@ void CTSBuffer::ThreadProc()
 		long bytesAvailable = Count();
 		if (bytesAvailable < m_lTSBufferItemSize*m_lbuflen)
 		{
-//			CAutoLock BufferLock(&m_BufferLock);
-//			CAutoLock ReadLock(&m_ReadLock);
-//			FileReader *pFileReader = m_pFileReader;
-//			m_pFileReader = m_pFileBufferReader;
 			HRESULT hr = Require(bytesAvailable + m_lTSBufferItemSize);
-//			m_pFileReader = pFileReader;
 			if FAILED(hr)
 				break;
 		}
@@ -177,15 +144,12 @@ HRESULT CTSBuffer::Require(long nBytes)
 	if (nBytes <= bytesAvailable)
 		return S_OK;
 
-//	CAutoLock BufferLock(&m_BufferLock);
-//	CAutoLock ReadLock(&m_ReadLock);
 	while (nBytes > bytesAvailable)
 	{
 		BYTE *newItem = new BYTE[m_lTSBufferItemSize];
 		ULONG ulBytesRead = 0;
 
 		__int64 currPosition = m_pFileReader->GetFilePointer();
-//PrintLongLong("Require-GetFilePointer", currPosition);
 		HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulBytesRead);
 		if (FAILED(hr)){
 
@@ -200,7 +164,7 @@ HRESULT CTSBuffer::Require(long nBytes)
 			m_pFileReader->get_ReadOnly(&wReadOnly);
 			if (wReadOnly)
 			{
-				int count = 200; // 2 second max delay
+				int count = 20; // 2 second max delay
 				while (ulBytesRead < m_lTSBufferItemSize && count) 
 				{
 					::OutputDebugString(TEXT("TSBuffer::Require() Waiting for file to grow.\n"));
@@ -222,7 +186,7 @@ HRESULT CTSBuffer::Require(long nBytes)
 							m_lbuflen = 0;
 							return hr;
 						}
-						Sleep(10);
+						Sleep(100);
 					}
 
 					ULONG ulNextBytesRead = 0;				
@@ -294,7 +258,6 @@ HRESULT CTSBuffer::DequeFromBuffer(BYTE *pbData, long lDataLength)
 			m_lItemOffset -= m_lTSBufferItemSize;	//should result in zero
 		}
 	}
-//PrintLongLong("DequeFromBuffer-Count", Count());
 	return S_OK;
 }
 

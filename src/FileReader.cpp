@@ -526,9 +526,7 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __
 
 	SetFilePointer(llDistanceToMove, dwMoveMethod);
 
-//	return Read(pbData, lDataLength, dwReadBytes);
-	HRESULT hr = Read(pbData, lDataLength, dwReadBytes);
-	return hr;
+	return Read(pbData, lDataLength, dwReadBytes);
 }
 
 HRESULT FileReader::get_ReadOnly(WORD *ReadOnly)

@@ -244,6 +244,8 @@ HRESULT MultiFileReader::get_ReadOnly(WORD *ReadOnly)
 	*ReadOnly = m_bReadOnly;
 	return S_OK;
 }
+        //ensures that there's always a back slash at the end
+//        wPathName[wcslen(wPathName)] = char(92*(int)(wPathName[wcslen(wPathName)-1]!=char(92)));
 
 HRESULT MultiFileReader::RefreshTSBufferFile()
 {
@@ -335,6 +337,25 @@ HRESULT MultiFileReader::RefreshTSBufferFile()
 			return E_FAIL;
 		}
 
+		//randomly park the file pointer to help minimise HDD clogging
+		if(currentPosition&1)
+			m_TSBufferFile.SetFilePointer(0, FILE_BEGIN);
+		else
+			m_TSBufferFile.SetFilePointer(0, FILE_END);
+
+		//Get the real path of the buffer file
+		LPWSTR wfilename;
+		m_TSBufferFile.GetFileName(&wfilename);
+		LPWSTR path = NULL;
+		LPWSTR name = wcsrchr(wfilename, 92);
+		if (name)
+		{
+			name++;
+			long len = name - wfilename;
+			path = new wchar_t[len+1];
+			lstrcpynW(path, wfilename, len+1);
+		}
+
 		// Create a list of files in the .tsbuffer file.
 		std::vector<LPWSTR> filenames;
 
@@ -342,13 +363,32 @@ HRESULT MultiFileReader::RefreshTSBufferFile()
 		long length = wcslen(pCurr);
 		while (length > 0)
 		{
-			LPWSTR pFilename = new wchar_t[length+1];
-			wcscpy(pFilename, pCurr);
+			//modify filename path here to include the real path
+			LPWSTR pFilename;
+			LPWSTR temp = wcsrchr(pCurr, 92);
+			if (path && temp)
+			{
+				temp++;
+				pFilename = new wchar_t[wcslen(path)+wcslen(temp)+1];
+				lstrcpyW(pFilename, path);
+				lstrcatW(pFilename, temp);
+			}
+			else
+			{
+				pFilename = new wchar_t[length+1];
+				wcscpy(pFilename, pCurr);
+			}
+
+//			LPWSTR pFilename = new wchar_t[length+1];
+//			wcscpy(pFilename, pCurr);
 			filenames.push_back(pFilename);
 
 			pCurr += (length + 1);
 			length = wcslen(pCurr);
 		}
+
+		if (path)
+			delete[] path;
 
 		delete[] pBuffer;
 

@@ -44,12 +44,10 @@ public:
 
 	void StartBufferThread();
 	void StopBufferThread();
-//	void PauseBufferThread(BOOL bThreadPaused);
 	virtual void ThreadProc();
 
 	void Clear();
 	long Count();
-//	HRESULT GetRequire(long nBytes);
 	HRESULT Require(long nBytes);
 
 	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
@@ -63,15 +61,12 @@ protected:
 	std::vector<BYTE *> m_Array;
 	long m_lItemOffset;
 	CCritSec m_BufferLock;
-//	CCritSec m_ReadLock;
 
 	long m_lTSBufferItemSize;
 	int debugcount;
 	long m_lbuflen;
 
-//	FileReader *m_pFileBufferReader;
 	BOOL m_BufferThreadActive;
-//	BOOL m_bThreadPaused;
 };
 
 #endif
