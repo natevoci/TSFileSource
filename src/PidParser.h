@@ -41,6 +41,8 @@ public:
 PidParser(FileReader *pFileReader);
 	virtual ~PidParser();
 
+
+	HRESULT ParsePinMode(__int64 fileStartPointer = 0);
 	HRESULT ParseFromFile(__int64 fileStartPointer);
 	HRESULT RefreshPids();
 	HRESULT RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader);

@@ -1172,7 +1172,7 @@ HRESULT CTSFileSourcePin::ChangeRate()
             m_dRateSeeking = 1.0;  // Reset to a reasonable value.
             return E_INVALIDARG;
         }
-//		m_pTSFileSourceFilter->m_pClock->SetClockRate(m_dRateSeeking);
+		m_pTSFileSourceFilter->m_pClock->SetClockRate(m_dRateSeeking);
     }
 //    UpdateFromSeek();
     return S_OK;
@@ -1222,7 +1222,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 	m_pTSFileSourceFilter->m_pFileReader->GetFileSize(&fileStart, &filelength);
 	if(filelength < 2000000)
 	{
-		__int64 nFileIndex = (__int64)min((__int64)-filelength, (__int64)(300000 - filelength));
+		__int64 nFileIndex = (__int64)min((__int64)-filelength, (__int64)(510000 - filelength));
 		m_pTSFileSourceFilter->m_pFileReader->setFilePointer(nFileIndex, FILE_END);
 		m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 
@@ -1276,7 +1276,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		if (m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14)
 			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
 
-		nFileIndex = (__int64)max((__int64)300000, (__int64)nFileIndex);
+		nFileIndex = (__int64)max((__int64)510000, (__int64)nFileIndex);
 		m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 		m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 
@@ -1341,7 +1341,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 			if (m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14)
 				nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSFileSourceFilter->m_pPidParser->pids.dur>>14);
 
-			nFileIndex = (__int64)max((__int64)300000, (__int64)nFileIndex);
+			nFileIndex = (__int64)max((__int64)510000, (__int64)nFileIndex);
 			m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 			m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 
@@ -1455,7 +1455,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 		m_IntCurrentTimePCR = m_IntStartTimePCR + (__int64)((__int64)((__int64)seektime * (__int64)9) / (__int64)1000);
 //PrintTime(TEXT("SEEK ERROR AT END"), (__int64)pcrPos, 90);
 	}
-		nFileIndex = max(300000, nFileIndex);
+		nFileIndex = max(510000, nFileIndex);
 		m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 		m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 
@@ -1591,7 +1591,7 @@ PrintTime(TEXT("UpdateDuration1"), (__int64) m_rtDuration, 10000);
 				pcrPos = -1;
 
 				//Set Pointer to start of file to get end pcr
-				pFileReader->setFilePointer((__int64)300000, FILE_BEGIN);
+				pFileReader->setFilePointer((__int64)510000, FILE_BEGIN);
 				PBYTE pData = new BYTE[lDataLength];
 //				pFileReader->Read(pData, lDataLength, &ulBytesRead);
 				if FAILED(hr = pFileReader->Read(pData, lDataLength, &ulBytesRead))

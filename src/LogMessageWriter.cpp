@@ -40,9 +40,9 @@ LogMessageWriter::LogMessageWriter()
 LogMessageWriter::~LogMessageWriter()
 {
 	if (m_WriteThreadActive)
-		StopThread();
+		StopThread(200);
 
-//	CAutoLock logFileLock(&m_logFileLock);
+	CAutoLock logFileLock(&m_logFileLock);
 	if (m_logFilename)
 	{
 		delete[] m_logFilename;
@@ -71,13 +71,12 @@ void LogMessageWriter::ThreadProc(void)
 
 	BrakeThread Brake;
 	
-	while (!ThreadIsStopping(100))
+	while (!ThreadIsStopping(0))
 	{
 		FlushLogBuffer(m_LogBufferLimit);
 		Sleep(100);
 	}
-
-//	m_WriteThreadActive = FALSE;
+	m_WriteThreadActive = FALSE;
 
 	return;
 }
@@ -90,7 +89,7 @@ void LogMessageWriter::FlushLogBuffer(int logSize)
 			return;
 	}
 
-	::OutputDebugString(TEXT("LogMessageWriter::ThreadProc:Write."));
+//	::OutputDebugString(TEXT("LogMessageWriter::ThreadProc:Write."));
 	USES_CONVERSION;
 	if (m_logFilename)
 	{
@@ -144,6 +143,7 @@ void LogMessageWriter::FlushLogBuffer(int logSize)
 			file.Close();
 		}
 	}
+//	::OutputDebugString(TEXT("LogMessageWriter::ThreadProc:Write Completed.\n"));
 }
 
 void LogMessageWriter::SetLogBufferLimit(int logBufferLimit)
@@ -191,11 +191,7 @@ void LogMessageWriter::Write(LPWSTR pStr)
 	if (m_logFilename)
 	{
 		if(!m_WriteThreadActive)
-		{
-			m_WriteThreadActive = TRUE;
-			::OutputDebugString(TEXT("LogMessageWriter::Write:StartThread."));
 			StartThread();
-		}
 
 		LOGINFO *item = new LOGINFO;
 		item->pStr = NULL;

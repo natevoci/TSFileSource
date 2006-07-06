@@ -68,6 +68,109 @@ PidParser::~PidParser()
 	pidArray.Clear();
 }
 
+HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
+{
+	HRESULT hr = S_OK;
+
+	if (m_pFileReader->IsFileInvalid())
+	{
+		return NOERROR;
+	}
+
+//	CAutoLock parserlock(&m_ParserLock);
+
+	//Store file pointer so we can reset it before leaving this method
+	FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
+	LPOLESTR fileName;
+	m_pFileReader->GetFileName(&fileName);
+	pFileReader->SetFileName(fileName);
+
+	hr = pFileReader->OpenFile();
+	if (FAILED(hr)){
+		delete pFileReader;
+		return VFW_E_INVALIDMEDIATYPE;
+	}
+//OutputDebugStringW(fileName);
+
+	//Check if we are locked out
+	int count = 0;
+	while (m_ParsingLock)
+	{
+		Sleep(100);
+		count++;
+		if (count > 10)
+		{
+			delete pFileReader;
+			return S_FALSE;
+		}
+	}
+	//Lock the parser
+	m_ParsingLock = TRUE;
+
+	// Access the sample's data buffer
+	ULONG a = 0;
+	ULONG ulDataLength = 200000;
+	ULONG ulDataRead = 0;
+	PBYTE pData = new BYTE[ulDataLength];
+//	ZeroMemory(pData, ulDataLength);
+//	__int64 fileStart, filelength;
+//	pFileReader->GetFileSize(&fileStart, &filelength);
+//	fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
+	m_FileStartPointer = max(0, fileStartPointer);
+	pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
+	pFileReader->Read(pData, ulDataLength, &ulDataRead);
+
+	if (ulDataRead > 0x800)
+	{
+		m_PacketSize = 188;
+		m_ProgPinMode = FALSE;
+		int count = 0;
+		a = 0;
+		hr = S_OK;
+		while (hr == S_OK && count < 10)
+		{
+			//search at the end of the file for sync bytes
+			hr = FindSyncByte(pData, ulDataRead - 0x188, &a, 1);
+			if (hr == S_OK)
+			{
+				count++;
+				a += m_PacketSize;
+			}
+		}
+		if (count < 10)
+		{
+			m_PacketSize = 0x800;
+			m_ProgPinMode = TRUE;
+			count = 0;
+			a = 0;
+			hr = S_OK;
+			while (hr == S_OK && count < 2)
+			{
+				//search at the end of the file for sync bytes
+				hr = FindSyncByte(pData, ulDataRead - 0x800, &a, 1);
+				if (hr == S_OK)
+				{
+					count++;
+					a += m_PacketSize;
+				}
+
+			}
+			if (count < 2)
+			{
+				m_PacketSize = 188;
+				m_ProgPinMode = FALSE;
+			}
+		}
+	}
+
+	//UnLock the parser
+	m_ParsingLock = FALSE;
+	delete[] pData;
+	pFileReader->CloseFile();
+	delete pFileReader;
+	return hr;
+}
+
 HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 {
 	HRESULT hr = S_OK;
@@ -114,11 +217,12 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	ULONG ulDataLength = 4000000;
 	ULONG ulDataRead = 0;
 	PBYTE pData = new BYTE[ulDataLength];
+//	ZeroMemory(pData, ulDataLength);
 
 	__int64 fileStart, filelength;
 	pFileReader->GetFileSize(&fileStart, &filelength);
 	fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
-	m_FileStartPointer = max(300000, fileStartPointer);
+	m_FileStartPointer = max(510000, fileStartPointer);
 	pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
 	pFileReader->Read(pData, ulDataLength, &ulDataRead);
 
@@ -450,7 +554,7 @@ HRESULT PidParser::RefreshPids()
 	__int64 fileStart, fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
 	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getFilePointer());
-	filestartpointer = max((__int64)300000, filestartpointer);
+	filestartpointer = max((__int64)510000, filestartpointer);
 
 	WORD readonly = 0;;
 	m_pFileReader->get_ReadOnly(&readonly);
@@ -1275,7 +1379,7 @@ HRESULT PidParser::CheckEPGFromFile()
 			__int64 fileStart, filelength;
 			pFileReader->GetFileSize(&fileStart, &filelength);
 			fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
-			fileStartPointer = max(300000, fileStartPointer);
+			fileStartPointer = max(510000, fileStartPointer);
 			pFileReader->setFilePointer(fileStartPointer, FILE_BEGIN);
 			pFileReader->Read(pData, ulDataLength, &ulDataRead);
 
@@ -1817,7 +1921,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 	
 	__int64 endFilePos = filelength;
 	m_fileLenOffset = filelength;
-	m_fileStartOffset = 300000;// skip faulty header 
+	m_fileStartOffset = 510000;// skip faulty header 
 	m_fileEndOffset = 0;
 	BOOL bBitRateOK = FALSE;
 
@@ -1905,7 +2009,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 					m_fileLenOffset = m_fileLenOffset/2;
 					endFilePos = m_fileLenOffset;
 					m_fileEndOffset = m_fileLenOffset;
-					m_fileStartOffset = 300000;// skip faulty header 
+					m_fileStartOffset = 510000;// skip faulty header 
 					continue;
 				}
 				else

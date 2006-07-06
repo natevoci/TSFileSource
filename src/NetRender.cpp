@@ -269,7 +269,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	//
 	while(llDataFlow < 20000 && count < 10) //2000000
 	{
-		Sleep(100);
+		Sleep(200);
 		hr = pITSFileSink->GetFileBufferSize(&llDataFlow);
 		if(FAILED (hr))
 		{

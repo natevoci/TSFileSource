@@ -218,7 +218,7 @@ HRESULT CTSBuffer::Require(long nBytes)
 
 			m_lbuflen--;
 		}
-		else if (m_lbuflen < 50)
+		else if (m_lbuflen < 4)
 			m_lbuflen++;
 
 		m_lbuflen = max(0, m_lbuflen);
