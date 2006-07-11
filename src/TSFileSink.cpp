@@ -408,20 +408,23 @@ STDMETHODIMP CTSFileSink::GetBufferFileName(LPWSTR fileName)
 	CAutoLock lock(&m_Lock);
 
 	// Take a copy of the filename
-	if (fileName)
+	if (m_pFileName)
 	{
-		sprintf((char *)fileName, "%S", m_pFileName);
+		wsprintfW(fileName, L"%S", m_pFileName);
 		return NOERROR;
+//		sprintf((char *)fileName, "%S", m_pFileName);
+//		return NOERROR;
 	}
-
+/*
 	fileName = new WCHAR[1+wcslen(m_pFileName)];
-	if (m_pFileName == NULL)
+	if (fileName == NULL)
 		return E_OUTOFMEMORY;
 	
 	lstrcpyW(fileName, m_pFileName);
 //	sprintf((char *)fileName, "%S", m_pFileName);
 //	sprintf((char *)fileName, "%S", m_pFileWriter->getBufferFileName());
-    return NOERROR;
+*/
+   return E_FAIL;
 }
 
 STDMETHODIMP CTSFileSink::SetBufferFileName(LPWSTR fileName)

@@ -35,8 +35,15 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/timeb.h>
+#include "Global.h"
 
+#ifndef ABOVE_NORMAL_PRIORITY_CLASS
+#define ABOVE_NORMAL_PRIORITY_CLASS 0x00008000
+#endif
 
+#ifndef BELOW_NORMAL_PRIORITY_CLASS
+#define BELOW_NORMAL_PRIORITY_CLASS 0x00004000
+#endif
 //////////////////////////////////////////////////////////////////////
 // NetRender
 //////////////////////////////////////////////////////////////////////
@@ -52,6 +59,7 @@ CNetRender::~CNetRender()
 HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 {
 	HRESULT hr = S_OK;
+//	BoostProcess Boost;
 
 	//
 	// Re-Create the FilterGraph if already Active
@@ -248,7 +256,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	//
 	//Wait for data to build before testing data flow
 	//
-	Sleep(1000);
+//	Sleep(1000);
 
 	//
 	// Get the Sink Filter Interface 
@@ -267,7 +275,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	//
 	// Loop until we have data or time out 
 	//
-	while(llDataFlow < 20000 && count < 10) //2000000
+	while(llDataFlow < 20000 && count < 25) //2000000
 	{
 		Sleep(200);
 		hr = pITSFileSink->GetFileBufferSize(&llDataFlow);
@@ -288,35 +296,37 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	//
 	// Check for data flow one last time incase it has stopped 
 	//
-	Sleep(100);
+	Sleep(500);
 	pITSFileSink->GetFileBufferSize(&llDataFlow);
 
 	if(llDataFlow < 20000 || (llDataFlow < (__int64)(netAddr->buffSize + (__int64)1)))//2000000
     {
 		DeleteNetworkGraph(netAddr);
-        return VFW_E_INVALIDMEDIATYPE;//ERROR_CANNOT_MAKE;
+		return VFW_E_INVALIDMEDIATYPE;//ERROR_CANNOT_MAKE;
     }
 
 	//
 	// Get the filename from the sink filter just in case it has changed 
 	//
-	WCHAR ptFileName[MAX_PATH] = L"";
-	hr = pITSFileSink->GetBufferFileName((unsigned short*)&ptFileName);
+	LPWSTR pwFileName = new WCHAR[MAX_PATH];
+	hr = pITSFileSink->GetBufferFileName(pwFileName);
 	if(FAILED (hr))
 	{
 		DeleteNetworkGraph(netAddr);
 		return hr;
 	}
-	wsprintfW(netAddr->fileName, L"%s", ptFileName);
+	wsprintfW(netAddr->fileName, L"%S", pwFileName);
+	delete[] pwFileName;
+	
 //MessageBoxW(NULL, netAddr->fileName, ptFileName, NULL);
-	SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
-//	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
     return hr;
 }
 
 HRESULT CNetRender::RestartNetworkGraph(NetInfo *netAddr)
 {
+//	BoostThread Boost;
 	HRESULT hr = S_OK;
 	//
 	// Get the IMediaControl Interface 
@@ -488,53 +498,71 @@ BOOL CNetRender::IsMulticastActive(NetInfo *netAddr, NetInfoArray *netArray, int
 BOOL CNetRender::IsMulticastAddress(LPOLESTR lpszFileName, NetInfo *netAddr)
 {
 	wcslwr(lpszFileName);
+	LPWSTR portPosFile = NULL;
+	LPWSTR portPosUrl = NULL;
+	LPWSTR nicPosFile = NULL;
+	LPWSTR nicPosUrl = NULL;
 	LPWSTR addrPosFile = wcsstr(lpszFileName, L"udp@");
-	LPWSTR addrPosUrl = wcsstr(lpszFileName, L"udp://@");
-	LPWSTR portPosFile = wcsstr(lpszFileName, L"#");
-	LPWSTR portPosUrl = wcsstr(lpszFileName, L":");
-	LPWSTR nicPosFile = wcsstr(lpszFileName, L"$");
-	LPWSTR nicPosUrl = wcsstr(lpszFileName, L"$");
+	LPWSTR addrPosUrl = wcsstr(lpszFileName, L"udp://");
 	LPWSTR endString = lpszFileName + wcslen(lpszFileName);
+	LPWSTR endPos = NULL;
 
 //MessageBoxW(NULL, lpszFileName,lpszFileName, NULL);
 	//Check if we have a valid Network Address
-	if (addrPosFile)
+	if (addrPosFile && addrPosFile < endString)
+	{
 		addrPosFile = min(addrPosFile + 4, endString);
-	else if (addrPosUrl)
-		addrPosUrl = min(addrPosUrl + 7, endString);
+		portPosFile = wcsstr(addrPosFile, L"#");
+	}
+	else if (addrPosUrl && addrPosUrl < endString)
+	{
+		addrPosUrl = min(addrPosUrl + 6, endString);
+		portPosUrl = wcsstr(addrPosUrl, L":");
+	}
 	else
 		return FALSE;
 
+//MessageBoxW(NULL, addrPosUrl,L"addrPosUrl", NULL);
 	//Check if we have a valid Port
-	if (portPosFile)
+	if (portPosFile && portPosFile < endString)
+	{
 		portPosFile = min(portPosFile + 1, endString);
-	else if (portPosUrl)
+		nicPosFile = wcsstr(portPosFile, L"$");
+	}
+	else if (portPosUrl && portPosUrl < endString)
+	{
 		portPosUrl = min(portPosUrl + 1, endString);
+		nicPosUrl = wcsstr(portPosUrl, L"@");
+	}
 	else
 		return FALSE;
 
+//MessageBoxW(NULL, portPosUrl,L"portPosUrl", NULL);
 	//Check if we have a valid nic
-	if (nicPosFile)
+	if (nicPosFile && nicPosFile < endString)
+	{
 		nicPosFile = min(nicPosFile + 1, endString);
-	else if (nicPosUrl)
+		endPos = wcsrchr(nicPosFile, '.');
+	}
+	else if (nicPosUrl && nicPosUrl < endString)
+	{
 		nicPosUrl = min(nicPosUrl + 1, endString);
+		endPos = endString+1;
+	}
 	else
 		return FALSE;
 
-	wcsrev(lpszFileName);
-
-	WCHAR *endPos = wcsstr(lpszFileName, L".");
+//MessageBoxW(NULL, nicPosUrl,L"nicPosUrl", NULL);
+	//Check if we have an end extension such as a ".ts"
 	if (!endPos)
-		endPos = lpszFileName + wcslen(lpszFileName);
-	else
-		endPos = min(endString - (endPos - lpszFileName), endString);
-
-	wcsrev(lpszFileName);
+		endPos = endString+1;
 
 	if (addrPosFile)
 		lstrcpynW(netAddr->strIP, addrPosFile, min(15,max(0,(portPosFile - addrPosFile))));
 	else if(addrPosUrl)
 		lstrcpynW(netAddr->strIP, addrPosUrl, min(15,max(0,(portPosUrl - addrPosUrl))));
+	else
+		return FALSE;
 
 //MessageBoxW(NULL, netAddr->strIP,L"netAddr->strIP", NULL);
 
@@ -558,9 +586,9 @@ BOOL CNetRender::IsMulticastAddress(LPOLESTR lpszFileName, NetInfo *netAddr)
 		return FALSE;
 
 	if (nicPosFile)
-		lstrcpynW(netAddr->strNic, nicPosFile, min(15,max(0,(endPos - nicPosFile))));
+		lstrcpynW(netAddr->strNic, nicPosFile, min(15,max(0,(endPos - nicPosFile + 1))));
 	else if(nicPosUrl)
-		lstrcpynW(netAddr->strNic, nicPosUrl, min(15,max(0,(endPos - nicPosUrl))));
+		lstrcpynW(netAddr->strNic, nicPosUrl, min(15,max(0,(endPos - nicPosUrl + 1))));
 
 //MessageBoxW(NULL, netAddr->strNic,L"netAddr->strNic", NULL);
 
@@ -573,7 +601,7 @@ BOOL CNetRender::IsMulticastAddress(LPOLESTR lpszFileName, NetInfo *netAddr)
 	if (addrPosFile)
 		lstrcpynW(netAddr->pathName, lpszFileName, min(MAX_PATH,max(0,(addrPosFile - lpszFileName - 3))));
 	else if(addrPosUrl)
-		lstrcpynW(netAddr->pathName, lpszFileName, min(MAX_PATH,max(0,(addrPosFile - lpszFileName - 6))));
+		lstrcpynW(netAddr->pathName, lpszFileName, min(MAX_PATH,max(0,(addrPosUrl - lpszFileName - 5))));
 
 //MessageBoxW(NULL, netAddr->pathName,L"netAddr->pathName", NULL);
 	//Addon in Multicast Address

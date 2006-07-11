@@ -80,6 +80,7 @@ private:
 
 	// Overriden to say what interfaces we support where
 	STDMETHODIMP NonDelegatingQueryInterface(REFIID riid, void ** ppv);
+//	STDMETHODIMP_(ULONG) NonDelegatingRelease();
 	HRESULT AddGraphToRot(IUnknown *pUnkGraph, DWORD *pdwRegister); 
 	void RemoveGraphFromRot(DWORD pdwRegister);
 	void set_ROTMode();

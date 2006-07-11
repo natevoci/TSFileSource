@@ -48,7 +48,7 @@ public:
 
 	void Clear();
 	long Count();
-	HRESULT Require(long nBytes);
+	HRESULT Require(long nBytes, BOOL bIgnoreDelay = FALSE);
 
 	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
 	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);

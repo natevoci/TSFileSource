@@ -30,6 +30,7 @@
 
 #include <streams.h>
 #include "PidParser.h"
+#include "Global.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -271,7 +272,6 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				a += m_PacketSize;
 			}
 		}
-
 		//if no PAT found Scan for PMTs
 		if (pidArray.Count() == 0)
 		{
@@ -311,6 +311,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				}
 			}
 		}
+
 
 		//Loop through Programs found
 		int i = 0;

@@ -437,7 +437,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		m_pTSFileSourceFilter->m_pPidParser->m_ParsingLock = FALSE;
 	}
 
-	m_pTSBuffer->StopBufferThread();
+//	m_pTSBuffer->StopBufferThread();
 	CAutoLock lock(&m_FillLock);
 
 	BoostThread Boost;
@@ -579,7 +579,11 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		else
 		{
 			Debug(TEXT("Failed to find next PCR\n"));
-			Sleep(100); //delay to reduce cpu usage.
+			{
+				BrakeThread Brake;
+				Sleep(100);
+			}
+//			Sleep(100); //delay to reduce cpu usage.
 		}
 	}
 
@@ -793,7 +797,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	m_IntCurrentTimePCR = m_llPrevPCR;
 	m_pTSFileSourceFilter->m_pPidParser->pids.bitrate = m_DataRate;
 
-	m_pTSBuffer->StartBufferThread();
+//	m_pTSBuffer->StartBufferThread();
 
 	return NOERROR;
 }
@@ -1933,7 +1937,7 @@ PrintTime(TEXT("UpdateDuration6"), (__int64) m_rtDuration, 10000);
 
 void CTSFileSourcePin::WaitPinLock(void)
 {
-	CAutoLock fillLock(&m_FillLock);
+//	CAutoLock fillLock(&m_FillLock);
 	CAutoLock lock(&m_SeekLock);
 	{
 	}

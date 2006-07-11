@@ -30,6 +30,14 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#ifndef ABOVE_NORMAL_PRIORITY_CLASS
+#define ABOVE_NORMAL_PRIORITY_CLASS 0x00008000
+#endif
+
+#ifndef BELOW_NORMAL_PRIORITY_CLASS
+#define BELOW_NORMAL_PRIORITY_CLASS 0x00004000
+#endif
+
 struct BoostThread
 {
    BoostThread()
@@ -184,6 +192,126 @@ struct BrakeThread
    }
      
    int m_nPriority;
+};
+
+struct BoostProcess
+{
+   BoostProcess()
+   {
+		#ifndef DEBUG
+			m_nPriority = GetPriorityClass(GetCurrentProcess());
+			SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+		#endif
+   }
+
+   ~BoostProcess()
+   {
+		#ifndef DEBUG
+			SetPriorityClass(GetCurrentProcess(), m_nPriority);
+		#endif
+   }
+     
+   DWORD m_nPriority;
+};
+
+struct HighProcess
+{
+   HighProcess()
+   {
+		#ifndef DEBUG
+			m_nPriority = GetPriorityClass(GetCurrentProcess());
+			SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+		#endif
+   }
+
+   ~HighProcess()
+   {
+		#ifndef DEBUG
+			SetPriorityClass(GetCurrentProcess(), m_nPriority);
+		#endif
+   }
+      
+   DWORD m_nPriority;
+};
+
+struct AbnormalProcess
+{
+   AbnormalProcess()
+   {
+		#ifndef DEBUG
+			m_nPriority = GetPriorityClass(GetCurrentProcess());
+			SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
+		#endif
+   }
+
+   ~AbnormalProcess()
+   {
+		#ifndef DEBUG
+			SetThreadPriority(GetCurrentThread(), m_nPriority);
+		#endif
+   }
+      
+   DWORD m_nPriority;
+};
+
+struct NormalProcess
+{
+   NormalProcess()
+   {
+		#ifndef DEBUG
+			m_nPriority = GetPriorityClass(GetCurrentProcess());
+			SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+		#endif
+   }
+
+   ~NormalProcess()
+   {
+		#ifndef DEBUG
+			SetPriorityClass(GetCurrentProcess(), m_nPriority);
+		#endif
+   }
+      
+   DWORD m_nPriority;
+};
+
+struct BelowNormalProcess
+{
+   BelowNormalProcess()
+   {
+		#ifndef DEBUG
+			m_nPriority = GetPriorityClass(GetCurrentProcess());
+			SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+		#endif
+   }
+
+   ~BelowNormalProcess()
+   {
+		#ifndef DEBUG
+			SetPriorityClass(GetCurrentProcess(), m_nPriority);
+		#endif
+   }
+      
+   DWORD m_nPriority;
+};
+
+struct IdleProcess
+{
+   IdleProcess()
+   {
+		#ifndef DEBUG
+			m_nPriority = GetPriorityClass(GetCurrentProcess());
+			SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
+		#endif
+   }
+
+   ~IdleProcess()
+   {
+		#ifndef DEBUG
+			SetPriorityClass(GetCurrentProcess(), m_nPriority);
+		#endif
+   }
+     
+   DWORD m_nPriority;
 };
 
 #endif

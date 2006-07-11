@@ -255,9 +255,9 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 
 	int count = 3;
 
+	BoostThread Boost;
     do
     {
-		AbnormalThread Abnormal;
         while(!CheckRequest(&com))
         {
 			HRESULT hr = S_OK;// if an error occurs.
@@ -296,8 +296,9 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							}
 						}
 					}
-					//check pids every 4sec or quicker if no pids parsed
-					else if (count == 5 || !m_pPidParser->pidArray.Count())
+					//check pids every 5sec or quicker if no pids parsed
+//					else if (count == 5 || !m_pPidParser->pidArray.Count())
+					else if (!m_pPidParser->pidArray.Count())
 					{
 						//update the parser
 						UpdatePidParser(m_pFileReader);
@@ -342,8 +343,16 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				m_pFileDuration->SetFilePointer(0, FILE_END);
 			else
 				m_pFileDuration->SetFilePointer(0, FILE_BEGIN);
+			
+			//kill the netrender graphs if were released
 
-			Sleep(100);
+			if (netArray.Count() && CUnknown::m_cRef == 0)
+				netArray.Clear();
+
+			{
+				BrakeThread Brake;
+				Sleep(100);
+			}
         }
 
         // For all commands sent to us there must be a Reply call!
@@ -415,6 +424,14 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
 	return CSource::NonDelegatingQueryInterface(riid, ppv);
 
 } // NonDelegatingQueryInterface
+
+//STDMETHODIMP_(ULONG) CTSFileSourceFilter::NonDelegatingRelease()
+//{
+//	if (CUnknown::m_cRef == 1)
+//		netArray.Clear();
+
+//	return CBaseFilter::NonDelegatingRelease();
+//}
 
 //IAMFilterMiscFlags
 ULONG STDMETHODCALLTYPE CTSFileSourceFilter::GetMiscFlags(void)
@@ -887,6 +904,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 		int pos = 0;
 		if (!CNetRender::IsMulticastActive(netAddr, &netArray, &pos))
 		{
+//BoostThread Boost;
 			//
 			// Create the Network Filtergraph 
 			//
@@ -1440,14 +1458,16 @@ HRESULT CTSFileSourceFilter::LoadPgmReg(void)
 HRESULT CTSFileSourceFilter::Refresh()
 {
 	CAutoLock lock(&m_Lock);
-	UpdatePidParser(m_pFileReader);
+	if (m_pFileDuration)
+		return UpdatePidParser(m_pFileDuration);
+	else if (m_pFileReader)
+		return UpdatePidParser(m_pFileReader);
 
-	return S_OK;
+	return E_FAIL;
 }
 
 HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 {
-//	CAutoLock lock(&m_Lock);
 	HRESULT hr = S_FALSE;// if an error occurs.
 
 	PidParser *pPidParser = new PidParser(pFileReader);
@@ -1458,7 +1478,11 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 	int count = 0;
 	while(m_pDemux->m_bConnectBusyFlag && count < 20)
 	{
-		Sleep(100);
+		{
+			BrakeThread Brake;
+			Sleep(100);
+		}
+//		Sleep(100);
 		count++;
 	}
 	m_pDemux->m_bConnectBusyFlag = TRUE;
@@ -1476,7 +1500,11 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 			int count = 0;
 			while (m_pPidParser->m_ParsingLock)
 			{
-				Sleep(10);
+				{
+					BrakeThread Brake;
+					Sleep(10);
+				}
+//				Sleep(10);
 				count++;
 				if (count > 100)
 				{

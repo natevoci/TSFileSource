@@ -106,7 +106,7 @@ void CTSBuffer::StopBufferThread()
 	if (!m_BufferThreadActive)
 		return;
 
-	StopThread(0);
+	StopThread(10);
 
 	m_BufferThreadActive = FALSE;
 }
@@ -123,9 +123,12 @@ void CTSBuffer::ThreadProc()
 		long bytesAvailable = Count();
 		if (bytesAvailable < m_lTSBufferItemSize*m_lbuflen)
 		{
-			HRESULT hr = Require(bytesAvailable + m_lTSBufferItemSize);
+			HRESULT hr = Require(bytesAvailable + m_lTSBufferItemSize, TRUE);
 			if FAILED(hr)
-				break;
+			{
+				StopThread(0);
+//				break;
+			}
 		}
 		else
 			Sleep(1);
@@ -134,7 +137,7 @@ void CTSBuffer::ThreadProc()
 	return;
 }
 
-HRESULT CTSBuffer::Require(long nBytes)
+HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 {
 	if (!m_pFileReader)
 		return E_POINTER;
@@ -162,7 +165,7 @@ HRESULT CTSBuffer::Require(long nBytes)
 		{
 			WORD wReadOnly = 0;
 			m_pFileReader->get_ReadOnly(&wReadOnly);
-			if (wReadOnly)
+			if (wReadOnly && !bIgnoreDelay)
 			{
 				int count = 20; // 2 second max delay
 				while (ulBytesRead < m_lTSBufferItemSize && count) 
