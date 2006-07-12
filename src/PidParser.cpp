@@ -223,7 +223,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	__int64 fileStart, filelength;
 	pFileReader->GetFileSize(&fileStart, &filelength);
 	fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
-	m_FileStartPointer = max(510000, fileStartPointer);
+	m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
 	pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
 	pFileReader->Read(pData, ulDataLength, &ulDataRead);
 
@@ -555,7 +555,7 @@ HRESULT PidParser::RefreshPids()
 	__int64 fileStart, fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
 	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getFilePointer());
-	filestartpointer = max((__int64)510000, filestartpointer);
+	filestartpointer = max(get_StartOffset(), filestartpointer);
 
 	WORD readonly = 0;;
 	m_pFileReader->get_ReadOnly(&readonly);
@@ -1380,7 +1380,7 @@ HRESULT PidParser::CheckEPGFromFile()
 			__int64 fileStart, filelength;
 			pFileReader->GetFileSize(&fileStart, &filelength);
 			fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
-			fileStartPointer = max(510000, fileStartPointer);
+			fileStartPointer = max(get_StartOffset(), fileStartPointer);
 			pFileReader->setFilePointer(fileStartPointer, FILE_BEGIN);
 			pFileReader->Read(pData, ulDataLength, &ulDataRead);
 
@@ -1922,7 +1922,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 	
 	__int64 endFilePos = filelength;
 	m_fileLenOffset = filelength;
-	m_fileStartOffset = 510000;// skip faulty header 
+	m_fileStartOffset = get_StartOffset();// skip faulty header 
 	m_fileEndOffset = 0;
 	BOOL bBitRateOK = FALSE;
 
@@ -2010,7 +2010,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 					m_fileLenOffset = m_fileLenOffset/2;
 					endFilePos = m_fileLenOffset;
 					m_fileEndOffset = m_fileLenOffset;
-					m_fileStartOffset = 510000;// skip faulty header 
+					m_fileStartOffset = get_StartOffset();// skip faulty header 
 					continue;
 				}
 				else
@@ -2299,6 +2299,14 @@ void PidParser::set_ProgPinMode(BOOL mode)
 		m_pFileReader->set_DelayMode(FALSE);
 		m_ProgPinMode = FALSE;
 	}
+}
+
+__int64 PidParser::get_StartOffset(void)
+{
+	if (m_ProgPinMode)
+		return 0;
+	else
+		return 500000; 
 }
 
 void PidParser::set_AsyncMode(BOOL mode)

@@ -126,8 +126,8 @@ void CTSBuffer::ThreadProc()
 			HRESULT hr = Require(bytesAvailable + m_lTSBufferItemSize, TRUE);
 			if FAILED(hr)
 			{
-				StopThread(0);
-//				break;
+				StopThread(100);
+				break;
 			}
 		}
 		else

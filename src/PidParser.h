@@ -67,6 +67,7 @@ PidParser(FileReader *pFileReader);
 	WORD get_ProgramNumber();
 	BOOL get_ProgPinMode();
 	void set_ProgPinMode(BOOL mode);
+	__int64 get_StartOffset(void);
 	BOOL get_AsyncMode();
 	void set_AsyncMode(BOOL mode);
 	ULONG get_PacketSize();

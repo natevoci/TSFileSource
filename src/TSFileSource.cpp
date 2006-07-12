@@ -253,7 +253,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 	m_pFileDuration->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
-	int count = 3;
+	int count = 1;
 
 	BoostThread Boost;
     do
@@ -309,7 +309,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				}
 
 				//Change back to normal Auto operation if not already
-				if (count == 6 && m_pPidParser->pidArray.Count() && m_bColdStart)
+				if (count == 4 && m_pPidParser->pidArray.Count() && m_bColdStart)
 				{
 					//Change back to normal Auto operation
 					m_pDemux->set_Auto(m_bColdStart);
@@ -317,7 +317,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				}
 
 				count++;
-				if (count > 6)
+				if (count > 5)
 					count = 0;
 
 				m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
@@ -350,7 +350,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				netArray.Clear();
 
 			{
-				BrakeThread Brake;
+//				BrakeThread Brake;
 				Sleep(100);
 			}
         }
@@ -799,7 +799,7 @@ HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pPidParser->pids.dur>>14);
 
 		nFileIndex = min(filelength, nFileIndex);
-		nFileIndex = max(510000, nFileIndex);
+		nFileIndex = max(m_pPidParser->get_StartOffset(), nFileIndex);
 		m_pFileReader->setFilePointer(nFileIndex, FILE_BEGIN);
 	}
 	return S_OK;
@@ -1095,7 +1095,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 		return S_OK;
 	}
 
-	m_pFileReader->setFilePointer(510000, FILE_BEGIN);
+	m_pFileReader->setFilePointer(m_pPidParser->get_StartOffset(), FILE_BEGIN);
 
 	RefreshPids();
 
@@ -1374,7 +1374,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		return S_OK;
 	}
 
-	m_pFileReader->setFilePointer(510000, FILE_BEGIN);
+	m_pFileReader->setFilePointer(m_pPidParser->get_StartOffset(), FILE_BEGIN);
 
 	m_pPidParser->RefreshPids();
 	LoadPgmReg();
@@ -1479,7 +1479,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 	while(m_pDemux->m_bConnectBusyFlag && count < 20)
 	{
 		{
-			BrakeThread Brake;
+//			BrakeThread Brake;
 			Sleep(100);
 		}
 //		Sleep(100);
@@ -1501,7 +1501,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 			while (m_pPidParser->m_ParsingLock)
 			{
 				{
-					BrakeThread Brake;
+//					BrakeThread Brake;
 					Sleep(10);
 				}
 //				Sleep(10);
