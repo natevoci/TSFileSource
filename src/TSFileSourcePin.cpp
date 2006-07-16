@@ -311,7 +311,7 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 			}
 
 			//Test for a filter with "MPEG-2" on input pin label
-			if (_wcsicmp(pInfo.achName, L"MPEG-2") != 0)
+			if (wcsstr(pInfo.achName, L"MPEG-2") != NULL)
 			{
 				pInfo.pFilter->Release();
 				m_biMpegDemux = TRUE;
@@ -325,11 +325,12 @@ HRESULT CTSFileSourcePin::CheckConnect(IPin *pReceivePin)
 				pFilterInfo.pGraph->Release();
 
 				//Test for an infinite tee filter
-				if (_wcsicmp(pFilterInfo.achName, L"Tee") != 0 || _wcsicmp(pFilterInfo.achName, L"Flow") != 0)
+				if (wcsstr(pFilterInfo.achName, L"Tee") != NULL || wcsstr(pFilterInfo.achName, L"Flow") != NULL)
 				{
 					m_biMpegDemux = TRUE;
 					return S_OK;
 				}
+				hr = E_FAIL;
 			}
 			else
 				pInfo.pFilter->Release();
