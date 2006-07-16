@@ -38,6 +38,34 @@
 #define BELOW_NORMAL_PRIORITY_CLASS 0x00004000
 #endif
 
+#ifndef FILE_START_POS_TS
+#define FILE_START_POS_TS 500000 //Minimum file position to begin parsing for TS Mode
+#endif
+
+#ifndef RT_FILE_START_TS
+#define RT_FILE_START_TS 1000000 //0.1sec stream position to begin playing in TS Mode
+#endif
+
+#ifndef FILE_START_POS_PS
+#define FILE_START_POS_PS 0 //Minimum file position to begin parsing for PS Mode
+#endif
+
+#ifndef RT_FILE_START_PS
+#define RT_FILE_START_PS 0 //0sec stream position to begin playing in PS Mode
+#endif
+
+#ifndef MIN_FILE_SIZE
+#define MIN_FILE_SIZE 2000000 //Minimum filesize to parse
+#endif
+
+#ifndef RT_SECOND
+#define RT_SECOND 10000000 //1sec
+#endif
+
+#ifndef RT_2_SECOND
+#define RT_2_SECOND 20000000 //2 sec
+#endif
+
 struct BoostThread
 {
    BoostThread()

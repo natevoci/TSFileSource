@@ -157,7 +157,7 @@ BEGIN
     EDITTEXT        IDC_CURR,14,49,48,12,ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Force 720x576 A.R.",IDC_FIXED_AR,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,210,44,85,10
-    CTEXT           "TSFileSource Version 2.2.0.6 Beta 3\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
+    CTEXT           "TSFileSource Version 2.2.0.6 Beta 4\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,7,220,288,26
     GROUPBOX        "Description",IDC_STATIC,7,212,288,34
 END
@@ -202,7 +202,7 @@ BEGIN
     EDITTEXT        IDC_PKTERRORS,189,78,66,12,ES_AUTOHSCROLL
     LTEXT           "Packet Errors",IDC_STATIC,189,68,60,10
     PUSHBUTTON      "&Reset",IDC_RESET,259,78,29,12,WS_GROUP
-    CTEXT           "TSFileSink of TSFileSource Version 2.2.0.6 Beta 3\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
+    CTEXT           "TSFileSink of TSFileSource Version 2.2.0.6 Beta 4\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,7,175,288,26
     GROUPBOX        "Description",IDC_STATIC,7,165,288,43
 END

@@ -267,7 +267,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 			WORD bReadOnly = FALSE;
 			m_pFileDuration->get_ReadOnly(&bReadOnly);
 			//Reparse the file for service change	
-			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)10000000) < rtCurrentTime && bReadOnly)
+			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)RT_SECOND) < rtCurrentTime && bReadOnly)
 			{
 				CNetRender::UpdateNetFlow(&netArray);
 				if(m_State != State_Stopped	&& TRUE)
@@ -301,6 +301,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 					else if (!m_pPidParser->pidArray.Count())
 					{
 						//update the parser
+//						UpdatePidParser(m_pFileDuration);
 						UpdatePidParser(m_pFileReader);
 					}
 					
@@ -309,7 +310,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				}
 
 				//Change back to normal Auto operation if not already
-				if (count == 4 && m_pPidParser->pidArray.Count() && m_bColdStart)
+				if (count == 6 && m_pPidParser->pidArray.Count() && m_bColdStart)
 				{
 					//Change back to normal Auto operation
 					m_pDemux->set_Auto(m_bColdStart);
@@ -317,7 +318,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				}
 
 				count++;
-				if (count > 5)
+				if (count > 6)
 					count = 0;
 
 				m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
@@ -585,7 +586,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 //			m_pFileDuration->set_DelayMode(TRUE);
 			m_pFileReader->set_DelayMode(FALSE); //Cold Start
 			m_pFileDuration->set_DelayMode(FALSE); //Cold Start
-			REFERENCE_TIME stop, start = (__int64)max(0,(__int64)(m_pPidParser->pids.dur - 20000000));
+			REFERENCE_TIME stop, start = (__int64)max(0,(__int64)(m_pPidParser->pids.dur - RT_2_SECOND));
 			IMediaSeeking *pMediaSeeking;
 			if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
 			{
@@ -681,7 +682,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 
 		//Start at least 100ms into file to skip header
 		if (start == 0 && m_pPidParser->pidArray.Count())
-			start += 1000000;
+			start += m_pPidParser->get_StartTimeOffset();
 
 //***********************************************************************************************
 //Old Capture format Additions
@@ -733,7 +734,7 @@ HRESULT CTSFileSourceFilter::Pause()
 
 		//Start at least 100ms into file to skip header
 		if (start == 0 && m_pPidParser->pidArray.Count())
-			start += 1000000;
+			start += m_pPidParser->get_StartTimeOffset();
 
 //***********************************************************************************************
 //Old Capture format Additions
@@ -968,6 +969,9 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	//Get Auto Mode 
 	BOOL bAutoEnable = m_pDemux->get_Auto();
 
+	//Get clock if we had been told to previously
+	int clock = m_pDemux->get_ClockMode();
+
 	delete m_pStreamParser;
 	delete m_pDemux;
 	delete m_pPidParser;
@@ -1008,6 +1012,10 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	//Set ROT Mode if we had been told to previously
 	m_bRotEnable = bRotEnable;
 
+	//Set clock if we had been told to previously
+	if (clock)
+		m_pDemux->set_ClockMode(clock);
+
 	hr = m_pFileReader->SetFileName(wFileName);
 	if (FAILED(hr))
 	{
@@ -1032,7 +1040,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	__int64	fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
 	//If this a file start then return null.
-	if(fileSize < 2000000)
+	if(fileSize < MIN_FILE_SIZE)
 	{
 		//Check for forced pin mode
 		if (pmt)
@@ -1040,7 +1048,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			//Set for cold start
 			m_bColdStart = m_pDemux->get_Auto();
 			m_pDemux->set_Auto(FALSE);
-			m_pClock->SetClockRate(0.99);
+//			m_pClock->SetClockRate(0.99);
 
 			if(MEDIATYPE_Stream == pmt->majortype)
 			{
@@ -1076,22 +1084,25 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			CAutoLock cObjectLock(m_pLock);
 			m_pFileReader->CloseFile();
 		}
+		delete[] wFileName;
+
+		m_pPin->m_IntBaseTimePCR = 0;
+		m_pPin->m_IntStartTimePCR = 0;
+		m_pPin->m_IntCurrentTimePCR = 0;
+		m_pPin->m_IntEndTimePCR = 0;
+		m_pPin->SetDuration(0);
+
 		IMediaSeeking *pMediaSeeking;
 		if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
 		{
 			CAutoLock cObjectLock(m_pLock);
-			m_pPin->m_IntBaseTimePCR = 0;
-			m_pPin->m_IntStartTimePCR = 0;
-			m_pPin->m_IntCurrentTimePCR = 0;
-			m_pPin->m_IntEndTimePCR = 0;
-			m_pPin->SetDuration(0);
 			REFERENCE_TIME stop, start = 0;
 			stop = 0;
 			hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_AbsolutePositioning);
 			pMediaSeeking->Release();
 			NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);	
 		}
-		delete[] wFileName;
+
 		return S_OK;
 	}
 
@@ -1150,7 +1161,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 		if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
 		{
 			CAutoLock cObjectLock(m_pLock);
-			REFERENCE_TIME stop, start = 1000000;
+			REFERENCE_TIME stop, start = m_pPidParser->get_StartTimeOffset();
 			stop = m_pPidParser->pids.dur;
 			hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_AbsolutePositioning);
 			pMediaSeeking->Release();
@@ -1231,6 +1242,9 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	//Get Auto Mode 
 	BOOL bAutoEnable = m_pDemux->get_Auto();
 
+	//Get clock if we had been told to previously
+	int clock = m_pDemux->get_ClockMode();
+
 	delete m_pStreamParser;
 	delete m_pDemux;
 	delete m_pPidParser;
@@ -1270,6 +1284,10 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 	//Set ROT Mode if we had been told to previously
 	m_bRotEnable = bRotEnable;
+
+	//Set clock if we had been told to previously
+	if (clock)
+		m_pDemux->set_ClockMode(clock);
 
 	hr = m_pFileReader->SetFileName(pszFileName);
 	if (FAILED(hr))
@@ -1312,7 +1330,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		fileSizeSave = fileSize;
 	};
 */
-	if(fileSize < 2000000)
+	if(fileSize < MIN_FILE_SIZE)
 	{
 		//Check for forced pin mode
 		if (pmt)
@@ -1320,7 +1338,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 			//Set for cold start
 			m_bColdStart = m_pDemux->get_Auto();
 			m_pDemux->set_Auto(FALSE);
-			m_pClock->SetClockRate(0.99);
+//			m_pClock->SetClockRate(0.99);
 
 			if(MEDIATYPE_Stream == pmt->majortype)
 			{
@@ -1385,6 +1403,37 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 
+	//Check for forced pin mode
+	if (pmt)
+	{
+		if(MEDIATYPE_Stream == pmt->majortype)
+		{
+			//Are we in Transport mode
+			if (MEDIASUBTYPE_MPEG2_TRANSPORT == pmt->subtype)
+				m_pPidParser->set_ProgPinMode(FALSE);
+
+			//Are we in Program mode
+			else if (MEDIASUBTYPE_MPEG2_PROGRAM == pmt->subtype)
+				m_pPidParser->set_ProgPinMode(TRUE);
+
+			m_pPidParser->set_AsyncMode(FALSE);
+		}
+	}
+
+	CMediaType cmt;
+	cmt.InitMediaType();
+	cmt.SetType(&MEDIATYPE_Stream);
+	cmt.SetSubtype(&MEDIASUBTYPE_NULL);
+
+	//Are we in Transport mode
+	if (!m_pPidParser->get_ProgPinMode())
+		cmt.SetSubtype(&MEDIASUBTYPE_MPEG2_TRANSPORT);
+	//Are we in Program mode
+	else 
+		cmt.SetSubtype(&MEDIASUBTYPE_MPEG2_PROGRAM);
+
+	m_pPin->SetMediaType(&cmt);
+
 	// Reconnect Demux if pin mode has changed and Source is connected
 	if (m_pPidParser->get_ProgPinMode() != pinModeSave && (IPin*)m_pPin->IsConnected())
 	{
@@ -1417,7 +1466,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
 		{
 			CAutoLock cObjectLock(m_pLock);
-			REFERENCE_TIME stop, start = 1000000;
+			REFERENCE_TIME stop, start = m_pPidParser->get_StartTimeOffset();
 			stop = m_pPidParser->pids.dur;
 			hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_AbsolutePositioning);
 			pMediaSeeking->Release();
@@ -1458,9 +1507,9 @@ HRESULT CTSFileSourceFilter::LoadPgmReg(void)
 HRESULT CTSFileSourceFilter::Refresh()
 {
 	CAutoLock lock(&m_Lock);
-	if (m_pFileDuration)
-		return UpdatePidParser(m_pFileDuration);
-	else if (m_pFileReader)
+//	if (m_pFileDuration)
+//		return UpdatePidParser(m_pFileDuration);
+//	else if (m_pFileReader)
 		return UpdatePidParser(m_pFileReader);
 
 	return E_FAIL;

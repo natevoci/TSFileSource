@@ -110,7 +110,7 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 
 	// Access the sample's data buffer
 	ULONG a = 0;
-	ULONG ulDataLength = 200000;
+	ULONG ulDataLength = MIN_FILE_SIZE / 10;
 	ULONG ulDataRead = 0;
 	PBYTE pData = new BYTE[ulDataLength];
 //	ZeroMemory(pData, ulDataLength);
@@ -215,7 +215,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	// Access the sample's data buffer
 	ULONG a = 0;
 //	ULONG ulDataLength = 2000000;
-	ULONG ulDataLength = 4000000;
+	ULONG ulDataLength = MIN_FILE_SIZE*2;
 	ULONG ulDataRead = 0;
 	PBYTE pData = new BYTE[ulDataLength];
 //	ZeroMemory(pData, ulDataLength);
@@ -311,7 +311,6 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				}
 			}
 		}
-
 
 		//Loop through Programs found
 		int i = 0;
@@ -560,14 +559,14 @@ HRESULT PidParser::RefreshPids()
 	WORD readonly = 0;;
 	m_pFileReader->get_ReadOnly(&readonly);
 	//Check if file is being recorded
-	if(fileSize < 2100000 && readonly)
+	if(fileSize < MIN_FILE_SIZE && readonly)
 	{
 		int count = 0;
 		__int64 fileSizeSave = fileSize;
-		while ((fileSize) < 20000000 && count < 20)
+		while ((fileSize) < MIN_FILE_SIZE*10 && count < 20)
 		{
 			m_pFileReader->GetFileSize(&fileStart, &fileSize);
-			while ((fileSize < fileSizeSave + 2000000) && (count < 20))
+			while ((fileSize < fileSizeSave + MIN_FILE_SIZE) && (count < 20))
 			{
 				Sleep(100);
 				count++;
@@ -576,7 +575,7 @@ HRESULT PidParser::RefreshPids()
 			m_pFileReader->GetFileSize(&fileStart, &fileSize);
 			fileSizeSave = fileSize;
 			ParseFromFile(filestartpointer); 
-			if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0 || m_ProgPinMode) //cold start
+			if (m_ONetworkID > 0 && m_NetworkID > 0 || m_ProgPinMode) //cold start
 				return S_OK;
 		}
 	}
@@ -1159,7 +1158,7 @@ REFERENCE_TIME PidParser::GetPCRFromFile(int step)
 
 	REFERENCE_TIME pcrtime = 0;
 
-	ULONG lDataLength = 2000000;
+	ULONG lDataLength = MIN_FILE_SIZE;
 	PBYTE pData = new BYTE[lDataLength];
 	ULONG lDataRead = 0;
 
@@ -1360,18 +1359,18 @@ HRESULT PidParser::CheckEPGFromFile()
 
 		__int64 fileStartPointer = m_pFileReader->getFilePointer();
 
-		iterations = ((fileSize - fileStartPointer) / 2000000); 
+		iterations = ((fileSize - fileStartPointer) / MIN_FILE_SIZE); 
 		if (iterations >= 64)
 			iterations = 64;
 		else if (iterations < 32)
 		{
 			iterations = 32;
-			fileStartPointer = fileSize - (iterations * 2000000);
+			fileStartPointer = fileSize - (iterations * MIN_FILE_SIZE);
 			if (fileStartPointer < 100000)
 				fileStartPointer = 100000;
 		}
 
-		ULONG ulDataLength = 2000000;
+		ULONG ulDataLength = MIN_FILE_SIZE;
 		ULONG ulDataRead = 0;
 		PBYTE pData = new BYTE[ulDataLength];
 
@@ -1398,16 +1397,16 @@ HRESULT PidParser::CheckEPGFromFile()
 					if (epgfound == false)
 					{
 						pos = pos + m_PacketSize;
-						if (pos >= 2000000)
+						if (pos >= MIN_FILE_SIZE)
 						{
 							ULONG ulBytesRead = 0;
-							hr = pFileReader->Read(pData, 2000000, &ulBytesRead);
+							hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
 
 							iterations++;
 							pos = 0;
 							if (hr == S_OK)
 							{
-								hr = FindSyncByte(pData, 2000000, &pos, 1);
+								hr = FindSyncByte(pData, MIN_FILE_SIZE, &pos, 1);
 							}
 						}
 					}
@@ -1567,7 +1566,7 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 		int iterations = 0;
 		bool nitfound = false;
 
-		ULONG ulDataLength = 2000000;
+		ULONG ulDataLength = MIN_FILE_SIZE;
 		ULONG ulDataRead = 0;
 		PBYTE pData = new BYTE[ulDataLength];
 
@@ -1592,16 +1591,16 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 				if (nitfound == false)
 				{
 					pos = pos + m_PacketSize;
-					if (pos >= 2000000)
+					if (pos >= MIN_FILE_SIZE)
 					{
 						ULONG ulBytesRead = 0;
-						hr = pFileReader->Read(pData, 2000000, &ulBytesRead);
+						hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
 
 						iterations++;
 						pos = 0;
 						if (hr == S_OK)
 						{
-							hr = FindSyncByte(pData, 2000000, &pos, 1);
+							hr = FindSyncByte(pData, MIN_FILE_SIZE, &pos, 1);
 						}
 					}
 				}
@@ -1715,7 +1714,7 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 		int iterations = 0;
 		bool onitfound = false;
 
-		ULONG ulDataLength = 2000000;
+		ULONG ulDataLength = MIN_FILE_SIZE;
 		ULONG ulDataRead = 0;
 		PBYTE pData = new BYTE[ulDataLength];
 
@@ -1744,16 +1743,16 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 				if (onitfound == false)
 				{
 					pos = pos + m_PacketSize;
-					if (pos >= 2000000)
+					if (pos >= MIN_FILE_SIZE)
 					{
 						ULONG ulBytesRead = 0;
-						hr = pFileReader->Read(pData, 2000000, &ulBytesRead);
+						hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
 
 						iterations++;
 						pos = 0;
 						if (hr == S_OK)
 						{
-							hr = FindSyncByte(pData, 2000000, &pos, 1);
+							hr = FindSyncByte(pData, MIN_FILE_SIZE, &pos, 1);
 						}
 					}
 				}
@@ -1914,7 +1913,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 
 
 	__int64 startFilePos = 0; 
-	long lDataLength = 2000000;
+	long lDataLength = MIN_FILE_SIZE;
 	PBYTE pData = new BYTE[lDataLength];
 
 	pFileReader->GetFileSize(&fileStart, &filelength);
@@ -2304,9 +2303,17 @@ void PidParser::set_ProgPinMode(BOOL mode)
 __int64 PidParser::get_StartOffset(void)
 {
 	if (m_ProgPinMode)
-		return 0;
+		return FILE_START_POS_PS;
 	else
-		return 500000; 
+		return FILE_START_POS_TS; 
+}
+
+REFERENCE_TIME PidParser::get_StartTimeOffset(void)
+{
+	if (m_ProgPinMode)
+		return RT_FILE_START_PS;
+	else
+		return RT_FILE_START_TS; 
 }
 
 void PidParser::set_AsyncMode(BOOL mode)
