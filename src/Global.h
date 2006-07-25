@@ -66,9 +66,26 @@
 #define RT_2_SECOND 20000000 //2 sec
 #endif
 
-struct BoostThread
+/**********************************************
+ *
+ *  CBufferInfo Class
+ *
+ **********************************************/
+
+class CBufferInfo
 {
-   BoostThread()
+public:
+	CBufferInfo(){};
+	virtual ~CBufferInfo(){};
+
+	BYTE *sample;
+	long size;
+};
+
+class BoostThread
+{
+public:
+	BoostThread()
    {
 		#ifndef DEBUG
 		   if ((int)GetPriorityClass(GetCurrentProcess()) != IDLE_PRIORITY_CLASS)
@@ -92,8 +109,9 @@ struct BoostThread
    int m_nPriority;
 };
 
-struct LowBoostThread
+class LowBoostThread
 {
+public:
    LowBoostThread()
    {
 		#ifndef DEBUG
@@ -118,8 +136,9 @@ struct LowBoostThread
    int m_nPriority;
 };
 
-struct HighestThread
+class HighestThread
 {
+public:
    HighestThread()
    {
 		#ifndef DEBUG
@@ -144,8 +163,9 @@ struct HighestThread
    int m_nPriority;
 };
 
-struct AbnormalThread
+class AbnormalThread
 {
+public:
    AbnormalThread()
    {
 		#ifndef DEBUG
@@ -170,8 +190,9 @@ struct AbnormalThread
    int m_nPriority;
 };
 
-struct NormalThread
+class NormalThread
 {
+public:
    NormalThread()
    {
 		#ifndef DEBUG
@@ -196,8 +217,9 @@ struct NormalThread
    int m_nPriority;
 };
 
-struct BrakeThread
+class BrakeThread
 {
+public:
    BrakeThread()
    {
 		#ifndef DEBUG
@@ -222,8 +244,9 @@ struct BrakeThread
    int m_nPriority;
 };
 
-struct BoostProcess
+class BoostProcess
 {
+public:
    BoostProcess()
    {
 		#ifndef DEBUG
@@ -242,8 +265,9 @@ struct BoostProcess
    DWORD m_nPriority;
 };
 
-struct HighProcess
+class HighProcess
 {
+public:
    HighProcess()
    {
 		#ifndef DEBUG
@@ -262,8 +286,9 @@ struct HighProcess
    DWORD m_nPriority;
 };
 
-struct AbnormalProcess
+class AbnormalProcess
 {
+public:
    AbnormalProcess()
    {
 		#ifndef DEBUG
@@ -282,8 +307,9 @@ struct AbnormalProcess
    DWORD m_nPriority;
 };
 
-struct NormalProcess
+class NormalProcess
 {
+public:
    NormalProcess()
    {
 		#ifndef DEBUG
@@ -302,8 +328,9 @@ struct NormalProcess
    DWORD m_nPriority;
 };
 
-struct BelowNormalProcess
+class BelowNormalProcess
 {
+public:
    BelowNormalProcess()
    {
 		#ifndef DEBUG
@@ -322,8 +349,9 @@ struct BelowNormalProcess
    DWORD m_nPriority;
 };
 
-struct IdleProcess
+class IdleProcess
 {
+public:
    IdleProcess()
    {
 		#ifndef DEBUG

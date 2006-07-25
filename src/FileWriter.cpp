@@ -67,6 +67,7 @@ HRESULT FileWriter::SetFileName(LPCWSTR pszFileName)
 		delete[] m_pFileName;
 		m_pFileName = NULL;
 	}
+
 	m_pFileName = new wchar_t[length+1];
 	if (m_pFileName == NULL)
 		return E_OUTOFMEMORY;

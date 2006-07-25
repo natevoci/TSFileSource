@@ -292,8 +292,8 @@ BOOL CTSFileSinkProp::PopulateDialog()
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_DEFNAME), sz);
 	
 	WCHAR curFileName[MAX_PATH];
-	m_pProgram->GetBufferFileName((unsigned short*)&curFileName);
-	wsprintf(sz, TEXT("%s"), curFileName);
+	m_pProgram->GetBufferFileName((LPWSTR)&curFileName);
+	wsprintf(sz, TEXT("%S"), curFileName);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_CURNAME), sz);
 
 	return RefreshDialog();

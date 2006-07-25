@@ -70,9 +70,10 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
+	m_pSampleBuffer = new CSampleBuffer();
 	m_pFileReader = new FileReader();
 	m_pFileDuration = new FileReader();//Get Live File Duration Thread
-	m_pPidParser = new PidParser(m_pFileReader);
+	m_pPidParser = new PidParser(m_pSampleBuffer, m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
@@ -145,8 +146,8 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	delete	m_pPin;
 	delete	m_pFileReader;
 	delete  m_pFileDuration;
+	delete  m_pSampleBuffer;
 	netArray.Clear();
-
 }
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
@@ -292,16 +293,16 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 							{
 								lstrcpyW(pFileName, pszFileName);
 								load(pFileName, NULL);
-								delete[] pFileName;
+								if (pFileName)
+									delete[] pFileName;
 							}
 						}
 					}
 					//check pids every 5sec or quicker if no pids parsed
-//					else if (count == 5 || !m_pPidParser->pidArray.Count())
-					else if (!m_pPidParser->pidArray.Count())
+					else if (count == 5 || !m_pPidParser->pidArray.Count())
+//					else if (!m_pPidParser->pidArray.Count())
 					{
 						//update the parser
-//						UpdatePidParser(m_pFileDuration);
 						UpdatePidParser(m_pFileReader);
 					}
 					
@@ -876,12 +877,15 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			USES_CONVERSION;
 			if(wFileName)
 				delete[] wFileName;
+
 			wFileName = new WCHAR[1+lstrlenW(T2W(ptFilename))];
 			lstrcpyW(wFileName, T2W(ptFilename));
 		}
 		else
 		{
-			delete[] wFileName;
+			if(wFileName)
+				delete[] wFileName;
+
 			return NO_ERROR;
 		}
 	}
@@ -912,8 +916,9 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			hr = CNetRender::CreateNetworkGraph(netAddr);
 			if(FAILED(hr)  || (hr > 31))
 			{
-				delete[] netAddr;
-				delete[] wFileName;
+				delete netAddr;
+				if(wFileName)
+					delete[] wFileName;
 //				MessageBoxW(NULL, netAddr->fileName, L"Graph Builder Failed", NULL);
 				return hr;
 			}
@@ -921,6 +926,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			netArray.Add(netAddr);
 			if(wFileName)
 				delete[] wFileName;
+
 			wFileName = new WCHAR[1+lstrlenW(netAddr->fileName)];
 			lstrcpyW(wFileName, netAddr->fileName);
 //			m_pFileReader->set_DelayMode(TRUE);
@@ -933,13 +939,14 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 		{
 			if(wFileName)
 				delete[] wFileName;
+
 			wFileName = new WCHAR[1+lstrlenW(netArray[pos].fileName)];
 			lstrcpyW(wFileName, netArray[pos].fileName);
-			delete[] netAddr;
+			delete netAddr;
 		}
 	}
 	else
-		delete[] netAddr;
+		delete netAddr;
 
 	for (int pos = 0; pos < netArray.Count(); pos++)
 	{
@@ -953,7 +960,9 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	if (m_bThreadRunning || is_Active() || m_pPin->CBasePin::IsConnected())
 	{
 		hr = ReLoad(wFileName, pmt);
-		delete[] wFileName;
+		if(wFileName)
+			delete[] wFileName;
+
 		return hr;
 	}
 
@@ -971,6 +980,9 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 
 	//Get clock if we had been told to previously
 	int clock = m_pDemux->get_ClockMode();
+
+	//Get Rate Mode 
+	BOOL bRateControl = m_pPin->get_RateControl();
 
 	delete m_pStreamParser;
 	delete m_pDemux;
@@ -992,7 +1004,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	//m_pFileReader->SetDebugOutput(TRUE);
 	//m_pFileDuration->SetDebugOutput(TRUE);
 
-	m_pPidParser = new PidParser(m_pFileReader);
+	m_pPidParser = new PidParser(m_pSampleBuffer, m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
@@ -1019,14 +1031,18 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	hr = m_pFileReader->SetFileName(wFileName);
 	if (FAILED(hr))
 	{
-		delete[] wFileName;
+		if(wFileName)
+			delete[] wFileName;
+
 		return hr;
 	}
 
 	hr = m_pFileReader->OpenFile();
 	if (FAILED(hr))
 	{
-		delete[] wFileName;
+		if(wFileName)
+			delete[] wFileName;
+
 		return VFW_E_INVALIDMEDIATYPE;
 	}
 
@@ -1042,6 +1058,10 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	//If this a file start then return null.
 	if(fileSize < MIN_FILE_SIZE)
 	{
+//		m_pFileReader->setFilePointer(0, FILE_BEGIN);
+//		m_pPidParser->ParsePinMode();
+		m_pPidParser->ParseFromFile(0);
+
 		//Check for forced pin mode
 		if (pmt)
 		{
@@ -1064,7 +1084,9 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			}
 		}
 		else
-			m_pPidParser->ParsePinMode();
+		{
+//			m_pPidParser->ParsePinMode();
+		}
 
 		CMediaType cmt;
 		cmt.InitMediaType();
@@ -1084,7 +1106,9 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			CAutoLock cObjectLock(m_pLock);
 			m_pFileReader->CloseFile();
 		}
-		delete[] wFileName;
+
+		if(wFileName)
+			delete[] wFileName;
 
 		m_pPin->m_IntBaseTimePCR = 0;
 		m_pPin->m_IntStartTimePCR = 0;
@@ -1148,7 +1172,9 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 		CAutoLock cObjectLock(m_pLock);
 		m_pFileReader->CloseFile();
 	}
-	delete[] wFileName;
+	
+	if(wFileName)
+		delete[] wFileName;
 
 	m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
@@ -1232,6 +1258,9 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 	BOOL pinModeSave = m_pPidParser->get_ProgPinMode();
 
+	//Get Rate Mode 
+	BOOL bRateControl = m_pPin->get_RateControl();
+
 	//Set delay if we had been told to previously
 	USHORT delay;
 	m_pFileReader->get_DelayMode(&delay);
@@ -1265,7 +1294,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	//m_pFileReader->SetDebugOutput(TRUE);
 	//m_pFileDuration->SetDebugOutput(TRUE);
 
-	m_pPidParser = new PidParser(m_pFileReader);
+	m_pPidParser = new PidParser(m_pSampleBuffer,m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
@@ -1281,6 +1310,9 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		m_pFileReader->set_DelayMode(delay);
 		m_pFileDuration->set_DelayMode(delay);
 	}
+
+	//Get Rate Mode 
+	m_pPin->set_RateControl(bRateControl);
 
 	//Set ROT Mode if we had been told to previously
 	m_bRotEnable = bRotEnable;
@@ -1332,6 +1364,10 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 */
 	if(fileSize < MIN_FILE_SIZE)
 	{
+//		m_pFileReader->setFilePointer(0, FILE_BEGIN);
+//		m_pPidParser->ParsePinMode();
+		m_pPidParser->ParseFromFile(0);
+
 		//Check for forced pin mode
 		if (pmt)
 		{
@@ -1354,7 +1390,9 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 			}
 		}
 		else
-			m_pPidParser->ParsePinMode();
+		{
+//			m_pPidParser->ParsePinMode();
+		}
 
 		CMediaType cmt;
 		cmt.InitMediaType();
@@ -1519,7 +1557,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 {
 	HRESULT hr = S_FALSE;// if an error occurs.
 
-	PidParser *pPidParser = new PidParser(pFileReader);
+	PidParser *pPidParser = new PidParser(m_pSampleBuffer, pFileReader);
 	
 	int sid = m_pPidParser->pids.sid;
 	int sidsave = m_pPidParser->m_ProgramSID;
@@ -1627,10 +1665,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 
 HRESULT CTSFileSourceFilter::RefreshPids()
 {
-	HRESULT hr;
-
-//	CAutoLock lock(&m_Lock);
-	hr = m_pPidParser->ParseFromFile(m_pFileReader->getFilePointer());
+	HRESULT hr = m_pPidParser->ParseFromFile(m_pFileReader->getFilePointer());
 	m_pStreamParser->ParsePidArray();
 	return hr;
 }

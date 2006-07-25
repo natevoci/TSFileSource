@@ -28,13 +28,7 @@
 
 #include <vector>
 #include "TSThread.h"	
-
-typedef struct BufferInfo
-{
-	BYTE *sample;
-	long size;
-
-} BUFFERINFO;
+#include "Global.h"
 
 /**********************************************
  *
@@ -70,7 +64,7 @@ private:
 
     CCritSec m_ReceiveLock;
 
-	std::vector<BUFFERINFO*> m_Array;
+	std::vector<CBufferInfo*> m_Array;
 	__int64 m_writeBufferSize;
 	CCritSec m_BufferLock;
 

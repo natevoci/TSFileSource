@@ -36,9 +36,9 @@ CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 	m_pClock = pClock;
 	m_lItemOffset = 0;
 	if (m_pPidParser->get_ProgPinMode())
-		m_lTSBufferItemSize = 102400;
+		m_lTSBufferItemSize = 65536/4;//102400;
 	else
-		m_lTSBufferItemSize = 188000;
+		m_lTSBufferItemSize = 65536/4;//188000;
 
 	debugcount = 0;
 	m_lbuflen = 0;
@@ -282,8 +282,11 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 	{
 		while (lOffset >= m_lTSBufferItemSize)
 		{
-			itemIndex++;
 			lOffset -= m_lTSBufferItemSize;
+
+			itemIndex++;
+			if(!m_Array.size() || m_Array.size() <= itemIndex)
+				return E_FAIL;
 		}
 
 		if(!m_Array.size() || m_Array.size() <= itemIndex)

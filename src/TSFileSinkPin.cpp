@@ -59,18 +59,18 @@ CTSFileSinkPin::CTSFileSinkPin(CTSFileSink *pTSFileSink, LPUNKNOWN pUnk, CBaseFi
 
 CTSFileSinkPin::~CTSFileSinkPin()
 {
-	delete[] m_writeBuffer;
 	Clear();
+	delete[] m_writeBuffer;
 }
 
 void CTSFileSinkPin::Clear()
 {
-	StopThread(500);
+	StopThread(0);
 	CAutoLock BufferLock(&m_BufferLock);
-	std::vector<BUFFERINFO*>::iterator it = m_Array.begin();
+	std::vector<CBufferInfo*>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
 	{
-		BUFFERINFO *bufferInfo = *it;
+		CBufferInfo *bufferInfo = *it;
 		delete[] bufferInfo->sample;
 		delete bufferInfo;
 	}
@@ -345,8 +345,8 @@ void CTSFileSinkPin::ThreadProc()
 		if (size)
 		{
 			CAutoLock BufferLock(&m_BufferLock);
-			std::vector<BUFFERINFO*>::iterator it = m_Array.begin();
-			BUFFERINFO *bufferInfo = *it;
+			std::vector<CBufferInfo*>::iterator it = m_Array.begin();
+			CBufferInfo *bufferInfo = *it;
 			item = bufferInfo->sample;
 			sampleLen = bufferInfo->size;
 			m_Array.erase(it);
@@ -367,10 +367,10 @@ void CTSFileSinkPin::ThreadProc()
 			{
 				CAutoLock BufferLock(&m_BufferLock);
 				::OutputDebugString(TEXT("DWDumpInputPin::ThreadProc:Write Fail."));
-				std::vector<BUFFERINFO*>::iterator it = m_Array.begin();
+				std::vector<CBufferInfo*>::iterator it = m_Array.begin();
 				for ( ; it != m_Array.end() ; it++ )
 				{
-					BUFFERINFO *bufferInfo = *it;
+					CBufferInfo *bufferInfo = *it;
 					delete[] bufferInfo->sample;
 					delete bufferInfo;
 				}
@@ -407,7 +407,7 @@ HRESULT CTSFileSinkPin::WriteBufferSample(byte* pbData,long sampleLen)
 		//use the sample packet size for the buffer
 		if(sampleLen <= bufferLen)
 		{
-			BUFFERINFO *newItem = new BUFFERINFO;
+			CBufferInfo *newItem = new CBufferInfo();
 			newItem->sample = new BYTE[sampleLen];
 			//Return if we are out of memory
 			if (!newItem->sample)
@@ -429,7 +429,7 @@ HRESULT CTSFileSinkPin::WriteBufferSample(byte* pbData,long sampleLen)
 			for (long i = sampleLen; i > 0; i -= bufferLen)
 			{
 				long size = ((i/bufferLen) != 0)*bufferLen + ((i/bufferLen) == 0)*i;
-				BUFFERINFO *newItem = new BUFFERINFO;
+				CBufferInfo *newItem = new CBufferInfo();
 				newItem->sample = new BYTE[size];
 				//Return if we are out of memory
 				if (!newItem->sample)
@@ -452,10 +452,10 @@ HRESULT CTSFileSinkPin::WriteBufferSample(byte* pbData,long sampleLen)
 	::OutputDebugString(TEXT("DWDumpInputPin::WriteBufferSample:Buffer Full error."));
 	CAutoLock BufferLock(&m_BufferLock);
 	::OutputDebugString(TEXT("DWDumpInputPin::ThreadProc:Write Fail."));
-	std::vector<BUFFERINFO*>::iterator it = m_Array.begin();
+	std::vector<CBufferInfo*>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
 	{
-		BUFFERINFO *bufferInfo = *it;
+		CBufferInfo *bufferInfo = *it;
 		delete[] bufferInfo->sample;
 		delete bufferInfo;
 	}

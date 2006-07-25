@@ -150,7 +150,9 @@ STDMETHODIMP CTSFileSink::NonDelegatingQueryInterface(REFIID riid, void ** ppv)
 
             if (FAILED(hr)) 
             {
-                delete m_pPosition;
+				if (m_pPosition)
+					delete m_pPosition;
+
                 m_pPosition = NULL;
                 return hr;
             }

@@ -50,13 +50,13 @@ MultiFileWriter::~MultiFileWriter()
 {
 	CloseFile();
 	if (m_pTSBufferFileName)
-		delete m_pTSBufferFileName;
+		delete[] m_pTSBufferFileName;
 
 	if (m_pTSRegFileName)
-		delete m_pTSRegFileName;
+		delete[] m_pTSRegFileName;
 
 	if (m_pCurrentTSFile)
-		delete m_pCurrentTSFile;
+		delete[] m_pCurrentTSFile;
 }
 
 HRESULT MultiFileWriter::GetFileName(LPOLESTR *lpszFileName)

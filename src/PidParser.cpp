@@ -37,8 +37,9 @@
 //////////////////////////////////////////////////////////////////////
 
 
-PidParser::PidParser(FileReader *pFileReader)
+PidParser::PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader)
 {
+	m_pSampleBuffer = pSampleBuffer;
 	m_pFileReader = pFileReader;
 	m_PacketSize = 188; //Start with Transport packet size 
 	m_ATSCFlag = false;
@@ -78,8 +79,6 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 		return NOERROR;
 	}
 
-//	CAutoLock parserlock(&m_ParserLock);
-
 	//Store file pointer so we can reset it before leaving this method
 	FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
 	LPOLESTR fileName;
@@ -91,7 +90,9 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 		delete pFileReader;
 		return VFW_E_INVALIDMEDIATYPE;
 	}
-//OutputDebugStringW(fileName);
+
+	__int64 fileStart, filelength;
+	pFileReader->GetFileSize(&fileStart, &filelength);
 
 	//Check if we are locked out
 	int count = 0;
@@ -101,6 +102,7 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 		count++;
 		if (count > 10)
 		{
+			pFileReader->CloseFile();
 			delete pFileReader;
 			return S_FALSE;
 		}
@@ -110,53 +112,49 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 
 	// Access the sample's data buffer
 	ULONG a = 0;
-	ULONG ulDataLength = MIN_FILE_SIZE / 10;
+	ULONG ulDataLength = min(filelength, MIN_FILE_SIZE*2);
 	ULONG ulDataRead = 0;
 	PBYTE pData = new BYTE[ulDataLength];
-//	ZeroMemory(pData, ulDataLength);
-//	__int64 fileStart, filelength;
-//	pFileReader->GetFileSize(&fileStart, &filelength);
-//	fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
-	m_FileStartPointer = max(0, fileStartPointer);
-	pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
+	pFileReader->setFilePointer(0, FILE_BEGIN);
 	pFileReader->Read(pData, ulDataLength, &ulDataRead);
+	ulDataLength = ulDataRead;
 
-	if (ulDataRead > 0x800)
+	if (ulDataLength > 2048*4)
 	{
-		m_PacketSize = 188;
-		m_ProgPinMode = FALSE;
+		m_PacketSize = 0x800;
+		m_ProgPinMode = TRUE;
 		int count = 0;
-		a = 0;
+		a = ulDataLength - m_PacketSize;
 		hr = S_OK;
-		while (hr == S_OK && count < 10)
+		while (hr == S_OK && count < 2)
 		{
 			//search at the end of the file for sync bytes
-			hr = FindSyncByte(pData, ulDataRead - 0x188, &a, 1);
+			hr = FindSyncByte(pData, ulDataLength, &a, -1);
 			if (hr == S_OK)
 			{
 				count++;
-				a += m_PacketSize;
+				a -= m_PacketSize;
 			}
 		}
-		if (count < 10)
+		if (count < 2)
 		{
-			m_PacketSize = 0x800;
-			m_ProgPinMode = TRUE;
+			m_PacketSize = 188;
+			m_ProgPinMode = FALSE;
 			count = 0;
-			a = 0;
+			a = ulDataLength - m_PacketSize;
 			hr = S_OK;
-			while (hr == S_OK && count < 2)
+			while (hr == S_OK && count < 10)
 			{
 				//search at the end of the file for sync bytes
-				hr = FindSyncByte(pData, ulDataRead - 0x800, &a, 1);
+				hr = FindSyncByte(pData, ulDataLength, &a, -1);
 				if (hr == S_OK)
 				{
 					count++;
-					a += m_PacketSize;
+					a -= m_PacketSize;
 				}
 
 			}
-			if (count < 2)
+			if (count < 10)
 			{
 				m_PacketSize = 188;
 				m_ProgPinMode = FALSE;
@@ -181,7 +179,6 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		return NOERROR;
 	}
 
-//	CAutoLock parserlock(&m_ParserLock);
 
 	//Store file pointer so we can reset it before leaving this method
 	FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
@@ -204,6 +201,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		count++;
 		if (count > 10)
 		{
+			pFileReader->CloseFile();
 			delete pFileReader;
 			return S_FALSE;
 		}
@@ -211,21 +209,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	//Lock the parser
 	m_ParsingLock = TRUE;
 
-//	int iterations = 0;
 	// Access the sample's data buffer
-	ULONG a = 0;
-//	ULONG ulDataLength = 2000000;
-	ULONG ulDataLength = MIN_FILE_SIZE*2;
-	ULONG ulDataRead = 0;
-	PBYTE pData = new BYTE[ulDataLength];
-//	ZeroMemory(pData, ulDataLength);
-
-	__int64 fileStart, filelength;
-	pFileReader->GetFileSize(&fileStart, &filelength);
-	fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
-	m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
-	pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
-	pFileReader->Read(pData, ulDataLength, &ulDataRead);
 
 	pids.Clear();
 	
@@ -239,199 +223,389 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
 	m_AsyncMode = FALSE; //Set for control by filter
 
+	__int64 fileStart, filelength;
+	pFileReader->GetFileSize(&fileStart, &filelength);
+	ULONG ulDataLength = min(MIN_FILE_SIZE*2, filelength);
+	fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
+	m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
+	if (filelength < MIN_FILE_SIZE*2)
+		pFileReader->setFilePointer(0, FILE_BEGIN);
+	else
+		pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
+
+	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
+	ULONG ulDataRead = 0;
+	if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+		pFileReader->Read(pData, ulDataLength, &ulDataRead);
+
+	if (ulDataRead < 1)
+	{
+		//UnLock the parser and return false
+		m_ParsingLock = FALSE;
+		delete[] pData;
+		pFileReader->CloseFile();
+		delete pFileReader;
+		return S_FALSE;
+	}
+	
 	ulDataLength = ulDataRead;
+
+	//check if we have something to give us the media format
+	ULONG a = 0;
+	m_PacketSize = 0x800;
+	m_ProgPinMode = TRUE;
+	count = 0;
+	a = ulDataRead - m_PacketSize;
+	hr = S_OK;
+	while (hr == S_OK && count < 2)
+	{
+		//search back from the end of the file for sync bytes
+		hr = FindSyncByte(pData, ulDataRead, &a, -1);
+		if (hr == S_OK)
+		{
+			count++;
+			a -= m_PacketSize;
+		}
+	}
+	if (count < 2)
+	{
+		m_PacketSize = 188;
+		m_ProgPinMode = FALSE;
+		count = 0;
+		a = ulDataRead - m_PacketSize;
+		hr = S_OK;
+		while (hr == S_OK && count < 10)
+		{
+			//search back from the end of the file for sync bytes
+			hr = FindSyncByte(pData, ulDataRead, &a, -1);
+			if (hr == S_OK)
+			{
+				count++;
+				a -= m_PacketSize;
+			}
+		}
+		if (count < 10)
+		{
+			m_PacketSize = 188;
+			m_ProgPinMode = FALSE;
+		}
+	}
+
+	a = 0;
 	if (ulDataLength > 0)
 	{
 		//Clear all Pid arrays
 		pidArray.Clear();
 		BOOL patfound = false;
-
-		hr = S_OK;
-		while (hr == S_OK)
+		//skip if we are in program mode
+		if (!m_ProgPinMode)
 		{
-			//search at the head of the file
-			hr = FindSyncByte(pData, ulDataLength, &a, 1);
-			if (hr == S_OK)
-			{
-				//parse next packet for the PAT
-				if (ParsePAT(pData, ulDataLength, a) == S_OK)
-				{
-					// If second pass
-					if (patfound)
-					{
-						break;
-					}
-					else
-					{
-						//Set to exit after next pat & Erase first occuracnce
-						pidArray.Clear();
-						m_TStreamID = 0; //TSID store
-						patfound = true;
-					}
-				};
-				a += m_PacketSize;
-			}
-		}
-		//if no PAT found Scan for PMTs
-		if (pidArray.Count() == 0)
-		{
+/*
 			a = 0;
-			pids.sid = 0;
-			pids.pmt = 0;
 			hr = S_OK;
-
-			//Scan buffer for any PMTs
-			while (pids.pmt == 0x00 && hr == S_OK)
+			while (hr == S_OK)
 			{
 				//search at the head of the file
 				hr = FindSyncByte(pData, ulDataLength, &a, 1);
 				if (hr == S_OK)
 				{
-					//parse next packet for the PMT
-					if (ParsePMT(pData, ulDataLength, a) == S_OK)
+					//parse next packet for the PAT
+					if (ParsePAT(pData, ulDataLength, a) == S_OK)
 					{
-						//Check if PMT was already found
-						BOOL pmtfound = false;
-						for (int i = 0; i < pidArray.Count(); i++)
+						// If second pass
+						if (patfound)
 						{
-							//Search PMT Array for the PMT & SID also
-							if (pidArray[i].sid == pids.sid)
-							{
-								pmtfound = true;
-								break;
-							}
+							break;
 						}
-						if (!pmtfound)
-							AddPidArray();
-
-						pids.sid = 0x00;
-						pids.pmt = 0x00;
-					}
+						else
+						{
+							//Set to exit after next pat & Erase first occuracnce
+							pidArray.Clear();
+							m_TStreamID = 0; //TSID store
+							patfound = true;
+						}
+					};
 					a += m_PacketSize;
 				}
 			}
-		}
 
-		//Loop through Programs found
-		int i = 0;
-		while (i < pidArray.Count())
-		{
-			//filepos = 0;
-			a = 0;
-			pids.Clear();
-			hr = S_OK;
-
-			int curr_pmt = pidArray[i].pmt;
-			int pmtfound = 0;
-			int curr_sid = pidArray[i].sid;
-
-			while (pids.pmt != curr_pmt && hr == S_OK)
+			//if no PAT found Scan for PMTs
+			if (pidArray.Count() == 0)
 			{
-				//search at the head of the file
-				hr = FindSyncByte(pData, ulDataLength, &a, 1);
-				if (hr != S_OK)
-					break;
-				//parse next packet for the PMT
-				pids.Clear();
-				if (ParsePMT(pData, ulDataLength, a) == S_OK)
-				{
-					//Check PMT & SID matches program
-					if (pids.pmt == curr_pmt && pids.sid == curr_sid && pmtfound > 0)
-					{
-						//Search for valid A/V pids
-						if (IsValidPMT(pData, ulDataLength) == S_OK)
-						{
-							//Set pcr & Store pids from PMT
-							RefreshDuration(FALSE, pFileReader);
-//							pids.start = GetPCRFromFile(1);
-//							pids.end = GetPCRFromFile(-1);
-//							pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
-							SetPidArray(i);
-							i++;
-							break;
-						}
-						pids.pmt = 0;
-						pids.sid = 0;
-						break;
-					}
+				a = 0;
+				pids.sid = 0;
+				pids.pmt = 0;
+				hr = S_OK;
 
-					if (pids.pmt == curr_pmt && pids.sid == curr_sid)
+				//Scan buffer for any PMTs
+				while (pids.pmt == 0x00 && hr == S_OK)
+				{
+					//search at the head of the file
+					hr = FindSyncByte(pData, ulDataLength, &a, 1);
+					if (hr == S_OK)
 					{
-						pmtfound++;
-						pids.pmt = 0;
-						pids.sid = 0;
+						//parse next packet for the PMT
+						if (ParsePMT(pData, ulDataLength, a) == S_OK)
+						{
+							//Check if PMT was already found
+							BOOL pmtfound = false;
+							for (int i = 0; i < pidArray.Count(); i++)
+							{
+								//Search PMT Array for the PMT & SID also
+								if (pidArray[i].sid == pids.sid)
+								{
+									pmtfound = true;
+									break;
+								}
+							}
+							if (!pmtfound)
+								AddPidArray();
+
+							pids.sid = 0x00;
+							pids.pmt = 0x00;
+						}
+						a += m_PacketSize;
 					}
 				}
-				a += m_PacketSize;
+			}
+
+			//Loop through Programs found
+			int i = 0;
+			while (i < pidArray.Count())
+			{
+				//filepos = 0;
+				a = 0;
+				pids.Clear();
+				hr = S_OK;
+
+				int curr_pmt = pidArray[i].pmt;
+				int pmtfound = 0;
+				int curr_sid = pidArray[i].sid;
+
+				while (pids.pmt != curr_pmt && hr == S_OK)
+				{
+					//search at the head of the file
+					hr = FindSyncByte(pData, ulDataLength, &a, 1);
+					if (hr != S_OK)
+						break;
+					//parse next packet for the PMT
+					pids.Clear();
+					if (ParsePMT(pData, ulDataLength, a) == S_OK)
+					{
+						//Check PMT & SID matches program
+						if (pids.pmt == curr_pmt && pids.sid == curr_sid && pmtfound > 0)
+						{
+							//Search for valid A/V pids
+							if (IsValidPMT(pData, ulDataLength) == S_OK)
+							{
+								//Set pcr & Store pids from PMT
+								RefreshDuration(FALSE, pFileReader);
+								SetPidArray(i);
+								i++;
+								break;
+							}
+							pids.pmt = 0;
+							pids.sid = 0;
+							break;
+						}
+
+						if (pids.pmt == curr_pmt && pids.sid == curr_sid)
+						{
+							pmtfound++;
+							pids.pmt = 0;
+							pids.sid = 0;
+						}
+					}
+					a += m_PacketSize;
+				};
+
+				if (pids.pmt != curr_pmt || pids.sid != curr_sid || hr != S_OK) //Make sure we have a correct packet
+					pidArray.RemoveAt(i);
+			}
+*/
+			a = ulDataLength - m_PacketSize;
+			hr = S_OK;
+			while (hr == S_OK)
+			{
+				//search at the head of the file
+				hr = FindSyncByte(pData, ulDataLength, &a, -1);
+				if (hr == S_OK)
+				{
+					//parse next packet for the PAT
+					if (ParsePAT(pData, ulDataLength, a) == S_OK)
+					{
+						break;
+					}
+					a -= m_PacketSize;
+				}
 			};
 
-			if (pids.pmt != curr_pmt || pids.sid != curr_sid || hr != S_OK) //Make sure we have a correct packet
-				pidArray.RemoveAt(i);
+			//if no PAT found Scan for PMTs
+			if (pidArray.Count() == 0)
+			{
+				a = ulDataLength - m_PacketSize;
+				pids.sid = 0;
+				pids.pmt = 0;
+				hr = S_OK;
+
+				//Scan buffer for any PMTs
+				while (pids.pmt == 0x00 && hr == S_OK)
+				{
+					//search at the head of the file
+					hr = FindSyncByte(pData, ulDataLength, &a, -1);
+					if (hr == S_OK)
+					{
+						//parse next packet for the PMT
+						if (ParsePMT(pData, ulDataLength, a) == S_OK)
+						{
+							//Check if PMT was already found
+							BOOL pmtfound = false;
+							for (int i = 0; i < pidArray.Count(); i++)
+							{
+								//Search PMT Array for the PMT & SID also
+								if (pidArray[i].sid == pids.sid)
+								{
+									pmtfound = true;
+									break;
+								}
+							}
+							if (!pmtfound)
+								AddPidArray();
+
+							pids.sid = 0x00;
+							pids.pmt = 0x00;
+						}
+						a -= m_PacketSize;
+					}
+				}
+			}
+
+			//Loop through Programs found
+			int i = 0;
+			while (i < pidArray.Count())
+			{
+				//filepos = 0;
+				pids.Clear();
+				hr = S_OK;
+
+				int curr_pmt = pidArray[i].pmt;
+				int pmtfound = 0;
+				int curr_sid = pidArray[i].sid;
+
+				a = ulDataLength - m_PacketSize;
+				while (pids.pmt != curr_pmt && hr == S_OK)
+				{
+					//search at the head of the file
+					hr = FindSyncByte(pData, ulDataLength, &a, -1);
+					if (hr != S_OK)
+						break;
+					//parse next packet for the PMT
+					pids.Clear();
+					if (ParsePMT(pData, ulDataLength, a) == S_OK)
+					{
+						//Check PMT & SID matches program
+						if (pids.pmt == curr_pmt && pids.sid == curr_sid && pmtfound > 0)
+						{
+							//Search for valid A/V pids
+							if (IsValidPMT(pData, ulDataLength) == S_OK)
+							{
+								//Set pcr & Store pids from PMT
+								RefreshDuration(FALSE, pFileReader);
+								SetPidArray(i);
+								i++;
+								break;
+							}
+							pids.pmt = 0;
+							pids.sid = 0;
+							break;
+						}
+
+						if (pids.pmt == curr_pmt && pids.sid == curr_sid)
+						{
+							pmtfound++;
+							pids.pmt = 0;
+							pids.sid = 0;
+						}
+					}
+					a -= m_PacketSize;
+				};
+
+				if (pids.pmt != curr_pmt || pids.sid != curr_sid || hr != S_OK) //Make sure we have a correct packet
+					pidArray.RemoveAt(i);
+			}
 		}
 
 		//Search for A/V pids if no NIT or valid PMT found.
 		if (pidArray.Count() == 0)
 		{
-
-			//Search for any A/V Pids
-			if (ACheckVAPids(pData, ulDataLength) == S_OK)
+			//check if transport mode only
+			if (!m_ProgPinMode)
 			{
-				//Set the pcr to video or audio incase its included in packet
-				USHORT pcrsave = pids.pcr;
+				//Search for any A/V Pids
+				if (ACheckVAPids(pData, ulDataLength) == S_OK)
+				{
+					//Set the pcr to video or audio incase its included in packet
+					USHORT pcrsave = pids.pcr;
 
-				if (!pids.dur && pids.pcr) {
-					RefreshDuration(FALSE, pFileReader);
-				}
+					if (!pids.dur && pids.pcr) {
+						RefreshDuration(FALSE, pFileReader);
+					}
 
-				if (!pids.dur && pids.vid) {
-					pids.pcr = pids.vid;
-					RefreshDuration(FALSE, pFileReader);
-				}
+					if (!pids.dur && pids.vid) {
+						pids.pcr = pids.vid;
+						RefreshDuration(FALSE, pFileReader);
+					}
 
-				if (!pids.dur && pids.h264) {
-					pids.pcr = pids.h264;
-					RefreshDuration(FALSE, pFileReader);
-				}
-					
-				if (!pids.dur && pids.aud) {
-					pids.pcr = pids.aud;
-					RefreshDuration(FALSE, pFileReader);
-				}
+					if (!pids.dur && pids.h264) {
+						pids.pcr = pids.h264;
+						RefreshDuration(FALSE, pFileReader);
+					}
 						
-				if (!pids.dur && pids.aud2) {
-					pids.pcr = pids.aud;
-					RefreshDuration(FALSE, pFileReader);
-				}
-				
-				if (!pids.dur && pids.ac3) {
-					pids.pcr = pids.aud;
-					RefreshDuration(FALSE, pFileReader);
-				}
+					if (!pids.dur && pids.mpeg4) {
+						pids.pcr = pids.mpeg4;
+						RefreshDuration(FALSE, pFileReader);
+					}
+						
+					if (!pids.dur && pids.aud) {
+						pids.pcr = pids.aud;
+						RefreshDuration(FALSE, pFileReader);
+					}
+							
+					if (!pids.dur && pids.aud2) {
+						pids.pcr = pids.aud;
+						RefreshDuration(FALSE, pFileReader);
+					}
+					
+					if (!pids.dur && pids.ac3) {
+						pids.pcr = pids.aud;
+						RefreshDuration(FALSE, pFileReader);
+					}
 
-				if (!pids.dur && pids.ac3_2) {
-					pids.pcr = pids.aud;
-					RefreshDuration(FALSE, pFileReader);
-				}
+					if (!pids.dur && pids.ac3_2) {
+						pids.pcr = pids.aud;
+						RefreshDuration(FALSE, pFileReader);
+					}
 
-				if (!pids.dur && pids.txt) {
-					pids.pcr = pids.aud;
-					RefreshDuration(FALSE, pFileReader);
-				}
+					if (!pids.dur && pids.txt) {
+						pids.pcr = pids.aud;
+						RefreshDuration(FALSE, pFileReader);
+					}
 
-				if (!pids.dur && pids.vid) {
-					pids.pcr = pids.vid;
-					pids.opcr = pids.pcr;
-					RefreshDuration(FALSE, pFileReader);
-				}
+					if (!pids.dur && pids.vid) {
+						pids.pcr = pids.vid;
+						pids.opcr = pids.pcr;
+						RefreshDuration(FALSE, pFileReader);
+					}
 
-				// restore pcr pid if no matches with A/V pids
-				if (!pids.dur) {
-					//set fake duration if needed
-					pids.pcr = pcrsave;
-					RefreshDuration(FALSE, pFileReader);
+					// restore pcr pid if no matches with A/V pids
+					if (!pids.dur) {
+						//set fake duration if needed
+						pids.pcr = pcrsave;
+						RefreshDuration(FALSE, pFileReader);
+					}
+					else
+						AddPidArray();
 				}
-				else
-					AddPidArray();
 			}
 
 			if (!pidArray.Count())
@@ -498,13 +672,13 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		}
 
 		//Check for a ONID in file
-		if (!m_ATSCFlag)
+		if (!m_ATSCFlag && !m_ProgPinMode)
 			if (CheckONIDInFile(pFileReader) == S_OK)
 			{
 			}
 
 		//Check for a NID in file
-		if (!m_ATSCFlag)
+		if (!m_ATSCFlag && !m_ProgPinMode)
 			if(CheckNIDInFile(pFileReader) != S_OK)
 			{
 			}
@@ -563,13 +737,14 @@ HRESULT PidParser::RefreshPids()
 	{
 		int count = 0;
 		__int64 fileSizeSave = fileSize;
-		while ((fileSize) < MIN_FILE_SIZE*10 && count < 20)
+		while (fileSize < MIN_FILE_SIZE*10 && count < 20)
 		{
 			m_pFileReader->GetFileSize(&fileStart, &fileSize);
-			while ((fileSize < fileSizeSave + MIN_FILE_SIZE) && (count < 20))
+			while (!m_pSampleBuffer->Count() && (fileSize < fileSizeSave + MIN_FILE_SIZE) && (count < 20))
 			{
 				Sleep(100);
 				count++;
+				m_pFileReader->GetFileSize(&fileStart, &fileSize);
 			}
 			count++;
 			m_pFileReader->GetFileSize(&fileStart, &fileSize);
@@ -616,10 +791,18 @@ HRESULT PidParser::RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader)
 	}
 //*********************************************************************************************
 
-
 	__int64 originalFilePointer = pFileReader->getFilePointer();
 
-	pids.dur = GetFileDuration(&pids, pFileReader);
+	//check file duration the easy way
+	if (filelength < MIN_FILE_SIZE)
+	{
+		pids.start = GetPCRFromFile(pFileReader, 1);
+		pFileReader->setFilePointer(0, FILE_BEGIN);
+		pids.end = GetPCRFromFile(pFileReader, -1);
+		pids.dur = (REFERENCE_TIME)((pids.end - pids.start)/9) * 1000;
+	}
+	else
+		pids.dur = GetFileDuration(&pids, pFileReader);
 
 	//Refresh all the sub program durations in the pid array
 	if (bStoreInArray)
@@ -1151,7 +1334,7 @@ HRESULT PidParser::FindNextPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, 
 	return E_FAIL;
 }
 
-REFERENCE_TIME PidParser::GetPCRFromFile(int step)
+REFERENCE_TIME PidParser::GetPCRFromFile(FileReader *pFileReader, int step)
 {
 	if (step == 0)
 		return 0;
@@ -1162,7 +1345,7 @@ REFERENCE_TIME PidParser::GetPCRFromFile(int step)
 	PBYTE pData = new BYTE[lDataLength];
 	ULONG lDataRead = 0;
 
-	m_pFileReader->Read(pData, lDataLength, &lDataRead, 0, (step > 0) ? FILE_BEGIN : FILE_END);
+	pFileReader->Read(pData, lDataLength, &lDataRead, 0, (step > 0) ? FILE_BEGIN : FILE_END);
 	if (lDataRead <= m_PacketSize){
 
 		delete[] pData;
@@ -1913,17 +2096,17 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 
 
 	__int64 startFilePos = 0; 
-	long lDataLength = MIN_FILE_SIZE;
-	PBYTE pData = new BYTE[lDataLength];
 
 	pFileReader->GetFileSize(&fileStart, &filelength);
 	filelength -= 100000;
-	
 	__int64 endFilePos = filelength;
 	m_fileLenOffset = filelength;
 	m_fileStartOffset = get_StartOffset();// skip faulty header 
 	m_fileEndOffset = 0;
 	BOOL bBitRateOK = FALSE;
+	long lDataLength = MIN_FILE_SIZE;
+	PBYTE pData = new BYTE[lDataLength];
+
 
 
 //***********************************************************************************************

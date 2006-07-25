@@ -368,6 +368,14 @@ SOURCE=.\src\PidParser.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\SampleBuffer.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\SampleBuffer.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\TunerEvent.cpp
 # End Source File
 # Begin Source File

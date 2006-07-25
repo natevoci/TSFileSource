@@ -152,12 +152,12 @@ BEGIN
     CONTROL         "TSFileSource",IDC_TSFSCLOCK,"Button",BS_AUTORADIOBUTTON | 
                     WS_GROUP,215,154,65,8
     PUSHBUTTON      "&Change File Name",IDC_LOAD,47,15,65,10
-    LTEXT           "File Bit Rate",IDC_STATIC,68,41,65,8
+    LTEXT           "File Bit Rate",IDC_STATIC,68,41,43,8
     EDITTEXT        IDC_DATARATE,68,49,45,13,ES_AUTOHSCROLL | ES_READONLY
     EDITTEXT        IDC_CURR,14,49,48,12,ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Force 720x576 A.R.",IDC_FIXED_AR,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,210,44,85,10
-    CTEXT           "TSFileSource Version 2.2.0.6 Beta 4\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
+    CTEXT           "TSFileSource Version 2.2.0.6 Beta 5\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,7,220,288,26
     GROUPBOX        "Description",IDC_STATIC,7,212,288,34
 END
@@ -189,20 +189,20 @@ BEGIN
     EDITTEXT        IDC_CURNUMB,267,25,20,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Current File Number",IDC_STATIC,189,26,68,10
     EDITTEXT        IDC_CURNAME,189,102,66,12,ES_AUTOHSCROLL
-    LTEXT           "Current File Name",IDC_STATIC,189,90,77,10
+    LTEXT           "Current File Name",IDC_STATIC,189,92,77,10
     EDITTEXT        IDC_NUMBADD,267,41,20,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Number Files Added",IDC_STATIC,189,44,67,10
     EDITTEXT        IDC_NUMBREM,267,57,20,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "Number Removed",IDC_STATIC,189,58,66,10
     PUSHBUTTON      "&Change",IDC_CURNAMECHG,259,102,29,12,WS_GROUP
     PUSHBUTTON      "&Refresh Page",IDC_REFRESH,190,148,96,13
-    EDITTEXT        IDC_CURSIZE,189,124,66,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Current Buffer Size",IDC_STATIC,189,114,77,10
+    EDITTEXT        IDC_CURSIZE,189,127,66,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Current Buffer Size",IDC_STATIC,189,117,77,10
     LTEXT           "MBytes",IDC_STATIC,259,126,24,10
     EDITTEXT        IDC_PKTERRORS,189,78,66,12,ES_AUTOHSCROLL
     LTEXT           "Packet Errors",IDC_STATIC,189,68,60,10
     PUSHBUTTON      "&Reset",IDC_RESET,259,78,29,12,WS_GROUP
-    CTEXT           "TSFileSink of TSFileSource Version 2.2.0.6 Beta 4\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
+    CTEXT           "TSFileSink of TSFileSource Version 2.2.0.6 Beta 5\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,7,175,288,26
     GROUPBOX        "Description",IDC_STATIC,7,165,288,43
 END

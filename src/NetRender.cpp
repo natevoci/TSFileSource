@@ -316,7 +316,8 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 		return hr;
 	}
 	wsprintfW(netAddr->fileName, L"%S", pwFileName);
-	delete[] pwFileName;
+	if (pwFileName)
+		delete[] pwFileName;
 	
 //MessageBoxW(NULL, netAddr->fileName, ptFileName, NULL);
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);

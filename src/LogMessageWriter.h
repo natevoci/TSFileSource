@@ -27,14 +27,26 @@
 #include "LogMessage.h"
 #include <vector>
 #include "TSThread.h"
+#include "Global.h"
 
-typedef struct LOGINFO
+class CLogInfo
 {
+public:
+	CLogInfo()
+	{
+		pStr = NULL;
+		indent = 0;
+	};
+	virtual ~CLogInfo()
+	{
+		if (pStr)
+			delete[] pStr;
+	};
+
 	LPWSTR pStr;
 	int indent;
 
-} LOGINFO;
-
+};
 
 class LogMessageWriter : public LogMessageCallback, public TSThread
 {
@@ -52,7 +64,7 @@ private:
 
 	BOOL m_WriteThreadActive;
 	int m_LogBufferLimit;
-	std::vector<LOGINFO*> m_Array;
+	std::vector<CLogInfo*> m_Array;
 	CCritSec m_BufferLock;
 
 	void ClearBuffer(void);

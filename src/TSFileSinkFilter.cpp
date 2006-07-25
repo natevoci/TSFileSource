@@ -57,7 +57,7 @@ STDMETHODIMP CTSFileSinkFilter::Stop()
 {
     CAutoLock cObjectLock(m_pLock);
 
-	m_pTSFileSink->m_pPin->StopThread();
+	m_pTSFileSink->m_pPin->StopThread(100);
 
     if (m_pTSFileSink)
         m_pTSFileSink->CloseFile();

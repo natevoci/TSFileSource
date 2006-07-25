@@ -78,7 +78,7 @@ HRESULT FileReader::SetFileName(LPCOLESTR pszFileName)
 	if (m_pFileName == NULL)
 		return E_OUTOFMEMORY;
 
-	lstrcpyW(m_pFileName,pszFileName);
+	lstrcpyW(m_pFileName, pszFileName);
 
 	return S_OK;
 }

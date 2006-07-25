@@ -33,12 +33,12 @@
 
 #include "PidInfo.h"
 #include "FileReader.h"
+#include "SampleBuffer.h"
 
 class PidParser
 {
 public:
-
-PidParser(FileReader *pFileReader);
+PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader);
 	virtual ~PidParser();
 
 
@@ -123,7 +123,7 @@ protected:
 	bool CheckForNID(PBYTE pData, int pos, bool *extPacket, int *sectlen);
 	bool CheckForONID(PBYTE pData, int pos, bool *extpacket, int *sectlen);
 
-	REFERENCE_TIME GetPCRFromFile(int step);
+	REFERENCE_TIME GetPCRFromFile(FileReader *pFileReader, int step);
 	REFERENCE_TIME GetFileDuration(PidInfo *pPids, FileReader *pFileReader);
 
 	int		m_buflen;
@@ -138,6 +138,7 @@ protected:
 	__int64 m_FileStartPointer;
 
 	FileReader *m_pFileReader;
+	CSampleBuffer *m_pSampleBuffer;
 	CCritSec m_ParserLock;
 };
 
