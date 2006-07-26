@@ -299,8 +299,8 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 						}
 					}
 					//check pids every 5sec or quicker if no pids parsed
-					else if (count == 5 || !m_pPidParser->pidArray.Count())
-//					else if (!m_pPidParser->pidArray.Count())
+//					else if (count == 5 || !m_pPidParser->pidArray.Count())
+					else if (!m_pPidParser->pidArray.Count())
 					{
 						//update the parser
 						UpdatePidParser(m_pFileReader);
@@ -1056,11 +1056,13 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	__int64	fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
 	//If this a file start then return null.
-	if(fileSize < MIN_FILE_SIZE)
+	if (fileSize < MIN_FILE_SIZE)
 	{
 //		m_pFileReader->setFilePointer(0, FILE_BEGIN);
 //		m_pPidParser->ParsePinMode();
 		m_pPidParser->ParseFromFile(0);
+		if (!m_pPidParser->pids.dur)
+			m_pPidParser->pids.Clear();
 
 		//Check for forced pin mode
 		if (pmt)
@@ -1362,11 +1364,18 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		fileSizeSave = fileSize;
 	};
 */
-	if(fileSize < MIN_FILE_SIZE)
+	while (fileSize < MIN_FILE_SIZE)
 	{
 //		m_pFileReader->setFilePointer(0, FILE_BEGIN);
 //		m_pPidParser->ParsePinMode();
 		m_pPidParser->ParseFromFile(0);
+		if (m_pPidParser->pids.dur > 0)
+		{
+			m_pPidParser->pids.Clear();
+			break;
+		}
+		else
+			m_pPidParser->pids.Clear();
 
 		//Check for forced pin mode
 		if (pmt)
@@ -1428,7 +1437,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 			NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);	
 		}
 		return S_OK;
-	}
+	};
 
 	m_pFileReader->setFilePointer(m_pPidParser->get_StartOffset(), FILE_BEGIN);
 

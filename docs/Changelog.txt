@@ -1,7 +1,8 @@
-Version 2.2.0.6 Beta 4
+Version 2.2.0.6 Beta 6
 =================
 bear:
-- Fixed a problem in the Checkconnect() method where it was allowing connection to other than MS Demux filters.
+- Changed some things to improve performance for cold starting.
+- Fixed a proble in the Checkconnect() method where it was allowing connection to other than MS Demux filters.
 - Minor code changes to the reference clock mode setting when reloading the file name. The Clock mode setting is now kept after a file reload..
 - Removed the reference clock -1% change when cold starting, may have been causing some lipsync problems TBA.
 - Some minor changes to remove some threading stuff.

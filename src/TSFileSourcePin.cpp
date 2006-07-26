@@ -1053,7 +1053,7 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 		if (readonly) {
 			//wait for the Length Changed Event to complete
 			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
-			while ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)2000000) > rtCurrentTime) {
+			while ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)MIN_FILE_SIZE) > rtCurrentTime) {
 				rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 			}
 		}
@@ -1284,8 +1284,8 @@ PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 		BOOL timeShifting = IsTimeShifting(m_pTSFileSourceFilter->m_pFileReader, &bTimeMode);
 
 		//Prevent the filtergraph clock from approaching the end time
-		if (bTimeMode && ((__int64)(seektime + (__int64)40000000) > m_pTSFileSourceFilter->m_pPidParser->pids.dur))
-			seektime = max(0, m_pTSFileSourceFilter->m_pPidParser->pids.dur -(__int64)40000000);
+		if (bTimeMode && ((__int64)(seektime + (__int64)RT_2_SECOND*2) > m_pTSFileSourceFilter->m_pPidParser->pids.dur))
+			seektime = max(0, m_pTSFileSourceFilter->m_pPidParser->pids.dur -(__int64)RT_2_SECOND*2);
 	}
 
 //***********************************************************************************************
@@ -1325,8 +1325,8 @@ PrintTime(TEXT("our pcr Delta SeekTime"), (__int64)pcrDeltaSeekTime, 90);
 //This is where we create a pcr time relative to the current stream position
 //
 	ULONG ulBytesRead = 0;
-	long lDataLength = min(filelength, 4000000);//1000000;
-	PBYTE pData = new BYTE[4000000];
+	long lDataLength = min(filelength, MIN_FILE_SIZE*2);//1000000;
+	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
 	//Set Pointer to end of file to get end pcr
 	m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64) - ((__int64)lDataLength), FILE_END);
 	hr = m_pTSFileSourceFilter->m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
@@ -1448,7 +1448,7 @@ PrintTime(TEXT("seek---------"), (__int64) pcrPos, 90);
 PrintTime(TEXT("seek+++++++++++++"), (__int64) pcrPos, 90);
 	}
 
-//	lDataLength = min(filelength, 4000000);//1000000;
+//	lDataLength = min(filelength, MIN_FILE_SIZE*2);//1000000;
 
 	//Now we are close so setup the a +/- 2meg buffer
 	nFileIndex -= (__int64)(lDataLength / 2); //Centre buffer
