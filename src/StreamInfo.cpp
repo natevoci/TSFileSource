@@ -45,6 +45,7 @@ void StreamInfo::Clear()
 	Aud2  = false;
 	AC3   = false;
 	AAC   = false;
+	DTS   = false;
 	Pid   = 0;
 	ZeroMemory(&media, sizeof(AM_MEDIA_TYPE));
 	flags = 0;
@@ -64,6 +65,7 @@ void StreamInfo::CopyFrom(StreamInfo *StreamInfo)
 	Aud2  = StreamInfo->Aud2;
 	AC3   = StreamInfo->AC3;
 	AAC   = StreamInfo->AAC;
+	DTS   = StreamInfo->DTS;
 	Pid   = StreamInfo->Pid;
 	memcpy(&media, &StreamInfo->media, sizeof(AM_MEDIA_TYPE));
 	flags   = StreamInfo->flags;

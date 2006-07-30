@@ -36,7 +36,7 @@ class Demux
 {
 public:
 
-	Demux(PidParser *pPidParser, IBaseFilter *pFilter);
+	Demux(PidParser *pPidParser, IBaseFilter *pFilter, CFilterList *pFList);
 
 	virtual ~Demux();
 
@@ -51,12 +51,14 @@ public:
 	BOOL get_FixedAspectRatio();
 	BOOL get_CreateTSPinOnDemux();
 	BOOL get_CreateTxtPinOnDemux();
+	BOOL get_CreateSubPinOnDemux();
 	BOOL get_MPEG2AudioMediaType();
 	BOOL get_MPEG2Audio2Mode();
 	void set_MPEG2AudioMediaType(BOOL bMPEG2AudioMediaType);
 	void set_FixedAspectRatio(BOOL bFixedAR);
 	void set_CreateTSPinOnDemux(BOOL bCreateTSPinOnDemux);
 	void set_CreateTxtPinOnDemux(BOOL bCreateTxtPinOnDemux);
+	void set_CreateSubPinOnDemux(BOOL bCreateSubPinOnDemux);
 	void set_AC3Mode(BOOL bAC3Mode);
 	void set_NPSlave(BOOL bNPSlave);
 	void set_NPControl(BOOL bNPControl);
@@ -66,16 +68,19 @@ public:
 	void SetRefClock();
 	int  get_MP2AudioPid();
 	int  get_AAC_AudioPid();
+	int  get_DTS_AudioPid();
 	int  get_AC3_AudioPid();
 	int get_ClockMode();
 	HRESULT	GetAC3Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetMP2Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetMP1Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetAACMedia(AM_MEDIA_TYPE *pintype);
+	HRESULT	GetDTSMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetVideoMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT GetH264Media(AM_MEDIA_TYPE *pintype);
 	HRESULT GetMpeg4Media(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetTelexMedia(AM_MEDIA_TYPE *pintype);
+	HRESULT GetSubtitleMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetTSMedia(AM_MEDIA_TYPE *pintype);
 	static	HRESULT GetPeerFilters(IBaseFilter *pFilter, PIN_DIRECTION Dir, CFilterList &FilterList);  
 	static  HRESULT GetNextFilter(IBaseFilter *pFilter, PIN_DIRECTION Dir, IBaseFilter **ppNext);
@@ -96,19 +101,24 @@ protected:
 	HRESULT CheckVideoPin(IBaseFilter* pDemux);
 	HRESULT CheckAudioPin(IBaseFilter* pDemux);
 	HRESULT CheckAACPin(IBaseFilter* pDemux);
+	HRESULT CheckDTSPin(IBaseFilter* pDemux);
 	HRESULT CheckAC3Pin(IBaseFilter* pDemux);
 	HRESULT CheckTelexPin(IBaseFilter* pDemux);
+	HRESULT CheckSubtitlePin(IBaseFilter* pDemux);
 	HRESULT CheckTsPin(IBaseFilter* pDemux);
 	HRESULT	NewTsPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewAACPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
+	HRESULT	NewDTSPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewTelexPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
+	HRESULT	NewSubtitlePin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	LoadTsPin(IPin* pIPin);
 	HRESULT	LoadAudioPin(IPin* pIPin, ULONG pid);
 	HRESULT	LoadVideoPin(IPin* pIPin, ULONG pid);
 	HRESULT	LoadTelexPin(IPin* pIPin, ULONG pid);
+	HRESULT	LoadSubtitlePin(IPin* pIPin, ULONG pid);
 	HRESULT VetDemuxPin(IPin* pIPin, ULONG pid);
 	HRESULT	ClearDemuxPin(IPin* pIPin);
 	HRESULT	ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConnect);
@@ -122,6 +132,7 @@ protected:
 
 	IBaseFilter *m_pTSFileSourceFilter;
 	PidParser *m_pPidParser;
+	CFilterList *m_pFilterRefList;
 	CCritSec m_DemuxLock;
 
 	BOOL m_bAuto;
@@ -131,6 +142,7 @@ protected:
 	BOOL m_bFixedAR;
 	BOOL m_bCreateTSPinOnDemux;
 	BOOL m_bCreateTxtPinOnDemux;
+	BOOL m_bCreateSubPinOnDemux;
 	BOOL m_bMPEG2AudioMediaType;
 	BOOL m_bMPEG2Audio2Mode;
 	BOOL m_WasPlaying;
@@ -148,9 +160,11 @@ public:
 	BOOL m_StreamMP2;
 	BOOL m_StreamAud2;
 	BOOL m_StreamAAC;
+	BOOL m_StreamDTS;
 	int  m_SelAudioPid;
 	int  m_SelVideoPid;
 	int  m_SelTelexPid;
+	int  m_SelSubtitlePid;
 };
 
 #endif

@@ -58,7 +58,8 @@ CUnknown * WINAPI CTSFileSourceFilter::CreateInstance(LPUNKNOWN punk, HRESULT *p
 CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	CSource(NAME("CTSFileSourceFilter"), pUnk, CLSID_TSFileSource),
 	m_bRotEnable(FALSE),
-	m_pPin(NULL)
+	m_pPin(NULL),
+	m_FilterRefList(NAME("MyFilterRefList"))
 {
 	ASSERT(phr);
 
@@ -74,7 +75,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pFileReader = new FileReader();
 	m_pFileDuration = new FileReader();//Get Live File Duration Thread
 	m_pPidParser = new PidParser(m_pSampleBuffer, m_pFileReader);
-	m_pDemux = new Demux(m_pPidParser, this);
+	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
 	m_pMpeg2DataParser = NULL;
@@ -120,6 +121,17 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 		CAMThread::CallWorker(CMD_STOP);
 		CAMThread::CallWorker(CMD_EXIT);
 		CAMThread::Close();
+	}
+
+	//Clear the filter list;
+	POSITION pos = m_FilterRefList.GetHeadPosition();
+	while (pos){
+
+		if (m_FilterRefList.Get(pos) != NULL)
+				m_FilterRefList.Get(pos)->Release();
+
+		m_FilterRefList.Remove(pos);
+		pos = m_FilterRefList.GetHeadPosition();
 	}
 
 	if (m_pMpeg2DataParser)
@@ -557,6 +569,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamAC3 = m_pStreamParser->StreamArray[lIndex].AC3;
 		m_pDemux->m_StreamMP2 = m_pStreamParser->StreamArray[lIndex].Aud;
 		m_pDemux->m_StreamAAC = m_pStreamParser->StreamArray[lIndex].AAC;
+		m_pDemux->m_StreamDTS = m_pStreamParser->StreamArray[lIndex].DTS;
 		m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
 		set_PgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
 		BoostThread Boost;
@@ -567,6 +580,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamMP2 = 0;
 		m_pDemux->m_StreamAud2 = 0;
 		m_pDemux->m_StreamAAC = 0;
+		m_pDemux->m_StreamDTS = 0;
 		set_RegProgram();
 	}
 	else if (lIndex == m_pStreamParser->StreamArray.Count() - indexOffset - 2) //File Menu title
@@ -748,12 +762,26 @@ HRESULT CTSFileSourceFilter::Pause()
 			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
+
+		}
+		
+		//MSDemux fix
+		if (start >= m_pPidParser->pids.dur)
+		{
+			IMediaSeeking *pMediaSeeking;
+			if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+			{
+				REFERENCE_TIME stop, start = m_pPidParser->get_StartTimeOffset();
+				HRESULT hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+				pMediaSeeking->Release();
+			}
 		}
 
 		set_TunerEvent();
 
 		if (!m_bThreadRunning && CAMThread::ThreadExists())
 			CAMThread::CallWorker(CMD_PAUSE);
+
 	}
 
 	return CSource::Pause();
@@ -968,21 +996,51 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 
 	BoostThread Boost;
 
-	//Get delay if we had been told to previously
-	USHORT delay;
-	m_pFileReader->get_DelayMode(&delay);
+	//Get delay Mode
+	USHORT bDelay;
+	m_pFileReader->get_DelayMode(&bDelay);
 
-	//Get ROT Mode if we had been told to previously
+	//Get Pin Mode 
+	BOOL pinModeSave = m_pPidParser->get_ProgPinMode();
+
+	//Get ROT Mode 
 	BOOL bRotEnable = m_bRotEnable;
 
 	//Get Auto Mode 
 	BOOL bAutoEnable = m_pDemux->get_Auto();
 
-	//Get clock if we had been told to previously
+	//Get clock type
 	int clock = m_pDemux->get_ClockMode();
 
 	//Get Rate Mode 
 	BOOL bRateControl = m_pPin->get_RateControl();
+
+	//Get NP Control Mode 
+	BOOL bNPControl = m_pDemux->get_NPControl();
+
+	//Get NP Slave Mode 
+	BOOL bNPSlave = m_pDemux->get_NPSlave();
+
+	//Get AC3 Mode 
+	BOOL bAC3Mode = m_pDemux->get_AC3Mode();
+
+	//Get Aspect Ratio Mode 
+	BOOL bFixedAspectRatio = m_pDemux->get_FixedAspectRatio();
+
+	//Get Create TS Pin Mode 
+	BOOL bCreateTSPin = m_pDemux->get_CreateTSPinOnDemux();
+
+	//Get Create Txt Pin Mode 
+	BOOL bCreateTxtPin = m_pDemux->get_CreateTxtPinOnDemux();
+
+	//Get Create Subtitle Pin Mode 
+	BOOL bCreateSubPin = m_pDemux->get_CreateSubPinOnDemux();
+
+	//Get MPEG2 Audio Media Type Mode 
+	BOOL bMPEG2AudioMediaType = m_pDemux->get_MPEG2AudioMediaType();
+
+	//Get Audio 2 Mode Mode 
+	BOOL bAudio2Mode = m_pDemux->get_MPEG2Audio2Mode();
 
 	delete m_pStreamParser;
 	delete m_pDemux;
@@ -1005,28 +1063,42 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	//m_pFileDuration->SetDebugOutput(TRUE);
 
 	m_pPidParser = new PidParser(m_pSampleBuffer, m_pFileReader);
-	m_pDemux = new Demux(m_pPidParser, this);
+	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
 	// Load Registry Settings data
 	GetRegStore("default");
 	
-	//Set Auto Mode if we had been told to previously
-//	m_pDemux->set_Auto(bAutoEnable); don't do this
-
-	//Set delay if we had been told to previously
-	if (delay)
+	//Check for forced pin mode
+	if (pmt)
 	{
-		m_pFileReader->set_DelayMode(delay);
-		m_pFileDuration->set_DelayMode(delay);
+		//Set Auto Mode if we had been told to previously
+		m_pDemux->set_Auto(bAutoEnable); 
+
+		//Set delay if we had been told to previously
+		if (bDelay)
+		{
+			m_pFileReader->set_DelayMode(bDelay);
+			m_pFileDuration->set_DelayMode(bDelay);
+		}
+
+		//Set ROT Mode if we had been told to previously
+		m_bRotEnable = bRotEnable;
+
+		//Set clock if we had been told to previously
+		if (clock)
+			m_pDemux->set_ClockMode(clock);
+
+		m_pDemux->set_MPEG2AudioMediaType(bMPEG2AudioMediaType);
+		m_pDemux->set_FixedAspectRatio(bFixedAspectRatio);
+		m_pDemux->set_CreateTSPinOnDemux(bCreateTSPin);
+		m_pDemux->set_CreateTxtPinOnDemux(bCreateTxtPin);
+		m_pDemux->set_CreateSubPinOnDemux(bCreateSubPin);
+		m_pDemux->set_AC3Mode(bAC3Mode);
+		m_pDemux->set_NPSlave(bNPSlave);
+		m_pDemux->set_NPControl(bNPControl);
+		m_pDemux->set_MPEG2Audio2Mode(bAudio2Mode);
 	}
-
-	//Set ROT Mode if we had been told to previously
-	m_bRotEnable = bRotEnable;
-
-	//Set clock if we had been told to previously
-	if (clock)
-		m_pDemux->set_ClockMode(clock);
 
 	hr = m_pFileReader->SetFileName(wFileName);
 	if (FAILED(hr))
@@ -1258,23 +1330,52 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		m_pDemux->DoStop();
 	}
 
+	//Get delay Mode
+	USHORT bDelay;
+	m_pFileReader->get_DelayMode(&bDelay);
+
+	//Get Pin Mode 
 	BOOL pinModeSave = m_pPidParser->get_ProgPinMode();
 
-	//Get Rate Mode 
-	BOOL bRateControl = m_pPin->get_RateControl();
-
-	//Set delay if we had been told to previously
-	USHORT delay;
-	m_pFileReader->get_DelayMode(&delay);
-
-	//Get ROT Mode if we had been told to previously
+	//Get ROT Mode 
 	BOOL bRotEnable = m_bRotEnable;
 
 	//Get Auto Mode 
 	BOOL bAutoEnable = m_pDemux->get_Auto();
 
-	//Get clock if we had been told to previously
+	//Get clock type
 	int clock = m_pDemux->get_ClockMode();
+
+	//Get Rate Mode 
+	BOOL bRateControl = m_pPin->get_RateControl();
+
+	//Get NP Control Mode 
+	BOOL bNPControl = m_pDemux->get_NPControl();
+
+	//Get NP Slave Mode 
+	BOOL bNPSlave = m_pDemux->get_NPSlave();
+
+	//Get AC3 Mode 
+	BOOL bAC3Mode = m_pDemux->get_AC3Mode();
+
+	//Get Aspect Ratio Mode 
+	BOOL bFixedAspectRatio = m_pDemux->get_FixedAspectRatio();
+
+	//Get Create TS Pin Mode 
+	BOOL bCreateTSPin = m_pDemux->get_CreateTSPinOnDemux();
+
+	//Get Create Txt Pin Mode 
+	BOOL bCreateTxtPin = m_pDemux->get_CreateTxtPinOnDemux();
+
+	//Get Create Subtitle Pin Mode 
+	BOOL bCreateSubPin = m_pDemux->get_CreateSubPinOnDemux();
+
+	//Get MPEG2 Audio Media Type Mode 
+	BOOL bMPEG2AudioMediaType = m_pDemux->get_MPEG2AudioMediaType();
+
+	//Get Audio 2 Mode Mode 
+	BOOL bAudio2Mode = m_pDemux->get_MPEG2Audio2Mode();
+
 
 	delete m_pStreamParser;
 	delete m_pDemux;
@@ -1297,31 +1398,45 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	//m_pFileDuration->SetDebugOutput(TRUE);
 
 	m_pPidParser = new PidParser(m_pSampleBuffer,m_pFileReader);
-	m_pDemux = new Demux(m_pPidParser, this);
+	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
 	// Load Registry Settings data
 	GetRegStore("default");
 
-	//Set Auto Mode if we had been told to previously
-//	m_pDemux->set_Auto(bAutoEnable); don't do this
-
-	//Set delay if we had been told to previously
-	if (delay)
+	//Check for forced pin mode
+	if (TRUE)
 	{
-		m_pFileReader->set_DelayMode(delay);
-		m_pFileDuration->set_DelayMode(delay);
+		//Set Auto Mode if we had been told to previously
+		m_pDemux->set_Auto(bAutoEnable); 
+
+		//Set delay if we had been told to previously
+		if (bDelay)
+		{
+			m_pFileReader->set_DelayMode(bDelay);
+			m_pFileDuration->set_DelayMode(bDelay);
+		}
+
+		//Get Rate Mode 
+		m_pPin->set_RateControl(bRateControl);
+
+		//Set ROT Mode if we had been told to previously
+		m_bRotEnable = bRotEnable;
+
+		//Set clock if we had been told to previously
+		if (clock)
+			m_pDemux->set_ClockMode(clock);
+
+		m_pDemux->set_MPEG2AudioMediaType(bMPEG2AudioMediaType);
+		m_pDemux->set_FixedAspectRatio(bFixedAspectRatio);
+		m_pDemux->set_CreateTSPinOnDemux(bCreateTSPin);
+		m_pDemux->set_CreateTxtPinOnDemux(bCreateTxtPin);
+		m_pDemux->set_CreateSubPinOnDemux(bCreateSubPin);
+		m_pDemux->set_AC3Mode(bAC3Mode);
+		m_pDemux->set_NPSlave(bNPSlave);
+		m_pDemux->set_NPControl(bNPControl);
+		m_pDemux->set_MPEG2Audio2Mode(bAudio2Mode);
 	}
-
-	//Get Rate Mode 
-	m_pPin->set_RateControl(bRateControl);
-
-	//Set ROT Mode if we had been told to previously
-	m_bRotEnable = bRotEnable;
-
-	//Set clock if we had been told to previously
-	if (clock)
-		m_pDemux->set_ClockMode(clock);
 
 	hr = m_pFileReader->SetFileName(pszFileName);
 	if (FAILED(hr))
@@ -1799,9 +1914,31 @@ STDMETHODIMP CTSFileSourceFilter::GetAAC2Pid(WORD *pAac2Pid)
 	*pAac2Pid = m_pPidParser->pids.aac2;
 
 	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetDTSPid(WORD *pDtsPid)
+{
+	if(!pDtsPid)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pDtsPid = m_pPidParser->pids.dts;
+
+	return NOERROR;
 
 }
 
+STDMETHODIMP CTSFileSourceFilter::GetDTS2Pid(WORD *pDts2Pid)
+{
+	if(!pDts2Pid)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pDts2Pid = m_pPidParser->pids.dts2;
+
+	return NOERROR;
+
+}
 STDMETHODIMP CTSFileSourceFilter::GetAC3Pid(WORD *pAC3Pid)
 {
 	if(!pAC3Pid)
@@ -1835,6 +1972,19 @@ STDMETHODIMP CTSFileSourceFilter::GetTelexPid(WORD *pTelexPid)
 	CAutoLock lock(&m_Lock);
 
 	*pTelexPid = m_pPidParser->pids.txt;
+
+	return NOERROR;
+
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetSubtitlePid(WORD *pSubPid)
+{
+	if(!pSubPid)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+
+	*pSubPid = m_pPidParser->pids.sub;
 
 	return NOERROR;
 
@@ -2458,6 +2608,24 @@ STDMETHODIMP CTSFileSourceFilter::SetCreateTxtPinOnDemux(WORD bCreatePin)
 {
 	CAutoLock lock(&m_Lock);
 	m_pDemux->set_CreateTxtPinOnDemux(bCreatePin);
+	OnConnect();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetCreateSubPinOnDemux(WORD *pbCreatePin)
+{
+	if(!pbCreatePin)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pbCreatePin = m_pDemux->get_CreateSubPinOnDemux();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetCreateSubPinOnDemux(WORD bCreatePin)
+{
+	CAutoLock lock(&m_Lock);
+	m_pDemux->set_CreateSubPinOnDemux(bCreatePin);
 	OnConnect();
 	return NOERROR;
 }

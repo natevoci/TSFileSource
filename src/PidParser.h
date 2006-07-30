@@ -119,6 +119,8 @@ protected:
 
 	BOOL CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
 	BOOL CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+	BOOL CheckEsDescriptorForDTS(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+	BOOL CheckEsDescriptorForSubtitle(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
 	bool CheckForEPG(PBYTE pData, int pos, bool *extpacket, int *sectlen, int *sidcount, int *event);
 	bool CheckForNID(PBYTE pData, int pos, bool *extPacket, int *sectlen);
 	bool CheckForONID(PBYTE pData, int pos, bool *extpacket, int *sectlen);

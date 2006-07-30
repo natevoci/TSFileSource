@@ -37,7 +37,6 @@ typedef CGenericList<IBaseFilter> CFilterList;
 #include "TSFileSource.h"
 #include "PidParser.h"
 #include "TSBuffer.h"
-#include "TSFileSourcePinThread.h"	
  
 
 /**********************************************

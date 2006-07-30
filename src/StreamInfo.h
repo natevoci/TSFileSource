@@ -46,6 +46,7 @@ public:
 	bool Aud2;
 	bool AC3;
 	bool AAC;
+	bool DTS;
 	int  Pid;
 	AM_MEDIA_TYPE media;
 	DWORD flags;

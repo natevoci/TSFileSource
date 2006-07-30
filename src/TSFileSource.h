@@ -31,6 +31,9 @@
 #ifndef TSFILESOURCE_H
 #define TSFILESOURCE_H
 
+// Define a typedef for a list of filters.
+typedef CGenericList<IBaseFilter> CFilterList;
+
 #include <objbase.h>
 #include "ITSFileSource.h"
 
@@ -53,6 +56,7 @@ class CTSFileSourceFilter;
 #include "DVBMpeg2DataParser.h"
 #include <comdef.h>
 #include "SampleBuffer.h"
+
 
 /**********************************************
  *
@@ -211,6 +215,13 @@ protected:
 	STDMETHODIMP ShowStreamMenu(HWND hwnd);
 	STDMETHODIMP GetFixedAspectRatio(WORD *pbFixedAR);
 	STDMETHODIMP SetFixedAspectRatio(WORD pbFixedAR);
+	STDMETHODIMP GetDTSPid(WORD *pAacPid);
+	STDMETHODIMP GetDTS2Pid(WORD *pAac2Pid);
+	STDMETHODIMP GetSubtitlePid(WORD *pSubPid);
+	STDMETHODIMP GetCreateSubPinOnDemux(WORD *pbCreatePin);
+	STDMETHODIMP SetCreateSubPinOnDemux(WORD bCreatePin);
+
+	CFilterList m_FilterRefList;	// List to hold the Removed filters.string
 
 protected:
 

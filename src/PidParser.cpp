@@ -572,22 +572,47 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 					}
 							
 					if (!pids.dur && pids.aud2) {
-						pids.pcr = pids.aud;
+						pids.pcr = pids.aud2;
 						RefreshDuration(FALSE, pFileReader);
 					}
 					
 					if (!pids.dur && pids.ac3) {
-						pids.pcr = pids.aud;
+						pids.pcr = pids.ac3;
 						RefreshDuration(FALSE, pFileReader);
 					}
 
 					if (!pids.dur && pids.ac3_2) {
-						pids.pcr = pids.aud;
+						pids.pcr = pids.ac3_2;
+						RefreshDuration(FALSE, pFileReader);
+					}
+
+					if (!pids.dur && pids.aac) {
+						pids.pcr = pids.aac;
+						RefreshDuration(FALSE, pFileReader);
+					}
+							
+					if (!pids.dur && pids.aac2) {
+						pids.pcr = pids.aac2;
+						RefreshDuration(FALSE, pFileReader);
+					}
+
+					if (!pids.dur && pids.dts) {
+						pids.pcr = pids.dts;
+						RefreshDuration(FALSE, pFileReader);
+					}
+							
+					if (!pids.dur && pids.dts2) {
+						pids.pcr = pids.dts2;
 						RefreshDuration(FALSE, pFileReader);
 					}
 
 					if (!pids.dur && pids.txt) {
-						pids.pcr = pids.aud;
+						pids.pcr = pids.txt;
+						RefreshDuration(FALSE, pFileReader);
+					}
+
+					if (!pids.dur && pids.sub) {
+						pids.pcr = pids.sub;
 						RefreshDuration(FALSE, pFileReader);
 					}
 
@@ -612,9 +637,9 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				pids.Clear();
 
 			// If nothing then check for Program Pin Mode
-			if ((pids.vid | pids.h264| pids.mpeg4  
-				| pids.aud |pids.txt | pids.ac3 
-				| pids.aac | pids.pcr | pids.opcr) == 0)
+			if ((pids.vid | pids.h264 | pids.mpeg4 | pids.sub 
+				| pids.aud | pids.txt | pids.ac3 | pids.aac 
+				| pids.dts | pids.pcr | pids.opcr) == 0)
 			{
 				m_PacketSize = 0x800; //Set for 2048 block
 				m_pFileReader->set_DelayMode(FALSE);//cold start
@@ -625,16 +650,16 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				//Search for any A/V Pids
 				if (CheckVAStreams(pData, ulDataLength) == S_OK)
 				{
-					if (!(pids.vid | pids.h264 | pids.mpeg4  
+					if (!(pids.vid | pids.h264 | pids.mpeg4 | pids.sub 
 						 | pids.aud  | pids.txt  | pids.ac3 
-						 | pids.aac)){
+						 | pids.aac | pids.dts)){
 
 						m_PacketSize = 0x930; //Set for 2352 block
 						if (CheckVAStreams(pData, ulDataLength) == S_OK)
 						{
-							if (!(pids.vid | pids.h264 | pids.mpeg4  
+							if (!(pids.vid | pids.h264 | pids.mpeg4 | pids.sub 
 								| pids.aud  | pids.txt  | pids.ac3 
-								| pids.aac)) {
+								| pids.aac | pids.dts)) {
 									m_PacketSize = 188;
 									pFileReader->set_DelayMode(FALSE);
 									m_pFileReader->set_DelayMode(FALSE);
@@ -692,9 +717,9 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 		}
 
 		if (pids.vid != 0 || pids.h264 != 0 || pids.mpeg4 != 0 
-			|| pids.aud != 0 || pids.txt != 0
+			|| pids.aud != 0 || pids.txt != 0 || pids.sub
 			|| pids.ac3 != 0 || pids.aac != 0 || pids.pcr != 0
-			|| pids.pcr != 0)
+			|| pids.pcr != 0 || pids.dts)
 		{
 			hr = S_OK;
 		}
@@ -987,7 +1012,16 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 
 				if (StreamType == 0x06)
 				{
-					if (CheckEsDescriptorForAC3(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
+					if (CheckEsDescriptorForDTS(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
+					{
+						if (pids.dts == 0)
+							pids.dts = pid;
+						else
+							pids.dts2 = pid;// If already have DTS then get next.
+					}
+					else if (CheckEsDescriptorForSubtitle(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
+						pids.sub = pid;
+					else if (CheckEsDescriptorForAC3(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
 					{
 						if (pids.ac3 == 0)
 							pids.ac3 = pid;
@@ -1018,16 +1052,26 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 						pids.ac3_2 = pid;// If already have AC3 then get next.
 				}
 
-				if (StreamType == 0x0b)
-					if (pids.txt == 0)
-						pids.txt = pid;
+//				if (StreamType == 0x0b)
+//					if (pids.txt == 0)
+//						pids.txt = pid;
+
+				if (StreamType == 0x0b) //Subtitle
+					if (pids.sub == 0)
+						pids.sub = pid;
 
 				if (StreamType == 0x0f) // AAC
 					if (pids.aac == 0)
 						pids.aac = pid;
 					else
 						pids.aac2 = pid;
-
+/*
+				if (StreamType >= 0x88 && StreamType <= 0x8a) // DTS
+					if (pids.dts == 0)
+						pids.dts = pid;
+					else
+						pids.dts2 = pid;
+*/
 				b+=EsDescLen;
 			}
 		}
@@ -1211,6 +1255,18 @@ BOOL PidParser::CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos
 	return FALSE;
 }
 
+BOOL PidParser::CheckEsDescriptorForDTS(PBYTE pData, ULONG ulDataLength, int pos, int lastpos)
+{
+	WORD DescTag;
+	while (pos < lastpos)
+	{
+		DescTag = (0xFF & pData[pos]);
+		if (DescTag == 0x73) return TRUE;
+		pos += (int)(0xFF & pData[pos+1]) + 2;
+	}
+	return FALSE;
+}
+
 BOOL PidParser::CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, int pos, int lastpos)
 {
 	WORD DescTag;
@@ -1218,6 +1274,18 @@ BOOL PidParser::CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, in
 	{
 		DescTag = (0xFF & pData[pos]);
 		if (DescTag == 0x56) return TRUE;
+
+		pos += (int)(0xFF & pData[pos+1]) + 2;
+	}
+	return FALSE;
+}
+
+BOOL PidParser::CheckEsDescriptorForSubtitle(PBYTE pData, ULONG ulDataLength, int pos, int lastpos)
+{
+	WORD DescTag;
+	while (pos < lastpos)
+	{
+		DescTag = (0xFF & pData[pos]);
 		if (DescTag == 0x59) return TRUE;
 
 		pos += (int)(0xFF & pData[pos+1]) + 2;
@@ -1230,7 +1298,8 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 	HRESULT hr = S_FALSE;
 
 	//exit if no a/v pids to find
-	if (pids.aud + pids.vid + pids.h264 + pids.ac3 + pids.txt == 0)
+	if (pids.aud + pids.vid + pids.h264 + pids.mpeg4
+		+ pids.ac3 + pids.aac + pids.dts + pids.txt + pids.sub == 0)
 		return hr;
 
 	ULONG a, b;
@@ -1275,7 +1344,7 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 					}
 				}
 
-				if (pid && ((pid == pids.aud) || (pid == pids.ac3) || (pid == pids.txt)))
+				if (pid && ((pid == pids.aud) || (pid == pids.ac3) || (pid == pids.sub)))
 				{
 					//if ((0xFF0 & pesID) == 0x1c0)
 					{
@@ -1286,11 +1355,6 @@ HRESULT PidParser::IsValidPMT(PBYTE pData, ULONG ulDataLength)
 				if (((0xFF0&pesID) == 0x1b0) && (pids.ac3 == pid) && pids.ac3) {
 					return S_OK;
 				};
-
-				if (((0xFF0&pesID) == 0x1b0) && (pids.txt == pid) && pids.txt) {
-					return S_OK;
-				};
-
 			}
 			a += m_PacketSize;
 		}
@@ -2354,15 +2418,19 @@ void PidParser::SetPidArray(int n)
 
 	pidInfo->TsArray[0] = 0;
 	AddTsPid(pidInfo, pids.pmt);	AddTsPid(pidInfo, pids.pcr);
-	AddTsPid(pidInfo, pids.vid);	AddTsPid(pidInfo, pids.aud);
-	AddTsPid(pidInfo, pids.h264);
-	AddTsPid(pidInfo, pids.txt);	AddTsPid(pidInfo, pids.ac3);
+	AddTsPid(pidInfo, pids.vid);
+	AddTsPid(pidInfo, pids.h264);	AddTsPid(pidInfo, pids.mpeg4);
+	AddTsPid(pidInfo, pids.txt);	AddTsPid(pidInfo, pids.sub);
+	AddTsPid(pidInfo, pids.aud);	AddTsPid(pidInfo, pids.ac3);
+	AddTsPid(pidInfo, pids.aac);	AddTsPid(pidInfo, pids.dts);
 	AddTsPid(pidInfo, 0x00);			AddTsPid(pidInfo, 0x10);
 	AddTsPid(pidInfo, 0x11);			AddTsPid(pidInfo, 0x12);
 	AddTsPid(pidInfo, 0x13);			AddTsPid(pidInfo, 0x14);
 
 	if (pids.aud2 != 0) AddTsPid(pidInfo, pids.aud2);
 	if (pids.ac3_2 != 0) AddTsPid(pidInfo, pids.ac3_2);
+	if (pids.aac2 != 0) AddTsPid(pidInfo, pids.aac2);
+	if (pids.dts2 != 0) AddTsPid(pidInfo, pids.dts2);
 }
 
 void PidParser::AddTsPid(PidInfo *pidInfo, WORD pid)

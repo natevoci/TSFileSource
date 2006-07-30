@@ -285,7 +285,7 @@ BOOL CTSFileSourceProp::RefreshDialog()
 {
 	ASSERT(m_pProgram != NULL);
 
-	TCHAR sz[60];
+	TCHAR sz[MAX_PATH];
 	WORD PidNr = 0x00;
 	REFERENCE_TIME dur;
 
@@ -314,6 +314,14 @@ BOOL CTSFileSourceProp::RefreshDialog()
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AAC2), sz);
 
+	m_pProgram->GetDTSPid(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_DTS), sz);
+
+	m_pProgram->GetDTS2Pid(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_DTS2), sz);
+
 	m_pProgram->GetAC3Pid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_AC3), sz);
@@ -325,6 +333,11 @@ BOOL CTSFileSourceProp::RefreshDialog()
 	m_pProgram->GetNIDPid(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_NID), sz);
+
+	LPOLESTR filename;
+	m_pProgram->GetCurFile(&filename, NULL);
+	sprintf(sz, "%S",filename);
+	SetWindowText(GetDlgItem(m_hwnd, IDC_FILE), sz);
 
 	unsigned char netname[128] ="";
 	m_pProgram->GetNetworkName((unsigned char*)&netname);
@@ -394,6 +407,10 @@ BOOL CTSFileSourceProp::RefreshDialog()
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_TXT), sz);
 
+	m_pProgram->GetSubtitlePid(&PidNr);
+	wsprintf(sz, TEXT("%u"), PidNr);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_SUB), sz);
+
 //	m_pProgram->GetPgmNumb(&PidNr);
 //	wsprintf(sz, TEXT("%u"), PidNr);
 //	Edit_SetText(GetDlgItem(m_hwnd, IDC_PGM), sz);
@@ -410,6 +427,9 @@ BOOL CTSFileSourceProp::RefreshDialog()
 
 	m_pProgram->GetCreateTxtPinOnDemux(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_CREATETXTPIN, PidNr);
+
+	m_pProgram->GetCreateSubPinOnDemux(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_CREATESUBPIN, PidNr);
 
 	m_pProgram->GetAC3Mode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_AC3MODE,PidNr);
@@ -571,6 +591,15 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				{
 					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_CREATETXTPIN);
 					m_pProgram->SetCreateTxtPinOnDemux(checked);
+					OnRefreshProgram();
+					SetDirty();
+					break;
+				}
+
+				case IDC_CREATESUBPIN:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd,IDC_CREATESUBPIN);
+					m_pProgram->SetCreateSubPinOnDemux(checked);
 					OnRefreshProgram();
 					SetDirty();
 					break;

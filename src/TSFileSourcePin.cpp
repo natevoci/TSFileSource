@@ -420,6 +420,7 @@ HRESULT CTSFileSourcePin::BreakConnect()
 	m_rtTimeShiftPosition = 0;
 	m_LastMultiFileStart = 0;
 	m_LastMultiFileEnd = 0;
+
 	return hr;
 }
 
@@ -2217,6 +2218,8 @@ HRESULT CTSFileSourcePin::DisconnectDemux()
 			pFilter = FList.GetNext(pos);
 			if(pFilter != NULL)
 			{
+				//Keep a reference for later destroy, will not add the same object
+				Demux::AddFilterUnique(m_pTSFileSourceFilter->m_FilterRefList, pFilter);
 				// Get an instance of the Demux control interface
 				CComPtr<IMpeg2Demultiplexer> muxInterface;
 				if(SUCCEEDED(pFilter->QueryInterface (&muxInterface)))
@@ -2225,7 +2228,6 @@ HRESULT CTSFileSourcePin::DisconnectDemux()
 					muxInterface.Release();
 				}
 
-				pFilter->Release();
 				pFilter = NULL;
 			}
 		}
@@ -2234,6 +2236,9 @@ HRESULT CTSFileSourcePin::DisconnectDemux()
 	//Clear the filter list;
 	POSITION pos = FList.GetHeadPosition();
 	while (pos){
+
+		if (FList.Get(pos) != NULL)
+				FList.Get(pos)->Release();
 
 		FList.Remove(pos);
 		pos = FList.GetHeadPosition();
@@ -2343,6 +2348,8 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 			pFilter = FList.GetNext(pos);
 			if(pFilter != NULL)
 			{
+				//Keep a reference for later destroy, will not add the same object
+                Demux::AddFilterUnique(m_pTSFileSourceFilter->m_FilterRefList, pFilter);
 				// Get an instance of the Demux control interface
 				IMpeg2Demultiplexer* muxInterface = NULL;
 				if(SUCCEEDED(pFilter->QueryInterface (&muxInterface)))
@@ -2356,7 +2363,6 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 						pFilter->SetSyncSource(pClock);
 					muxInterface->Release();
 				}
-				pFilter->Release();
 				pFilter = NULL;
 			}
 		}
@@ -2365,6 +2371,9 @@ HRESULT CTSFileSourcePin::SetDemuxClock(IReferenceClock *pClock)
 	//Clear the filter list;
 	POSITION pos = FList.GetHeadPosition();
 	while (pos){
+
+		if (FList.Get(pos) != NULL)
+				FList.Get(pos)->Release();
 
 		FList.Remove(pos);
 		pos = FList.GetHeadPosition();
@@ -2423,12 +2432,13 @@ HRESULT CTSFileSourcePin::ReNewDemux()
 			pTPin->Release();
 		}
 
-
 		while (pos)
 		{
 			pFilter = FList.GetNext(pos);
 			if(pFilter != NULL)
 			{
+				//Keep a reference for later destroy, will not add the same object
+                Demux::AddFilterUnique(m_pTSFileSourceFilter->m_FilterRefList, pFilter);
 				// Get an instance of the Demux control interface
 				IMpeg2Demultiplexer* muxInterface = NULL;
 				if(SUCCEEDED(pFilter->QueryInterface (&muxInterface)))
@@ -2455,7 +2465,6 @@ HRESULT CTSFileSourcePin::ReNewDemux()
 
 						FilterInfo.pGraph->RemoveFilter(pFilter);
 						FilterInfo.pGraph->Release();
-						pFilter->Release();
 
 						//Replace the Demux Filter
 						pFilter = NULL;
@@ -2463,6 +2472,7 @@ HRESULT CTSFileSourcePin::ReNewDemux()
 						{
 							if (SUCCEEDED(FilterInfo.pGraph->AddFilter(pFilter, pName)))
 							{
+								Demux::AddFilterUnique(m_pTSFileSourceFilter->m_FilterRefList, pFilter);
 								IMpeg2Demultiplexer* muxInterface = NULL;
 								if(SUCCEEDED(pFilter->QueryInterface (&muxInterface)))
 									muxInterface->Release();
@@ -2496,16 +2506,19 @@ HRESULT CTSFileSourcePin::ReNewDemux()
 					}
 					if (pName) delete[] pName;
 				}
-				pFilter->Release();
 				pFilter = NULL;
 			}
 		}
-		if (PinInfo.pFilter) PinInfo.pFilter->Release();
+		if (PinInfo.pFilter)
+			PinInfo.pFilter->Release();
 	}
 
 	//Clear the filter list;
 	POSITION pos = FList.GetHeadPosition();
 	while (pos){
+
+		if (FList.Get(pos) != NULL)
+				FList.Get(pos)->Release();
 
 		FList.Remove(pos);
 		pos = FList.GetHeadPosition();

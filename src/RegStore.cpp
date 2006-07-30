@@ -239,6 +239,18 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			return FALSE;
 		}
 		setStore->setCreateTxtPinOnDemuxReg(regTxtPin);
+
+		BOOL regSubPin(FALSE);
+		datalen = 1;
+		type = 0;
+
+		resp = RegQueryValueEx(settingsKey, "enableSubPin", NULL, &type, (BYTE*)&regSubPin, &datalen);
+		if(resp != ERROR_SUCCESS)
+		{
+			RegCloseKey(settingsKey);
+			return FALSE;
+		}
+		setStore->setCreateSubPinOnDemuxReg(regSubPin);
 	}
 	
 	BOOL regAC3(FALSE);//(TRUE)
@@ -332,6 +344,9 @@ BOOL CRegStore::setSettingsInfo(CSettingsStore *setStore)
 
 		BOOL regTxtPin = setStore->getCreateTxtPinOnDemuxReg();
 		resp = RegSetValueEx(settingsKey, "enableTxtPin", NULL, REG_BINARY, (BYTE*)&regTxtPin, 1);
+
+		BOOL regSubPin = setStore->getCreateSubPinOnDemuxReg();
+		resp = RegSetValueEx(settingsKey, "enableSubPin", NULL, REG_BINARY, (BYTE*)&regSubPin, 1);
 	}
 	BOOL regAudio2 = setStore->getAudio2ModeReg();
 	resp = RegSetValueEx(settingsKey, "enableAudio2", NULL, REG_BINARY, (BYTE*)&regAudio2, 1);

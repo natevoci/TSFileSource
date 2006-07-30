@@ -73,12 +73,17 @@
 #define IDC_TSFSCLOCK                   1044
 #define IDC_LOAD                        1045
 #define IDC_FIXED_AR                    1046
+#define IDC_SUB                         1047
 #define IDC_CURNUMB                     1048
+#define IDC_DTS                         1048
 #define IDC_CURNAME                     1049
 #define IDC_CURR                        1049
 #define IDC_NUMBADD                     1050
+#define IDC_DTS2                        1050
 #define IDC_NUMBREM                     1051
+#define IDC_FILE                        1051
 #define IDC_CURSIZE                     1052
+#define IDC_CREATESUBPIN                1052
 
 // Next default values for new objects
 // 

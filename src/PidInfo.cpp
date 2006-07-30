@@ -47,6 +47,8 @@ void PidInfo::Clear()
 	aud2  = 0;
 	aac   = 0;
 	aac2  = 0;
+	dts   = 0;
+	dts2  = 0;
 	ac3   = 0;
 	ac3_2   = 0;
 	chnumb	= 0;
@@ -58,6 +60,7 @@ void PidInfo::Clear()
 	ZeroMemory(endesc, 600);
 
 	txt   = 0;
+	sub   = 0;
 	sid   = 0;
 	pmt   = 0;
 	pcr   = 0;
@@ -81,6 +84,8 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 	aud2  = pidInfo->aud2;
 	aac   = pidInfo->aac;
 	aac2  = pidInfo->aac2;
+	dts   = pidInfo->dts;
+	dts2  = pidInfo->dts2;
 	ac3   = pidInfo->ac3;
 	ac3_2   = pidInfo->ac3_2;
 	chnumb	= pidInfo->chnumb;
@@ -92,6 +97,7 @@ void PidInfo::CopyFrom(PidInfo *pidInfo)
 	memcpy(endesc, pidInfo->endesc, 600);
 
 	txt   = pidInfo->txt;
+	sub   = pidInfo->sub;
 	sid   = pidInfo->sid;
 	pmt   = pidInfo->pmt;
 	pcr   = pidInfo->pcr;
@@ -116,6 +122,8 @@ void PidInfo::CopyTo(PidInfo *pidInfo)
 	pidInfo->aud2 = aud2;
 	pidInfo->aac = aac;
 	pidInfo->aac2 = aac2;
+	pidInfo->dts = dts;
+	pidInfo->dts2 = dts2;
 	pidInfo->ac3 = ac3;
 	pidInfo->ac3_2 = ac3_2;
 	pidInfo->chnumb = chnumb;
@@ -127,6 +135,7 @@ void PidInfo::CopyTo(PidInfo *pidInfo)
 	memcpy(pidInfo->endesc, endesc, 600);
 
 	pidInfo->txt = txt;
+	pidInfo->sub = sub;
 	pidInfo->sid = sid;
 	pidInfo->pmt = pmt;
 	pidInfo->pcr = pcr;

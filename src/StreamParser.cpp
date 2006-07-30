@@ -217,6 +217,27 @@ HRESULT StreamParser::ParsePidArray()
 			StreamArray[index].lcid = MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_NEUTRAL), SORT_DEFAULT);
 			index++;
 		}
+		if (m_pPidParser->pidArray[count].dts)
+		{
+			AddStreamArray();
+			StreamArray[index].DTS = true;
+			StreamArray[index].Pid = m_pPidParser->pidArray[count].dts;
+			m_pDemux->GetDTSMedia(&StreamArray[index].media);
+			wcscat(StreamArray[index].name, L"        DTS Audio Track");
+			StreamArray[index].lcid = MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_NEUTRAL), SORT_DEFAULT);
+			index++;
+		}
+		if (m_pPidParser->pidArray[count].dts2)
+		{
+			AddStreamArray();
+			StreamArray[index].DTS = true;
+			StreamArray[index].Aud2 = true;
+			StreamArray[index].Pid = m_pPidParser->pidArray[count].dts2;
+			m_pDemux->GetDTSMedia(&StreamArray[index].media);
+			wcscat(StreamArray[index].name, L"        DTS Audio Track 2");
+			StreamArray[index].lcid = MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_NEUTRAL), SORT_DEFAULT);
+			index++;
+		}
 		count++;
 	}
 

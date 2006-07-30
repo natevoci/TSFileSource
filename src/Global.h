@@ -47,11 +47,11 @@
 #endif
 
 #ifndef FILE_START_POS_PS
-#define FILE_START_POS_PS 0 //Minimum file position to begin parsing for PS Mode
+#define FILE_START_POS_PS 1 //Minimum file position to begin parsing for PS Mode
 #endif
 
 #ifndef RT_FILE_START_PS
-#define RT_FILE_START_PS 0 //0sec stream position to begin playing in PS Mode
+#define RT_FILE_START_PS 1 //0sec stream position to begin playing in PS Mode
 #endif
 
 #ifndef MIN_FILE_SIZE

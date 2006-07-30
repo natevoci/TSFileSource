@@ -46,10 +46,13 @@ public:
 	int aud2;
 	int aac;
 	int aac2;
+	int dts;
+	int dts2;
 	int ac3;
 	int ac3_2;
 	int chnumb;
 	int txt;
+	int sub;
 	int sid;
 	int pmt;
 	int pcr;

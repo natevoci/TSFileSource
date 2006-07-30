@@ -69,6 +69,9 @@ public:
 	BOOL getCreateTxtPinOnDemuxReg();
 	void setCreateTxtPinOnDemuxReg(BOOL bTxtPin);
 
+	BOOL getCreateSubPinOnDemuxReg();
+	void setCreateSubPinOnDemuxReg(BOOL bSubPin);
+
 	BOOL getDelayModeReg();
 	void setDelayModeReg(BOOL bDelay);
 
@@ -102,6 +105,7 @@ private:
 	BOOL	fixedAR;
 	BOOL	tsPinMode;
 	BOOL	txtPinMode;
+	BOOL	subPinMode;
 	BOOL	delayMode;
 	BOOL	rateMode;
 	BOOL	audio2Mode;
