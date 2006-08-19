@@ -80,6 +80,7 @@ protected:
 	long m_filesAdded;
 	long m_filesRemoved;
 	long m_currentFilenameId;
+	long m_currentFileId;
 
 	long m_minTSFiles;
 	long m_maxTSFiles;

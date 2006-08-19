@@ -26,7 +26,7 @@
 #ifndef FILEREADER
 #define FILEREADER
 
-#include "PidInfo.h"
+//#include "PidInfo.h"
 
 class FileReader
 {

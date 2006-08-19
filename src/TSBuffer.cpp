@@ -145,7 +145,7 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 	CAutoLock BufferLock(&m_BufferLock);
 	long bytesAvailable = Count();
 	if (nBytes <= bytesAvailable)
-		return S_OK;
+		return S_FALSE;
 
 	while (nBytes > bytesAvailable)
 	{

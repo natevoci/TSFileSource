@@ -203,7 +203,7 @@ inline void LoadPATPacket(PBYTE pData, USHORT tsid, USHORT sid, USHORT pmt)
 
 	//Set our pmt pid numb if we have one
 	if (pmt) {
-		pData[19] = ((pmt&0x1F) >> 8) | 0xE0;
+		pData[19] = ((pmt>> 8)&0x1F) | 0xE0;
 		pData[20] = pmt & 0xFF;
 	}
 

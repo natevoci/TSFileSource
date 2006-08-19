@@ -1,3 +1,8 @@
+Version 2.2.0.7 Final
+=================
+bear:
+- Fixed a problem with the DVB Format code that was not allowing PAT less only file to play.
+
 Version 2.2.0.7 Beta 1
 =================
 bear:

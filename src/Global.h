@@ -370,5 +370,56 @@ public:
    DWORD m_nPriority;
 };
 
+class FirstAffinity
+{
+public:
+   FirstAffinity()
+   {
+		#ifndef DEBUG
+			m_nAffinity = 0;
+			DWORD SystemAffinityMask = 0;
+			if (GetProcessAffinityMask(GetCurrentProcess(), &m_nAffinity, &SystemAffinityMask)
+				&& SystemAffinityMask > 1)
+				SetThreadAffinityMask(GetCurrentThread(), 0x01&m_nAffinity);
+		#endif
+   }
+
+   ~FirstAffinity()
+   {
+		#ifndef DEBUG
+			if (m_nAffinity)
+				SetThreadAffinityMask(GetCurrentThread(), m_nAffinity);
+		#endif
+   }
+     
+   DWORD m_nAffinity;
+};
+
+class SecondAffinity
+{
+public:
+   SecondAffinity()
+   {
+		#ifndef DEBUG
+			m_nAffinity = 0;
+			DWORD SystemAffinityMask = 0;
+			if (GetProcessAffinityMask(GetCurrentProcess(), &m_nAffinity, &SystemAffinityMask)
+				&& SystemAffinityMask > 1)
+				SetThreadAffinityMask(GetCurrentThread(), 0x10&m_nAffinity);
+		#endif
+   }
+
+   ~SecondAffinity()
+   {
+		#ifndef DEBUG
+			if (m_nAffinity)
+				SetThreadAffinityMask(GetCurrentThread(), m_nAffinity);
+		#endif
+   }
+     
+   DWORD m_nAffinity;
+};
+
 #endif
+
 
