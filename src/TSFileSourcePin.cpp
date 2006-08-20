@@ -1,7 +1,7 @@
 /**
 *  TSFileSourcePin.cpp
 *  Copyright (C) 2003      bisswanger
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -509,7 +509,7 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		//Read from buffer
 		m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
-m_pTSFileSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
+//m_pTSFileSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 
 		m_IntLastStreamTime = REFERENCE_TIME(cTime);
 		m_llPrevPCR = REFERENCE_TIME(cTime);
@@ -613,7 +613,7 @@ m_pTSFileSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 	m_lPrevPCRByteOffset -= lDataLength;
 	m_lNextPCRByteOffset -= lDataLength;
 
-m_pTSFileSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
+//m_pTSFileSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 
 	//Checking if basePCR is set
 	if (m_llBasePCR == -1)
@@ -756,12 +756,12 @@ PrintTime(TEXT("rtNextTime:"), (__int64)rtNextTime, 10000);
 			pos=0;
 		}
 
-		LoadPATPacket(pData + pos, m_TSIDSave, m_pPids->sid, m_pPids->pmt);
+		DVBFormat::LoadPATPacket(pData + pos, m_TSIDSave, m_pPids->sid, m_pPids->pmt);
 		pos+= m_PacketSave;	//shift to the pmt packet
 
 		//Also insert a pmt if we don't have one already
 		if (!m_pPids->pmt){ 
-			LoadPMTPacket(pData + pos,
+			DVBFormat::LoadPMTPacket(pData + pos,
 				  m_pPids->pcr - m_pPids->opcr,
 				  m_pPids->vid,
 				  m_pPids->aud,
@@ -772,14 +772,14 @@ PrintTime(TEXT("rtNextTime:"), (__int64)rtNextTime, 10000);
 		}
 		else {
 			//load another PAT instead
-			LoadPATPacket(pData + pos, m_TSIDSave, m_pPids->sid, m_pPids->pmt);
+			DVBFormat::LoadPATPacket(pData + pos, m_TSIDSave, m_pPids->sid, m_pPids->pmt);
 		}
 
 		pos+= m_PacketSave;	//shift to the pcr packet
 
 		//Load in our own pcr if we need to
 		if (m_pPids->opcr) {
-			LoadPCRPacket(pData + pos, m_pPids->pcr - m_pPids->opcr, pcrPos);
+			DVBFormat::LoadPCRPacket(pData + pos, m_pPids->pcr - m_pPids->opcr, pcrPos);
 		}
 
 	}
@@ -1191,15 +1191,34 @@ HRESULT CTSFileSourcePin::ChangeStop()
 
 HRESULT CTSFileSourcePin::ChangeRate()
 {
+	REFERENCE_TIME start, stop;
+	GetPositions(&start, &stop);
+	IMediaSeeking *pMediaSeeking;
+	if(m_pTSFileSourceFilter->GetFilterGraph() && SUCCEEDED(m_pTSFileSourceFilter->GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+	{
+		pMediaSeeking->GetPositions(&start, &stop);
+		pMediaSeeking->Release();
+	}
+
     {   // Scope for critical section lock.
         CAutoLock cAutoLockSeeking(CSourceSeeking::m_pLock);
         if( m_dRateSeeking <= 0 ) {
             m_dRateSeeking = 1.0;  // Reset to a reasonable value.
             return E_INVALIDARG;
         }
+
+		DeliverBeginFlush();
 		m_pTSFileSourceFilter->m_pClock->SetClockRate(m_dRateSeeking);
+		DeliverEndFlush();
     }
-//    UpdateFromSeek();
+
+	if(m_pTSFileSourceFilter->GetFilterGraph() && SUCCEEDED(m_pTSFileSourceFilter->GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+	{
+		pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+		pMediaSeeking->Release();
+	}
+
+	//    UpdateFromSeek();
     return S_OK;
 }
 
@@ -1642,7 +1661,6 @@ PrintTime(TEXT("UpdateDuration1"), (__int64) m_rtDuration, 10000);
 			BOOL bLengthChanged = FALSE;
 			BOOL bStartChanged = FALSE;
 			ULONG ulBytesRead = 0;
-			LONG lDataLength = m_lTSPacketDeliverySize;
 			__int64 pcrPos;
 			ULONG pos = 0;
 
@@ -1652,6 +1670,9 @@ PrintTime(TEXT("UpdateDuration1"), (__int64) m_rtDuration, 10000);
 			pFileReader->GetFileSize(&fileStart, &fileEnd);
 			filelength = fileEnd;
 			fileEnd += fileStart;
+//			LONG lDataLength = m_lTSPacketDeliverySize;
+			LONG lDataLength = min(filelength/4, 2000000);
+			lDataLength = max(m_lTSPacketDeliverySize, lDataLength);
 			if (fileStart != m_LastMultiFileStart)
 			{
 				ulBytesRead = 0;
@@ -1849,7 +1870,13 @@ PrintTime(TEXT("UpdateDuration6"), (__int64) m_rtDuration, 10000);
 					ULONG pos;
 					__int64 pcrPos;
 					ULONG ulBytesRead = 0;
-					long lDataLength = m_lTSPacketDeliverySize;
+					__int64 fileStart, fileEnd, filelength;
+					pFileReader->GetFileSize(&fileStart, &fileEnd);
+					filelength = fileEnd;
+					fileEnd += fileStart;
+		//			LONG lDataLength = m_lTSPacketDeliverySize;
+					LONG lDataLength = min(filelength/4, 2000000);
+					lDataLength = max(m_lTSPacketDeliverySize, lDataLength);
 
 					//Do a quick parse of duration if not seeking
 					if (m_bSeeking)

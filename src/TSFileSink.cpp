@@ -1,6 +1,7 @@
 /**
 *  TSFileSink.cpp
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -54,8 +55,6 @@ CTSFileSink::CTSFileSink(IUnknown *pUnk, HRESULT *phr) :
 {
 	ASSERT(phr);
 
-	m_pFileWriter = new MultiFileWriter();
-
 	m_pFilter = new CTSFileSinkFilter(this, GetOwner(), &m_Lock, phr);
     if (m_pFilter == NULL)
 	{
@@ -71,15 +70,31 @@ CTSFileSink::CTSFileSink(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
-	m_pSettingsStore = new CSettingsSinkStore();
-	m_pRegStore = new CRegSinkStore();
+	SinkStoreParam params;
+	params.fileName = TEXT("MyBufferFile");
+	params.minFiles = 6;
+	params.maxFiles = 60;
+	params.maxSize = (__int64)((__int64)1048576 *(__int64)250); //250MB
+	params.chunkSize = (__int64)((__int64)1048576 *(__int64)250); //250MB;
+
+	m_pSettingsStore = new CSettingsSinkStore(&params);
+	m_pRegStore = new CRegSinkStore("SOFTWARE\\TSFileSink");
+
+	MultiFileWriterParam writerParams;
+	writerParams.chunkSize = m_pSettingsStore->getChunkReserveReg();
+	writerParams.maxFiles = m_pSettingsStore->getMaxTSFilesReg();
+	writerParams.maxSize = m_pSettingsStore->getMaxTSFileSizeReg();
+	writerParams.minFiles = m_pSettingsStore->getMinTSFilesReg();
+
+	m_pFileWriter = new MultiFileWriter(&writerParams);
+
+	// Load Registry Settings data
+	GetRegStore("default");
 
 	m_pRegFileName = new char[MAX_PATH];
 	if (m_pRegFileName != 0)
 		sprintf(m_pRegFileName, "MyBufferFile");
 	
-	// Load Registry Settings data
-	GetRegStore("default");
 
 	if(m_pRegFileName && strlen(m_pRegFileName) > 0 && strlen(m_pRegFileName) <= MAX_PATH)
 	{

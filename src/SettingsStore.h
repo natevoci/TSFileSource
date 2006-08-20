@@ -1,6 +1,6 @@
 /**
 *  SettingsStore.h
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2003  Shaun Faulds
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -24,7 +24,10 @@
 *    http://forums.dvbowners.com/
 */
 
-#pragma once
+//#pragma once
+#ifndef SETTINGSTORE_H
+#define SETTINGSTORE_H
+
 
 #include <windows.h>
 #include <time.h>
@@ -113,3 +116,4 @@ private:
 	BOOL	rotMode;
 	int		clockMode;
 };
+#endif

@@ -1,6 +1,7 @@
 /**
 *  FileReader.h
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -26,13 +27,13 @@
 #ifndef FILEREADER
 #define FILEREADER
 
-//#include "PidInfo.h"
+#include "SharedMemory.h"
 
 class FileReader
 {
 public:
 
-	FileReader();
+	FileReader(SharedMemory* pSharedMemory);
 	virtual ~FileReader();
 
 	virtual FileReader* CreateFileReader();
@@ -51,7 +52,6 @@ public:
 	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pLength);
 	HRESULT GetInfoFileSize(__int64 *lpllsize);
 	HRESULT GetStartPosition(__int64 *lpllpos);
-	HRESULT FlushFile();
 	virtual BOOL IsFileInvalid();
 	virtual DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual __int64 GetFilePointer();
@@ -61,6 +61,7 @@ public:
 	void SetDebugOutput(BOOL bDebugOutput);
 
 protected:
+	SharedMemory* m_pSharedMemory;
 	HANDLE   m_hFile; 				// Handle to file for streaming
 	HANDLE   m_hInfoFile;           // Handle to Infofile for filesize from FileWriter
 	LPOLESTR m_pFileName;           // The filename where we stream

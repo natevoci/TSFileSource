@@ -1,6 +1,6 @@
 /**
 *  SettingsSinkStore.ccp
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2003  Shaun Faulds
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -27,14 +27,14 @@
 
 #include "SettingsSinkStore.h"
 
-CSettingsSinkStore::CSettingsSinkStore(void)
+CSettingsSinkStore::CSettingsSinkStore(SinkStoreParam *params)
 {
 	lastUsed = time(NULL);
-	fileName = "MyBufferFile";
-	minFiles = 6;
-	maxFiles = 60;
-	maxSize = (__int64)((__int64)1048576 *(__int64)250); //250MB
-	chunkSize = (__int64)((__int64)1048576 *(__int64)250); //250MB
+	fileName = (params->fileName); //"MyBufferFile";
+	minFiles = params->minFiles; //6;
+	maxFiles = params->maxFiles; //60;
+	maxSize = params->maxSize; //(__int64)((__int64)1048576 *(__int64)250); //250MB
+	chunkSize = params->chunkSize; //(__int64)((__int64)1048576 *(__int64)250); //250MB
 }
 
 CSettingsSinkStore::~CSettingsSinkStore(void)

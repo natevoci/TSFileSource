@@ -1,6 +1,6 @@
 /**
 *  SettingsStore.ccp
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2003  Shaun Faulds
 *
 *  This file is part of TSFileSource, a directshow push source filter that

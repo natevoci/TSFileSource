@@ -1,6 +1,7 @@
 /**
 *  MultiFileWriter.h
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -29,10 +30,18 @@
 #include "FileWriter.h"
 #include <vector>
 
+typedef struct 
+{
+	long 	minFiles;
+	long 	maxFiles;
+	__int64	maxSize;
+	__int64	chunkSize;
+} MultiFileWriterParam;
+
 class MultiFileWriter
 {
 public:
-	MultiFileWriter();
+	MultiFileWriter(MultiFileWriterParam *pWriterParams);
 	virtual ~MultiFileWriter();
 
 	HRESULT GetFileName(LPWSTR *lpszFileName);
@@ -81,7 +90,7 @@ protected:
 	long m_filesRemoved;
 	long m_currentFilenameId;
 	long m_currentFileId;
-
+	
 	long m_minTSFiles;
 	long m_maxTSFiles;
 	__int64 m_maxTSFileSize;

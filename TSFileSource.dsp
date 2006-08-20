@@ -447,5 +447,137 @@ SOURCE=.\src\stdafx.cpp
 SOURCE=.\src\stdafx.h
 # End Source File
 # End Group
+# Begin Group "TSParserSource"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\src\ITSParserSource.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserInputPin.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserInputPin.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSource.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSource.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSourceGuids.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSourcePin.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSourcePin.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSourceProp.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSourceProp.h
+# End Source File
+# End Group
+# Begin Group "Memory Handling"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\src\MemReader.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MemReader.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MemWriter.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MemWriter.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MultiMemReader.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MultiMemReader.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MultiMemWriter.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\MultiMemWriter.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\SharedMemory.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\SharedMemory.h
+# End Source File
+# End Group
+# Begin Group "TSParserSink"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\src\ITSParserSink.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSink.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSink.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSinkFilter.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSinkFilter.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSinkGuids.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSinkPin.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSinkPin.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSinkProp.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\TSParserSinkProp.h
+# End Source File
+# End Group
 # End Target
 # End Project

@@ -1,7 +1,7 @@
 /**
 *  TSFileSinkProp.cpp
 *  Copyright (C) 2003      bisswanger
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -315,10 +315,14 @@ BOOL CTSFileSinkProp::RefreshDialog()
 	m_pProgram->GetNumbFilesAdded(&intVal);
 	wsprintf(sz, TEXT("%u"), intVal);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_NUMBADD), sz);
+	int saveAdded = intVal;
 
 	m_pProgram->GetNumbFilesRemoved(&intVal);
 	wsprintf(sz, TEXT("%u"), intVal);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_NUMBREM), sz);
+
+	wsprintf(sz, TEXT("%u"), saveAdded - intVal);
+	Edit_SetText(GetDlgItem(m_hwnd, IDC_TOTALNUMB), sz);
 
 	m_pProgram->GetFileBufferSize(&lLongVal);
 	wsprintf(sz, TEXT("%lu"), (__int64)(lLongVal/(__int64)1048576));

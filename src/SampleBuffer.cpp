@@ -84,6 +84,7 @@ HRESULT CSampleBuffer::LoadMediaSample(IMediaSample *pSample)
 		return hr;
 	}
 
+::OutputDebugString(TEXT("CSampleBuffer::LoadMediaSample().\n"));
 	LONG lDataLength = pSample->GetActualDataLength();
 	CBufferInfo *bufferInfo = new CBufferInfo();
 	bufferInfo->sample = new BYTE[lDataLength];
@@ -141,6 +142,9 @@ HRESULT CSampleBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 	if (nBytes <= bytesAvailable)
 		return S_OK;
 
+::OutputDebugString(TEXT("SampleBuffer::Require() Waiting for file to grow.\n"));
+
+return E_FAIL;
 	while (nBytes > bytesAvailable)
 	{
 		CBufferInfo *newItem = new CBufferInfo();
@@ -153,8 +157,8 @@ HRESULT CSampleBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 //		HRESULT hr = m_pFileReader->Read(newItem, m_lSampleBufferItemSize, &ulBytesRead);
 //		if (FAILED(hr)){
 
-			delete[] newItem;
-			m_lbuflen = 0;
+//			delete[] newItem;
+//			m_lbuflen = 0;
 //			return hr;
 //		}
 

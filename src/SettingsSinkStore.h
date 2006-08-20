@@ -1,6 +1,6 @@
 /**
 *  SettingsSinkStore.h
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2003  Shaun Faulds
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -24,16 +24,28 @@
 *    http://forums.dvbowners.com/
 */
 
-#pragma once
+//#pragma once
+#ifndef SETTINGSINKSTORE_H
+#define SETTINGSINKSTORE_H
+
 
 #include <windows.h>
 #include <time.h>
 #include <string>
 
+typedef struct 
+{
+	LPTSTR fileName;
+	long 	minFiles;
+	long 	maxFiles;
+	__int64	maxSize;
+	__int64	chunkSize;
+} SinkStoreParam;
+
 class CSettingsSinkStore
 {
 public:
-	CSettingsSinkStore(void);
+	CSettingsSinkStore(SinkStoreParam *params);
 	~CSettingsSinkStore(void);
 
 	__int64 getLastUsed();
@@ -65,4 +77,6 @@ private:
 	long 	maxFiles;
 	__int64	maxSize;
 	__int64	chunkSize;
+
 };
+#endif

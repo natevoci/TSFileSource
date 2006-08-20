@@ -1,6 +1,7 @@
 /**
 *  MultiFileReader.h
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -27,6 +28,7 @@
 #define MULTIFILEREADER
 
 #include "FileReader.h"
+#include "SharedMemory.h"
 #include <vector>
 
 class MultiFileReaderFile
@@ -42,7 +44,7 @@ class MultiFileReader : public FileReader
 {
 public:
 
-	MultiFileReader();
+	MultiFileReader(SharedMemory* pSharedMemory = NULL);
 	virtual ~MultiFileReader();
 
 	virtual FileReader* CreateFileReader();
@@ -72,6 +74,7 @@ protected:
 	HRESULT RefreshTSBufferFile();
 	HRESULT GetFileLength(LPWSTR pFilename, __int64 &length);
 
+	SharedMemory* m_pSharedMemory;
 	FileReader m_TSBufferFile;
 	__int64 m_startPosition;
 	__int64 m_endPosition;
@@ -85,6 +88,7 @@ protected:
 	long	 m_TSFileId;
 	BOOL     m_bReadOnly;
 	BOOL     m_bDelay;
+	BOOL     m_bDebugOutput;
 
 };
 

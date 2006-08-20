@@ -1,6 +1,7 @@
 /**
 *  NetRender.ccp
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -22,12 +23,14 @@
 *  nate can be reached on the forums at
 *    http://forums.dvbowners.com/
 */
-#include <Winsock2.h>
 
+#include <Winsock2.h>
 #include <streams.h>
 #include "NetRender.h"
 #include "TSFileSinkGuids.h"
+#include "TSParserSinkGuids.h"
 #include "ITSFileSink.h"
+#include "ITSParserSink.h"
 #include "NetworkGuids.h"
 #include "TSFileSourcePin.h"
 #include <stdio.h>
@@ -156,6 +159,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	// Create the Sink Filter and add it to the FilterGraph
 	//
     hr = CoCreateInstance(
+//                        CLSID_TSParserSink, 
                         CLSID_TSFileSink, 
                         NULL, 
                         CLSCTX_INPROC_SERVER,
@@ -168,7 +172,8 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
         return hr;
     }
 
-	hr = netAddr->pNetworkGraph->AddFilter(netAddr->pFileSink, L"File Sink");
+	hr = netAddr->pNetworkGraph->AddFilter(netAddr->pFileSink, L"Memory Sink");
+//	hr = netAddr->pNetworkGraph->AddFilter(netAddr->pFileSink, L"File Sink");
     if (FAILED (hr))
     {
 		DeleteNetworkGraph(netAddr);
@@ -261,7 +266,9 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	//
 	// Get the Sink Filter Interface 
 	//
+//	CComPtr <ITSParserSink> pITSFileSink;
 	CComPtr <ITSFileSink> pITSFileSink;
+//	hr = netAddr->pFileSink->QueryInterface(IID_ITSParserSink, (void**)&pITSFileSink);
 	hr = netAddr->pFileSink->QueryInterface(IID_ITSFileSink, (void**)&pITSFileSink);
     if(FAILED (hr))
     {
@@ -425,6 +432,7 @@ BOOL CNetRender::UpdateNetFlow(NetInfoArray *netArray)
 		// Get the Sink Filter Interface 
 		//
 		ITSFileSink *pITSFileSink;
+//		ITSParserSink *pITSFileSink;
 		hr = (*netArray)[i].pFileSink->QueryInterface(IID_ITSFileSink, (void**)&pITSFileSink);
 		if(SUCCEEDED(hr))
 		{

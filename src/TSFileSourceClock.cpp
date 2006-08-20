@@ -1,6 +1,7 @@
 /**
 *  TSFileSourceClock.ccp
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -69,6 +70,13 @@ REFERENCE_TIME CTSFileSourceClock::GetPrivateTime()
 
 void CTSFileSourceClock::SetClockRate(double dRateSeeking)
 {
+    CAutoLock cObjectLock(this);
+	REFERENCE_TIME deltaTime = GetPrivateTime();
+	if (m_dRateSeeking < dRateSeeking)
+		m_baseTime = m_baseTime - deltaTime;
+	else
+		m_baseTime = m_baseTime - deltaTime;
+
 	m_dRateSeeking = dRateSeeking;
 }
 

@@ -1,7 +1,7 @@
 /**
 *  setup.cpp
 *  Copyright (C) 2003      bisswanger
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -39,13 +39,29 @@
 #include "TSFileSink.h"
 #include "TSFileSinkProp.h"
 
-#define TSFILESOURCENAME		L"TS File Source"
-#define TSFILESOURCEPROPERTIES	L"TS File Source Properties"
-#define TSFILESOURCEINTERFACE	L"TS File Source Interface"
+#include "TSParserSourceGuids.h"
+#include "TSParserSource.h"
+#include "TSParserSourceProp.h"
 
-#define TSFILESINKNAME			L"TS File Sink"
-#define TSFILESINKPROPERTIES	L"TS File Sink Properties"
-#define TSFILESINKINTERFACE		L"TS File Sink Interface"
+#include "TSParserSinkGuids.h"
+#include "TSParserSink.h"
+#include "TSParserSinkProp.h"
+
+#define TSFILESOURCENAME			L"TS File Source"
+#define TSFILESOURCEPROPERTIES		L"TS File Source Properties"
+#define TSFILESOURCEINTERFACE		L"TS File Source Interface"
+
+#define TSFILESINKNAME				L"TS File Sink"
+#define TSFILESINKPROPERTIES		L"TS File Sink Properties"
+#define TSFILESINKINTERFACE			L"TS File Sink Interface"
+
+#define TSPARSERSOURCENAME			L"TS Parser Source"
+#define TSPARSERSOURCEPROPERTIES	L"TS Parser Source Properties"
+#define TSPARSERSOURCEINTERFACE		L"TS Parser Source Interface"
+
+#define TSPARSERSINKNAME			L"TS Parser Sink"
+#define TSPARSERSINKPROPERTIES		L"TS Parser Sink Properties"
+#define TSPARSERSINKINTERFACE		L"TS Parser Sink Interface"
 
 // Filter setup data
 
@@ -58,6 +74,24 @@ const AMOVIESETUP_MEDIATYPE sudTSFileSourceOutputPinTypes =
 };
 
 const AMOVIESETUP_MEDIATYPE sudTSFileSinkInputPinTypes =
+{
+    &MEDIATYPE_NULL,
+    &MEDIASUBTYPE_NULL
+};
+
+const AMOVIESETUP_MEDIATYPE sudTSParserSourceOutputPinTypes =
+{
+	&MEDIATYPE_Stream,
+	&MEDIASUBTYPE_MPEG2_TRANSPORT
+};
+
+const AMOVIESETUP_MEDIATYPE sudTSParserInputPinTypes =
+{
+    &MEDIATYPE_Stream,
+    &MEDIASUBTYPE_None
+};
+
+const AMOVIESETUP_MEDIATYPE sudTSParserSinkInputPinTypes =
 {
     &MEDIATYPE_NULL,
     &MEDIASUBTYPE_NULL
@@ -92,6 +126,44 @@ const AMOVIESETUP_PIN sudTSFileSinkPin =
 	&sudTSFileSinkInputPinTypes		// Pointer to media types.
 };
 
+const AMOVIESETUP_PIN sudTSParserSourcePins[] =
+{
+	{
+		L"Input",						// Obsolete, not used.
+		FALSE,							// Is this pin rendered?
+		FALSE,							// Is it an output pin?
+		FALSE,							// Can the filter create zero instances?
+		FALSE,							// Does the filter create multiple instances?
+		&CLSID_NULL,					// Obsolete.
+		NULL,							// Obsolete.
+		1,								// Number of media types.
+		&sudTSParserInputPinTypes		// Pointer to media types.
+	},
+	{
+		L"Output",					   // Obsolete, not used.
+		FALSE,							// Is this pin rendered?
+		TRUE,							// Is it an output pin?
+		FALSE,							// Can the filter create zero instances?
+		FALSE,							// Does the filter create multiple instances?
+		&CLSID_NULL,					// Obsolete.
+		NULL,							// Obsolete.
+		1,								// Number of media types.
+		&sudTSParserSourceOutputPinTypes	// Pointer to media types.
+	}
+};
+
+const AMOVIESETUP_PIN sudTSParserSinkPin =
+{
+	L"Input",						// Obsolete, not used.
+	FALSE,							// Is this pin rendered?
+	FALSE,							// Is it an output pin?
+	FALSE,							// Can the filter create zero instances?
+	FALSE,							// Does the filter create multiple instances?
+	&CLSID_NULL,					// Obsolete.
+	NULL,							// Obsolete.
+	1,								// Number of media types.
+	&sudTSParserSinkInputPinTypes		// Pointer to media types.
+};
 
 // Filter Definitions
 
@@ -111,6 +183,24 @@ const AMOVIESETUP_FILTER sudTSFileSinkFilter =
 	MERIT_DO_NOT_USE,		// Filter merit
 	1,						// Number pins
 	&sudTSFileSinkPin		// Pin details
+};
+
+const AMOVIESETUP_FILTER sudTSParserSourceFilter =
+{
+	&CLSID_TSParserSource,	// Filter CLSID
+	TSPARSERSOURCENAME,		// String name
+	MERIT_DO_NOT_USE,		// Filter merit
+	2,						// Number pins
+	sudTSParserSourcePins	// Pin details
+};
+
+const AMOVIESETUP_FILTER sudTSParserSinkFilter =
+{
+	&CLSID_TSParserSink,		// Filter CLSID
+	TSPARSERSINKNAME,			// String name
+	MERIT_DO_NOT_USE,		// Filter merit
+	1,						// Number pins
+	&sudTSParserSinkPin		// Pin details
 };
 
 
@@ -141,6 +231,34 @@ CFactoryTemplate g_Templates[] =
 		TSFILESINKPROPERTIES,
 		&CLSID_TSFileSinkProp,
 		CTSFileSinkProp::CreateInstance,
+		NULL,
+		NULL
+	},
+	{
+		TSPARSERSOURCENAME,
+		&CLSID_TSParserSource,
+		CTSParserSourceFilter::CreateInstance,
+		NULL,
+		&sudTSParserSourceFilter
+	},
+	{
+		TSPARSERSOURCEPROPERTIES,
+		&CLSID_TSParserSourceProp,
+		CTSParserSourceProp::CreateInstance,
+		NULL,
+		NULL
+	},
+	{
+		TSPARSERSINKNAME,
+		&CLSID_TSParserSink,
+		CTSParserSink::CreateInstance,
+		NULL,
+		&sudTSParserSinkFilter
+	},
+	{
+		TSPARSERSINKPROPERTIES,
+		&CLSID_TSParserSinkProp,
+		CTSParserSinkProp::CreateInstance,
 		NULL,
 		NULL
 	},

@@ -1,6 +1,7 @@
 /**
 *  FileWriter.h
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -39,7 +40,6 @@ public:
 	HRESULT CloseFile();
 	HRESULT Write(PBYTE pbData, ULONG lDataLength);
 
-	HRESULT FlushFile();
 	BOOL IsFileInvalid();
 
 	DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);

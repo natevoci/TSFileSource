@@ -1,7 +1,7 @@
 /**
 *  TSFileSource.cpp
 *  Copyright (C) 2003      bisswanger
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -71,9 +71,10 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
+	m_pSharedMemory = new SharedMemory(64000000);
 	m_pSampleBuffer = new CSampleBuffer();
-	m_pFileReader = new FileReader();
-	m_pFileDuration = new FileReader();//Get Live File Duration Thread
+	m_pFileReader = new FileReader(m_pSharedMemory);
+	m_pFileDuration = new FileReader(m_pSharedMemory);//Get Live File Duration Thread
 	m_pPidParser = new PidParser(m_pSampleBuffer, m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
@@ -91,7 +92,7 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	}
 
 	m_pTunerEvent = new TunerEvent(m_pDemux, GetOwner());
-	m_pRegStore = new CRegStore();
+	m_pRegStore = new CRegStore("SOFTWARE\\TSFileSource");
 	m_pSettingsStore = new CSettingsStore();
 
 	// Load Registry Settings data
@@ -149,17 +150,20 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 
 	m_pTunerEvent->UnRegisterForTunerEvents();
 	m_pTunerEvent->Release();
-	delete  m_pClock;
-	delete	m_pDemux;
-	delete 	m_pRegStore;
-	delete  m_pSettingsStore;
-	delete  m_pPidParser;
-	delete	m_pStreamParser;
-	delete	m_pPin;
-	delete	m_pFileReader;
-	delete  m_pFileDuration;
-	delete  m_pSampleBuffer;
-	netArray.Clear();
+	if (m_pDemux) delete	m_pDemux;
+	if (m_pRegStore) delete m_pRegStore;
+	if (m_pSettingsStore) delete  m_pSettingsStore;
+	if (m_pPidParser) delete  m_pPidParser;
+	if (m_pStreamParser) delete	m_pStreamParser;
+	if (m_pPin) delete	m_pPin;
+	if (m_pFileReader) delete	m_pFileReader;
+	if (m_pFileDuration) delete  m_pFileDuration;
+	if (m_pSampleBuffer) delete  m_pSampleBuffer;
+	if (m_pSharedMemory) delete m_pSharedMemory;
+	if (m_pClock) delete  m_pClock;
+
+//	netArray.Clear();
+//    if (m_pClock) m_pClock = NULL;
 }
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
@@ -353,10 +357,10 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				}
 			}
 			//randomly park the file pointer to help minimise HDD clogging
-			if (rtCurrentTime&1)
+//			if (rtCurrentTime&1)
 				m_pFileDuration->SetFilePointer(0, FILE_END);
-			else
-				m_pFileDuration->SetFilePointer(0, FILE_BEGIN);
+//			else
+//				m_pFileDuration->SetFilePointer(0, FILE_BEGIN);
 			
 			//kill the netrender graphs if were released
 
@@ -1051,13 +1055,13 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	long length = lstrlenW(wFileName);
 	if ((length < 9) || (_wcsicmp(wFileName+length-9, L".tsbuffer") != 0))
 	{
-		m_pFileReader = new FileReader();
-		m_pFileDuration = new FileReader();//Get Live File Duration Thread
+		m_pFileReader = new FileReader(m_pSharedMemory);
+		m_pFileDuration = new FileReader(m_pSharedMemory);//Get Live File Duration Thread
 	}
 	else
 	{
-		m_pFileReader = new MultiFileReader();
-		m_pFileDuration = new MultiFileReader();
+		m_pFileReader = new MultiFileReader(m_pSharedMemory);
+		m_pFileDuration = new MultiFileReader(m_pSharedMemory);
 	}
 	//m_pFileReader->SetDebugOutput(TRUE);
 	//m_pFileDuration->SetDebugOutput(TRUE);
@@ -1112,10 +1116,19 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	hr = m_pFileReader->OpenFile();
 	if (FAILED(hr))
 	{
-		if(wFileName)
-			delete[] wFileName;
+		if (!m_pSharedMemory->GetShareMode())
+			m_pSharedMemory->SetShareMode(TRUE);
+		else
+			m_pSharedMemory->SetShareMode(FALSE);
 
-		return VFW_E_INVALIDMEDIATYPE;
+		hr = m_pFileReader->OpenFile();
+		if (FAILED(hr))
+		{
+			if(wFileName)
+				delete[] wFileName;
+
+			return VFW_E_INVALIDMEDIATYPE;
+		}
 	}
 
 	CAMThread::Create();			 //Create our GetDuration thread
@@ -1280,14 +1293,17 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		//Test the file incase it doesn't exist,
 		//also loads it into the File buffer for a smoother change over.
 		FileReader *pFileReader = NULL;
+		SharedMemory *pSharedMemory = NULL;
 		long length = lstrlenW(pszFileName);
 		if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
 		{
-			pFileReader = new FileReader();
+			pSharedMemory = new SharedMemory(64000000);
+			pFileReader = new FileReader(pSharedMemory);
 		}
 		else
 		{
-			pFileReader = new MultiFileReader();
+			pSharedMemory = new SharedMemory(64000000);
+			pFileReader = new MultiFileReader(pSharedMemory);
 		}
 
 		hr = pFileReader->SetFileName(pszFileName);
@@ -1300,12 +1316,30 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		hr = pFileReader->OpenFile();
 		if (FAILED(hr))
 		{
-			delete pFileReader;
-			return VFW_E_INVALIDMEDIATYPE;
+			if (!pSharedMemory->GetShareMode())
+				pSharedMemory->SetShareMode(TRUE);
+			else
+				pSharedMemory->SetShareMode(FALSE);
+
+			hr = pFileReader->OpenFile();
+			if (FAILED(hr))
+			{
+				delete pFileReader;
+				delete pSharedMemory;
+				return VFW_E_INVALIDMEDIATYPE;
+			}
 		}
+
+//		hr = pFileReader->OpenFile();
+//		if (FAILED(hr))
+//		{
+//			delete pFileReader;
+//			return VFW_E_INVALIDMEDIATYPE;
+//		}
 
 		pFileReader->CloseFile();
 		delete pFileReader;
+		delete pSharedMemory;
 	}
 
 	BOOL wasThreadRunning = FALSE;
@@ -1386,13 +1420,13 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	long length = lstrlenW(pszFileName);
 	if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
 	{
-		m_pFileReader = new FileReader();
-		m_pFileDuration = new FileReader();//Get Live File Duration Thread
+		m_pFileReader = new FileReader(m_pSharedMemory);
+		m_pFileDuration = new FileReader(m_pSharedMemory);//Get Live File Duration Thread
 	}
 	else
 	{
-		m_pFileReader = new MultiFileReader();
-		m_pFileDuration = new MultiFileReader();
+		m_pFileReader = new MultiFileReader(m_pSharedMemory);
+		m_pFileDuration = new MultiFileReader(m_pSharedMemory);
 	}
 	//m_pFileReader->SetDebugOutput(TRUE);
 	//m_pFileDuration->SetDebugOutput(TRUE);
@@ -1400,6 +1434,10 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	m_pPidParser = new PidParser(m_pSampleBuffer,m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
+
+	//here we reset the shared memory buffers
+	m_pSharedMemory->SetShareMode(FALSE);
+	m_pSharedMemory->SetShareMode(TRUE);
 
 	// Load Registry Settings data
 	GetRegStore("default");
@@ -1444,7 +1482,20 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 	hr = m_pFileReader->OpenFile();
 	if (FAILED(hr))
-		return VFW_E_INVALIDMEDIATYPE;
+	{
+		if (!m_pSharedMemory->GetShareMode())
+			m_pSharedMemory->SetShareMode(TRUE);
+		else
+			m_pSharedMemory->SetShareMode(FALSE);
+
+		hr = m_pFileReader->OpenFile();
+		if (FAILED(hr))
+			return VFW_E_INVALIDMEDIATYPE;
+	}
+
+//	hr = m_pFileReader->OpenFile();
+//	if (FAILED(hr))
+//		return VFW_E_INVALIDMEDIATYPE;
 
 	hr = m_pFileDuration->SetFileName(pszFileName);
 	if (FAILED(hr))

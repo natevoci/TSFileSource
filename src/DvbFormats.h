@@ -1,6 +1,6 @@
 /**
 *  DvbFormats.h
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -22,6 +22,8 @@
 *  bear can be reached on the forums at
 *    http://forums.dvbowners.com/
 */
+#ifndef DVBFORMATS_H
+#define DVBFORMATS_H
 
 static BYTE	PatPacket [] = {
 	0x47,								//Sync Byte 47
@@ -35,7 +37,7 @@ static BYTE	PatPacket [] = {
 //8
 	0x04, 0xD2, 						//transport_stream_id = 1234
 	
-	0xC5,								//reserved	
+	0xC5, // or 0xEB, 					//reserved	
 	0x00,								//version_number		
 	0x00,								//current_next_indicator 0
 	0x00, 0x00,							//section_number	
@@ -171,152 +173,159 @@ static const DWORD CRCTable[256] = {
 	0xBCB4666D, 0xB8757BDA,	0xB5365D03, 0xB1F740B4
 };
 
-DWORD GetCRC32(PBYTE pData, int length)
+class DVBFormat
 {
-    DWORD dwCRC = MAXDWORD; 
+
+public:
+
+	static void LoadPATPacket(PBYTE pData, USHORT tsid, USHORT sid, USHORT pmt)
+	{
+		//Fill our packet with nulls
+		memset(pData, 0xFF, 188);
+
+		//Copy our blank pat accross
+		memcpy(pData, &PatPacket, 25);
+
+		//Set our tsid numb if we have one
+		if (tsid) {
+			pData[8] = (BYTE)(tsid >> 8);
+			pData[9] = (BYTE)(tsid & 0xFF);
+		}
+
+		//Set our sid numb if we have one
+		if (sid) {
+			pData[17] = (BYTE)(sid >> 8);
+			pData[18] = (BYTE)(sid & 0xFF);
+		}
+
+		//Set our pmt pid numb if we have one
+		if (pmt) {
+			pData[19] = (BYTE)(((pmt>>8)&0x1F) | 0xE0);
+			pData[20] = (BYTE)(pmt & 0xFF);
+		}
+
+		//Get the length from the Table
+		int len = ((pData[6] & 0xF) | (pData[7] & 0xFF)) + 3 + 5;
+
+		//Calculate our crc value
+		DWORD dwCRC32 = GetCRC32(pData + 5, len - 4 - 5);
+
+		//Set our crc value
+		pData[len - 4] = (BYTE)((dwCRC32 >> 24) & 0xff);
+		pData[len - 3] = (BYTE)((dwCRC32 >> 16) & 0xff);
+		pData[len - 2] = (BYTE)((dwCRC32 >> 8) & 0xff);
+		pData[len - 1] = (BYTE)((dwCRC32) & 0xff);
+
+
+	}
+
+	static void LoadPCRPacket(PBYTE pData, USHORT pcr, REFERENCE_TIME pcrtime)
+	{
+		//Fill our packet with nulls
+		memset(pData, 0xFF, 188);
+
+		//Copy our blank pcr accross
+		memcpy(pData, &PcrPacket, 12);
+
+		//Set our pcr pid numb if we have one
+		if (pcr) {
+			pData[1] = (BYTE)((pcr >> 8) & 0x1F);
+			pData[2] = (BYTE)(pcr & 0xFF);
+		}
+
+		//Set our pcr value if we have one
+		if (pcrtime) {
+			pData[6] = (BYTE)((pcrtime >> 25) & 0xFF);
+			pData[7] = (BYTE)((pcrtime >> 17) & 0xFF);
+			pData[8] = (BYTE)((pcrtime >> 9) & 0xFF);
+			pData[9] = (BYTE)((pcrtime >> 1) & 0xFF);
+			pData[10] = (BYTE)(((pcrtime << 7) & 0x80) | 0x7E);
+		}
+	}
+
+	static void LoadPMTPacket(PBYTE pData,
+							  USHORT pcr,
+							  USHORT vid,
+							  USHORT aud,
+							  USHORT aud2,
+							  USHORT ac3,
+							  USHORT ac3_2,
+							  USHORT txt)
+	{
+		//Fill our packet with nulls
+		memset(pData, 0xFF, 188);
+
+		//Copy our blank pat accross
+		memcpy(pData, &PmtPacket, 51);
+
+		//Set our pcr pid numb if we have one
+		if (pcr) {
+			pData[13] = (BYTE)(((pcr >> 8)&0x1F) | 0xE0);
+			pData[14] = (BYTE)(pcr & 0xFF);
+		}
+
+		//Set our vid pid numb if we have one
+		if (vid) {
+			pData[18] = (BYTE)(((vid >> 8)&0x1F) | 0xE0);
+			pData[19] = (BYTE)(vid & 0xFF);
+		}
+
+		//Set our audio pid numb if we have one
+		if (aud) {
+			pData[23] = (BYTE)(((aud >> 8)&0x1F) | 0xE0);
+			pData[24] = (BYTE)(aud & 0xFF);
+		}
+
+		//Set our ac3 pid numb if we have one
+		if (ac3) {
+			pData[28] = (BYTE)(((ac3 >> 8)&0x1F) | 0xE0);
+			pData[29] =(BYTE)( ac3 & 0xFF);
+		}
+
+		//Set our teletext pid numb if we have one
+		if (txt) {
+			pData[33] = (BYTE)(((txt >> 8)&0x1F) | 0xE0);
+			pData[34] = (BYTE)(txt & 0xFF);
+		}
+
+		//Set our audio2 pid numb if we have one
+		if (aud2) {
+			pData[38] = (BYTE)(((aud >> 8)&0x1F) | 0xE0);
+			pData[39] = (BYTE)(aud & 0xFF);
+		}
+
+		//Set our ac3 2 pid numb if we have one
+		if (ac3_2) {
+			pData[43] = (BYTE)(((ac3 >> 8)&0x1F) | 0xE0);
+			pData[44] = (BYTE)(ac3 & 0xFF);
+		}
+
+		//Get the length from the Table
+		int len = ((pData[6] & 0xF) | (pData[7] & 0xFF)) + 3 + 5;
+
+		//Calculate our crc value
+		DWORD dwCRC32 = GetCRC32(pData + 5, len - 4 - 5);
+
+		//Set our crc value
+		pData[len - 4] = (BYTE)((dwCRC32 >> 24) & 0xff);
+		pData[len - 3] = (BYTE)((dwCRC32 >> 16) & 0xff);
+		pData[len - 2] = (BYTE)((dwCRC32 >> 8) & 0xff);
+		pData[len - 1] = (BYTE)((dwCRC32) & 0xff);
+	}
+
+	static DWORD GetCRC32(PBYTE pData, int length)
+	{
+		DWORD dwCRC = MAXDWORD; 
     
-    for (int i=0; i < length; i++)
-        dwCRC = (dwCRC << 8) ^ CRCTable[((dwCRC >> 24) ^ *pData++) & 0xFF];
+		for (int i=0; i < length; i++)
+			dwCRC = (dwCRC << 8) ^ CRCTable[((dwCRC >> 24) ^ *pData++) & 0xFF];
     
-    return dwCRC;
-}
-
-inline void LoadPATPacket(PBYTE pData, USHORT tsid, USHORT sid, USHORT pmt)
-{
-	//Fill our packet with nulls
-	memset(pData, 0xFF, 188);
-
-	//Copy our blank pat accross
-	memcpy(pData, &PatPacket, 25);
-
-	//Set our tsid numb if we have one
-	if (tsid) {
-		pData[8] = tsid >> 8;
-		pData[9] = tsid & 0xFF;
+		return dwCRC;
 	}
-
-	//Set our sid numb if we have one
-	if (sid) {
-		pData[17] = sid >> 8;
-		pData[18] = sid & 0xFF;
-	}
-
-	//Set our pmt pid numb if we have one
-	if (pmt) {
-		pData[19] = ((pmt>> 8)&0x1F) | 0xE0;
-		pData[20] = pmt & 0xFF;
-	}
-
-	//Get the length from the Table
-	int len = ((pData[6] & 0xF) | (pData[7] & 0xFF)) + 3 + 5;
-
-	//Calculate our crc value
-    DWORD dwCRC32 = GetCRC32(pData + 5, len - 4 - 5);
-
-	//Set our crc value
-    pData[len - 4] = (dwCRC32 >> 24) & 0xff;
-    pData[len - 3] = (dwCRC32 >> 16) & 0xff;
-    pData[len - 2] = (dwCRC32 >> 8) & 0xff;
-    pData[len - 1] = (dwCRC32) & 0xff;
+};
 
 
-}
-
-inline void LoadPCRPacket(PBYTE pData, USHORT pcr, REFERENCE_TIME pcrtime)
-{
-	//Fill our packet with nulls
-	memset(pData, 0xFF, 188);
-
-	//Copy our blank pcr accross
-	memcpy(pData, &PcrPacket, 12);
-
-	//Set our pcr pid numb if we have one
-	if (pcr) {
-		pData[1] = (pcr >> 8) & 0x1F;
-		pData[2] = pcr & 0xFF;
-	}
-
-	//Set our pcr value if we have one
-	if (pcrtime) {
-		pData[6] = (pcrtime >> 25) & 0xFF;
-		pData[7] = (pcrtime >> 17) & 0xFF;
-		pData[8] = (pcrtime >> 9) & 0xFF;
-		pData[9] = (pcrtime >> 1) & 0xFF;
-		pData[10] = ((pcrtime << 7) & 0x80) | 0x7E;
-	}
-}
-
-inline void LoadPMTPacket(PBYTE pData,
-						  USHORT pcr,
-						  USHORT vid,
-						  USHORT aud,
-						  USHORT aud2,
-						  USHORT ac3,
-						  USHORT ac3_2,
-						  USHORT txt)
-{
-	//Fill our packet with nulls
-	memset(pData, 0xFF, 188);
-
-	//Copy our blank pat accross
-	memcpy(pData, &PmtPacket, 51);
-
-	//Set our pcr pid numb if we have one
-	if (pcr) {
-		pData[13] = ((pcr >> 8)&0x1F) | 0xE0;
-		pData[14] = pcr & 0xFF;
-	}
-
-	//Set our vid pid numb if we have one
-	if (vid) {
-		pData[18] = ((vid >> 8)&0x1F) | 0xE0;
-		pData[19] = vid & 0xFF;
-	}
-
-	//Set our audio pid numb if we have one
-	if (aud) {
-		pData[23] = ((aud >> 8)&0x1F) | 0xE0;
-		pData[24] = aud & 0xFF;
-	}
-
-	//Set our ac3 pid numb if we have one
-	if (ac3) {
-		pData[28] = ((ac3 >> 8)&0x1F) | 0xE0;
-		pData[29] = ac3 & 0xFF;
-	}
-
-	//Set our teletext pid numb if we have one
-	if (txt) {
-		pData[33] = ((txt >> 8)&0x1F) | 0xE0;
-		pData[34] = txt & 0xFF;
-	}
-
-	//Set our audio2 pid numb if we have one
-	if (aud2) {
-		pData[38] = ((aud >> 8)&0x1F) | 0xE0;
-		pData[39] = aud & 0xFF;
-	}
-
-	//Set our ac3 2 pid numb if we have one
-	if (ac3_2) {
-		pData[43] = ((ac3 >> 8)&0x1F) | 0xE0;
-		pData[44] = ac3 & 0xFF;
-	}
-
-	//Get the length from the Table
-	int len = ((pData[6] & 0xF) | (pData[7] & 0xFF)) + 3 + 5;
-
-	//Calculate our crc value
-    DWORD dwCRC32 = GetCRC32(pData + 5, len - 4 - 5);
-
-	//Set our crc value
-    pData[len - 4] = (dwCRC32 >> 24) & 0xff;
-    pData[len - 3] = (dwCRC32 >> 16) & 0xff;
-    pData[len - 2] = (dwCRC32 >> 8) & 0xff;
-    pData[len - 1] = (dwCRC32) & 0xff;
-}
-
-
+#endif
 
 
 

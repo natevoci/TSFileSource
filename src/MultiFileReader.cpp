@@ -1,6 +1,7 @@
 /**
 *  MultiFileReader.cpp
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -27,7 +28,11 @@
 #include "MultiFileReader.h"
 #include <atlbase.h>
 
-MultiFileReader::MultiFileReader()
+MultiFileReader::MultiFileReader(SharedMemory* pSharedMemory):
+	FileReader(pSharedMemory),
+	m_TSBufferFile(pSharedMemory),
+	m_TSFile(pSharedMemory),
+	m_pSharedMemory(pSharedMemory) 
 {
 	m_startPosition = 0;
 	m_endPosition = 0;
@@ -60,7 +65,7 @@ MultiFileReader::~MultiFileReader()
 
 FileReader* MultiFileReader::CreateFileReader()
 {
-	return (FileReader *)new MultiFileReader();
+	return (FileReader *)new MultiFileReader(m_pSharedMemory);
 }
 
 HRESULT MultiFileReader::GetFileName(LPOLESTR *lpszFileName)
@@ -483,20 +488,20 @@ HRESULT MultiFileReader::GetFileLength(LPWSTR pFilename, __int64 &length)
 	length = 0;
 
 	// Try to open the file
-	HANDLE hFile = CreateFile(W2T(pFilename),   // The filename
-						 GENERIC_READ,          // File access
-						 FILE_SHARE_READ |
-						 FILE_SHARE_WRITE,       // Share access
+	HANDLE hFile = m_pSharedMemory->CreateFile(W2T(pFilename),   // The filename
+						 (DWORD) GENERIC_READ,          // File access
+						 (DWORD) (FILE_SHARE_READ |
+						 FILE_SHARE_WRITE),       // Share access
 						 NULL,                  // Security
-						 OPEN_EXISTING,         // Open flags
+						 (DWORD) OPEN_EXISTING,         // Open flags
 						 (DWORD) 0,             // More flags
 						 NULL);                 // Template
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
 		LARGE_INTEGER li;
 		li.QuadPart = 0;
-		li.LowPart = ::SetFilePointer(hFile, 0, &li.HighPart, FILE_END);
-		CloseHandle(hFile);
+		li.LowPart = m_pSharedMemory->SetFilePointer(hFile, 0, &li.HighPart, FILE_END);
+		m_pSharedMemory->CloseHandle(hFile);
 		
 		length = li.QuadPart;
 	}

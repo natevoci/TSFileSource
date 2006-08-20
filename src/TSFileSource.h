@@ -1,7 +1,7 @@
 /**
 *  TSFileSource.h
 *  Copyright (C) 2003      bisswanger
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -64,14 +64,14 @@ class CTSFileSourceFilter;
  *
  **********************************************/
 
-class CTSFileSourceFilter : public CSource,
+class CTSFileSourceFilter : public ISpecifyPropertyPages,
+							public IAsyncReader,
 							public IFileSourceFilter,
 							public ITSFileSource,
 							public IAMStreamSelect,
 							public IAMFilterMiscFlags,
 							protected CAMThread,
-							public IAsyncReader,
-							public ISpecifyPropertyPages
+							public CSource
 {
 	friend class CTSFileSourcePin;
 public:
@@ -232,6 +232,7 @@ protected:
 	HRESULT showEPGInfo();
 
 
+	SharedMemory* m_pSharedMemory;
 	CSampleBuffer *m_pSampleBuffer;
 	DVBMpeg2DataParser *m_pMpeg2DataParser;
 	CTSFileSourcePin *m_pPin;          // A simple rendered output pin

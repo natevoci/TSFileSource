@@ -1,6 +1,7 @@
 /**
 *  TSFileSinkPin.cpp
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -366,7 +367,7 @@ void CTSFileSinkPin::ThreadProc()
 			if (FAILED(hr))
 			{
 				CAutoLock BufferLock(&m_BufferLock);
-				::OutputDebugString(TEXT("DWDumpInputPin::ThreadProc:Write Fail."));
+				::OutputDebugString(TEXT("TSFileSinkPin::ThreadProc:Write Fail."));
 				std::vector<CBufferInfo*>::iterator it = m_Array.begin();
 				for ( ; it != m_Array.end() ; it++ )
 				{
@@ -412,7 +413,7 @@ HRESULT CTSFileSinkPin::WriteBufferSample(byte* pbData,long sampleLen)
 			//Return if we are out of memory
 			if (!newItem->sample)
 			{
-				::OutputDebugString(TEXT("DWDumpInputPin::WriteBufferSample:Out of Memory."));
+				::OutputDebugString(TEXT("TSFileSinkPin::WriteBufferSample:Out of Memory."));
 				return S_OK;
 			}
 			//store the sample in the temp buffer
@@ -434,7 +435,7 @@ HRESULT CTSFileSinkPin::WriteBufferSample(byte* pbData,long sampleLen)
 				//Return if we are out of memory
 				if (!newItem->sample)
 				{
-					::OutputDebugString(TEXT("DWDumpInputPin::WriteBufferSample:Out of Memory."));
+					::OutputDebugString(TEXT("TSFileSinkPin::WriteBufferSample:Out of Memory."));
 					return S_OK;
 				}
 				//store the sample in the temp buffer
@@ -449,9 +450,9 @@ HRESULT CTSFileSinkPin::WriteBufferSample(byte* pbData,long sampleLen)
 		return S_OK;
 	}
 	//else clear the buffer
-	::OutputDebugString(TEXT("DWDumpInputPin::WriteBufferSample:Buffer Full error."));
+	::OutputDebugString(TEXT("TSFileSinkPin::WriteBufferSample:Buffer Full error."));
 	CAutoLock BufferLock(&m_BufferLock);
-	::OutputDebugString(TEXT("DWDumpInputPin::ThreadProc:Write Fail."));
+	::OutputDebugString(TEXT("TSFileSinkPin::ThreadProc:Write Fail."));
 	std::vector<CBufferInfo*>::iterator it = m_Array.begin();
 	for ( ; it != m_Array.end() ; it++ )
 	{

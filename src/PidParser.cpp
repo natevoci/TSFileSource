@@ -1,7 +1,7 @@
 /**
 *  PidParser.cpp
 *  Copyright (C) 2003      bisswanger
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -174,7 +174,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 {
 	HRESULT hr = S_OK;
 
-	if (m_pFileReader->IsFileInvalid())
+	if (m_pFileReader->IsFileInvalid() && !m_pSampleBuffer->Count())
 	{
 		return NOERROR;
 	}
@@ -744,7 +744,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 HRESULT PidParser::RefreshPids()
 {
-	if (m_pFileReader->IsFileInvalid())
+	if (m_pFileReader->IsFileInvalid() && !m_pSampleBuffer->Count())
 	{
 		return NOERROR;
 	}

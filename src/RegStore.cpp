@@ -1,6 +1,6 @@
 /**
 *  RegStore.ccp
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2003  Shaun Faulds
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -34,13 +34,13 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CRegStore::CRegStore()
+CRegStore::CRegStore(LPCSTR lpSubKey)
 {
 	LONG resp = 0;
 	DWORD action_result = 0;
 
 	resp = RegCreateKeyEx(	HKEY_LOCAL_MACHINE,
-							"SOFTWARE\\TSFileSource",
+							lpSubKey,
 							NULL,
 							NULL,
 							REG_OPTION_NON_VOLATILE,

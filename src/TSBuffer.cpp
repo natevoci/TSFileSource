@@ -1,6 +1,7 @@
 /**
 *  TSBuffer.cpp
 *  Copyright (C) 2005      nate
+*  Copyright (C) 2006      bear
 *
 *  This file is part of TSFileSource, a directshow push source filter that
 *  provides an MPEG transport stream output.
@@ -145,7 +146,7 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 	CAutoLock BufferLock(&m_BufferLock);
 	long bytesAvailable = Count();
 	if (nBytes <= bytesAvailable)
-		return S_FALSE;
+		return S_OK;
 
 	while (nBytes > bytesAvailable)
 	{

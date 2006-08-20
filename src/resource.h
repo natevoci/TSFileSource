@@ -5,8 +5,12 @@
 #define IDS_PROPPAGE_TITLE              1
 #define IDS_SINKPROPPAGE_TITLE          2
 #define IDS_INFORMATION_TITLE           3
+#define IDS_PARSERPROPPAGE_TITLE        4
+#define IDS_PARSERSINKPROPPAGE_TITLE    5
 #define IDD_PROPPAGE                    101
 #define IDD_SINKPROPPAGE                105
+#define IDD_PARSERPROPPAGE              109
+#define IDD_PARSERSINKPROPPAGE          110
 #define IDC_VIDEO                       1000
 #define IDC_AUDIO2                      1001
 #define IDC_AUDIO                       1002
@@ -84,14 +88,18 @@
 #define IDC_FILE                        1051
 #define IDC_CURSIZE                     1052
 #define IDC_CREATESUBPIN                1052
+#define IDC_TOTALNUMB                   1053
+#define IDC_RATESPIN                    1053
+#define IDC_RATE                        1054
+#define IDC_RATECHG                     1055
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        109
+#define _APS_NEXT_RESOURCE_VALUE        111
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1051
+#define _APS_NEXT_CONTROL_VALUE         1066
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

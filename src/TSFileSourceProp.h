@@ -1,7 +1,7 @@
 /**
 *  TSFileSourceProp.h
 *  Copyright (C) 2003      bisswanger
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -57,6 +57,7 @@ public:
 private:
 	ITSFileSource   *m_pProgram;    // Pointer to the filter's custom interface.
 	BOOL m_bThreadRunning;
+	double m_dRate;
     enum Command {CMD_INIT, CMD_PAUSE, CMD_RUN, CMD_STOP, CMD_EXIT};
     DWORD ThreadProc();
 	HRESULT DoProcessingLoop(void);

@@ -1,7 +1,7 @@
 /**
 *  TSFileSourceProp.cpp
 *  Copyright (C) 2003      bisswanger
-*  Copyright (C) 2004-2005 bear
+*  Copyright (C) 2004-2006 bear
 *  Copyright (C) 2005      nate
 *
 *  This file is part of TSFileSource, a directshow push source filter that
@@ -51,6 +51,7 @@ CTSFileSourceProp::CTSFileSourceProp(IUnknown *pUnk) :
 //	CBasePropertyPage(NAME("TSFileSourceProp"), pUnk, IDD_INFO, IDS_INFORMATION_TITLE),
 	m_pProgram(0)
 {
+	m_dRate = 1.0;
 }
 
 CTSFileSourceProp::~CTSFileSourceProp(void)
@@ -277,6 +278,14 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_PGM), sz);
 
+	CComPtr <IMediaSeeking> pIMediaSeeking;
+	if SUCCEEDED(m_pProgram->QueryInterface(&pIMediaSeeking))
+	{
+		TCHAR sz[32];
+		pIMediaSeeking->GetRate(&m_dRate);
+		sprintf(sz, "%4.2lf", m_dRate);
+		Edit_SetText(GetDlgItem(m_hwnd, IDC_RATE), sz);
+	}
 
 	return 	RefreshDialog();
 }
@@ -480,6 +489,19 @@ BOOL CTSFileSourceProp::RefreshDialog()
 		CheckDlgButton(m_hwnd,IDC_RENCLOCK,FALSE);
 	}
 
+	if (PidNr == 1)
+	{
+		EnableWindow(GetDlgItem(m_hwnd, IDC_RATE), TRUE);
+		EnableWindow(GetDlgItem(m_hwnd, IDC_RATECHG), TRUE);
+		EnableWindow(GetDlgItem(m_hwnd, IDC_RATESPIN), TRUE);
+	}
+	else
+	{
+		EnableWindow(GetDlgItem(m_hwnd, IDC_RATE), FALSE);
+		EnableWindow(GetDlgItem(m_hwnd, IDC_RATECHG), FALSE);
+		EnableWindow(GetDlgItem(m_hwnd, IDC_RATESPIN), FALSE);
+	}
+
 	m_pProgram->GetReadOnly(&PidNr);
 	if (PidNr)
 		m_pProgram->GetDelayMode(&PidNr);
@@ -551,6 +573,26 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					OnRefreshProgram () ;
 					SetDirty();
 					break;
+				}
+
+				case IDC_RATECHG:
+				{
+					CHAR *psz = new CHAR[MAX_PATH];
+					if (GetDlgItemText(hwnd, IDC_RATE, psz, 5))
+					{
+						char * pEnd;
+						m_dRate = strtod(psz, &pEnd);
+						CComPtr <IMediaSeeking> pIMediaSeeking;
+						if SUCCEEDED(m_pProgram->QueryInterface(&pIMediaSeeking))
+						{
+							pIMediaSeeking->SetRate(m_dRate);
+						}
+						OnRefreshProgram () ;
+						SetDirty();
+						delete[]psz;
+						break;
+					}
+					delete[]psz;
 				}
 
 				case IDC_NEXT:
