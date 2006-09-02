@@ -207,10 +207,10 @@ HRESULT MultiMemReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes
 		__int64 bytesToRead = file->length - seekPosition;
 		if (lDataLength > bytesToRead)
 		{
-			hr = m_TSFile.Read(pbData, bytesToRead, &bytesRead);
+			hr = m_TSFile.Read(pbData, (ULONG)bytesToRead, &bytesRead);
 			m_currentPosition += bytesToRead;
 
-			hr = this->Read(pbData + bytesToRead, lDataLength - bytesToRead, dwReadBytes);
+			hr = this->Read(pbData + bytesToRead, lDataLength - (ULONG)bytesToRead, dwReadBytes);
 			*dwReadBytes += bytesRead;
 		}
 		else
@@ -333,8 +333,8 @@ HRESULT MultiMemReader::RefreshTSBufferFile()
 			return S_FALSE; //exit false until fixed
 //////////////////////////////////////
 
-		LPWSTR pBuffer = (LPWSTR)new BYTE[remainingLength];
-		m_TSBufferFile.Read((LPBYTE)pBuffer, remainingLength, &bytesRead);
+		LPWSTR pBuffer = (LPWSTR)new BYTE[(UINT)remainingLength];
+		m_TSBufferFile.Read((LPBYTE)pBuffer, (ULONG)remainingLength, &bytesRead);
 		if (bytesRead < remainingLength)
 		{
 			delete[] pBuffer;
@@ -427,7 +427,7 @@ HRESULT MultiMemReader::RefreshTSBufferFile()
 			{
 				USES_CONVERSION;
 				TCHAR sz[MAX_PATH+128];
-				int nextStPos = nextStartPosition;
+				int nextStPos = (int)nextStartPosition;
 				wsprintf(sz, TEXT("Adding file %s (%i)\n"), W2T(pFilename), nextStPos);
 				::OutputDebugString(sz);
 			}

@@ -575,7 +575,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 		m_pDemux->m_StreamAAC = m_pStreamParser->StreamArray[lIndex].AAC;
 		m_pDemux->m_StreamDTS = m_pStreamParser->StreamArray[lIndex].DTS;
 		m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
-		set_PgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
+		set_PgmNumb((int)m_pStreamParser->StreamArray[lIndex].group + 1);
 		BoostThread Boost;
 		m_pStreamParser->SetStreamActive(m_pStreamParser->StreamArray[lIndex].group);
 		m_pDemux->m_StreamVid = 0;
@@ -2846,7 +2846,7 @@ HRESULT CTSFileSourceFilter::set_RegProgram()
 {
 	if (m_pPidParser->pids.sid && m_pPidParser->m_TStreamID)
 	{
-		TCHAR cNID_TSID_ID[10];
+		TCHAR cNID_TSID_ID[32];
 		sprintf(cNID_TSID_ID, "%i:%i", m_pPidParser->m_NetworkID, m_pPidParser->m_TStreamID);
 		SetRegStore(cNID_TSID_ID);
 	}
@@ -3253,13 +3253,13 @@ STDMETHODIMP CTSFileSourceFilter::SyncRead(
 	if (FAILED(hr))
 		return hr;
 
-	if (dwReadLength < dwBytesToRead) 
+	if (dwReadLength < (DWORD)dwBytesToRead) 
 	{
 		WORD wReadOnly = 0;
 		m_pFileReader->get_ReadOnly(&wReadOnly);
 		if (wReadOnly)
 		{
-			while (dwReadLength < dwBytesToRead) 
+			while (dwReadLength < (DWORD)dwBytesToRead) 
 			{
 				WORD bDelay = 0;
 				m_pFileReader->get_DelayMode(&bDelay);

@@ -103,7 +103,7 @@ __int64 CSettingsSinkStore::getMaxTSFileSizeReg()
 	return maxSize;
 }
 
-void CSettingsSinkStore::setMaxTSFileSizeReg(BOOL llMaxSize)
+void CSettingsSinkStore::setMaxTSFileSizeReg(__int64 llMaxSize)
 {
 	maxSize = llMaxSize;
 }

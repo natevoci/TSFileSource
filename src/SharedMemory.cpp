@@ -48,10 +48,10 @@ SharedMemoryItem::~SharedMemoryItem()
 		delete[] name;
 
 	if (pShared_Memory)
-		UnmapViewOfFile(pShared_Memory);
+		::UnmapViewOfFile(pShared_Memory);
 
 	if (hFile != INVALID_HANDLE_VALUE)
-		CloseHandle(hFile);
+		::CloseHandle(hFile);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -132,6 +132,12 @@ SharedMemParam* SharedMemory::GetSharedMemParam(LPVOID pShared_Memory)
 
 	memcpy(pMemParm, pShared_Memory, sizeof(SharedMemParam));
 
+	while (pMemParm->lock == TRUE)
+	{
+		Sleep(1);
+		memcpy(pMemParm, pShared_Memory, sizeof(SharedMemParam));
+	}
+
 	//Lock the file
 	pMemParm->lock = TRUE;
 	memcpy(pShared_Memory, pMemParm, sizeof(SharedMemParam));
@@ -180,9 +186,9 @@ int SharedMemory::FindHandleCount(LPCSTR lpFileName)
 	delete pMemParm;
 
 	if (pShared_Memory)
-		UnmapViewOfFile(pShared_Memory);
+		::UnmapViewOfFile(pShared_Memory);
 
-	CloseHandle(hFile);
+	::CloseHandle(hFile);
 
 	return count;
 }
@@ -218,7 +224,7 @@ BOOL SharedMemory::UpdateHandleCount(LPCSTR lpFileName, int method)
 	}
 
 	SharedMemParam* pMemParm = GetSharedMemParam(pShared_Memory);
-	pMemParm->handleCount += method;
+	pMemParm->handleCount = pMemParm->handleCount + method;
 	if (pMemParm->handleCount < 1)
 	{
 		//change the file param to null
@@ -233,9 +239,9 @@ BOOL SharedMemory::UpdateHandleCount(LPCSTR lpFileName, int method)
 	delete pMemParm;
 
 	if (pShared_Memory)
-		UnmapViewOfFile(pShared_Memory);
+		::UnmapViewOfFile(pShared_Memory);
 
-	CloseHandle(hFile);
+	::CloseHandle(hFile);
 
 	return TRUE;
 }
@@ -366,7 +372,7 @@ HANDLE SharedMemory::OpenExistingFile(
 
 	//check if the file already exists
 	HANDLE hFile = openFileMapping(FILE_MAP_ALL_ACCESS, FALSE, lpFileName);
-	DWORD dwErr = GetLastError();
+	DWORD dwErr = ::GetLastError();
 	if (hFile == INVALID_HANDLE_VALUE && dwErr)
 	{
 		if (dwErr != ERROR_OPEN_FILES)
@@ -395,7 +401,7 @@ HANDLE SharedMemory::OpenExistingFile(
 				item->name = GetSharedFileName(pMemParm->memID);
 				item->hFile = hFile;
 				item->pShared_Memory = pShared_Memory;
-				pMemParm->handleCount += 1;
+				pMemParm->handleCount = pMemParm->handleCount + 1;
 				PutSharedMemParam(pMemParm, pShared_Memory);
 				delete pMemParm;
 
@@ -406,7 +412,7 @@ HANDLE SharedMemory::OpenExistingFile(
 			{
 				//Wait for the file to become free
 				int handleCount = pMemParm->handleCount;
-				int loop = 0;
+/*				int loop = 0;
 				while (handleCount > 0 && loop < 100)
 				{
 					loop++;
@@ -416,7 +422,7 @@ HANDLE SharedMemory::OpenExistingFile(
 					delete pMemParm;
 				}
 				pMemParm->handleCount = handleCount;
-
+*/
 				// now check if not already open
 				if (pMemParm->handleCount == 0)
 				{
@@ -443,7 +449,7 @@ HANDLE SharedMemory::OpenExistingFile(
 			else if (dwDesiredAccess == (DWORD)GENERIC_READ)
 			{
 				//Wait for the file to become free
-				int handleCount = pMemParm->handleCount;
+/*				int handleCount = pMemParm->handleCount;
 				int loop = 0;
 				while (handleCount > 0 && loop < 100)
 				{
@@ -454,7 +460,8 @@ HANDLE SharedMemory::OpenExistingFile(
 					delete pMemParm;
 				}
 				pMemParm->handleCount = 0;//handleCount; Got to get this working sometime ????????
-
+//				pMemParm->handleCount = handleCount; //Got to get this working sometime ????????
+*/
 				// now check if not already open
 				if (pMemParm->handleCount == 0)
 				{
@@ -526,7 +533,7 @@ HANDLE SharedMemory::CreateFile(LPCSTR lpFileName,
 										dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 
 		//get the error and return if abnormal fail
-		DWORD dwErr = GetLastError();
+		DWORD dwErr = ::GetLastError();
 		if (hFile && !dwErr)
 		{
 			//check if we hold a reference in the create list
@@ -590,7 +597,7 @@ HANDLE SharedMemory::CreateFile(LPCSTR lpFileName,
 			else
 				Item->hFile = createFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, (ULONG)m_maxFileSize, Item->name);
 			
-			dwErr = GetLastError();
+			dwErr = ::GetLastError();
 			if (Item->hFile == INVALID_HANDLE_VALUE && dwErr)
 			{
 				if (dwErr != ERROR_OPEN_FILES)
@@ -674,7 +681,7 @@ HANDLE SharedMemory::CreateFile(LPCSTR lpFileName,
 	else
 		item->hFile = createFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, (ULONG)m_maxFileSize, item->name);
 	
-	dwErr = GetLastError();
+	dwErr = ::GetLastError();
 	if (item->hFile == INVALID_HANDLE_VALUE && dwErr)
 	{
 		if (dwErr != ERROR_OPEN_FILES)
@@ -695,7 +702,7 @@ HANDLE SharedMemory::CreateFile(LPCSTR lpFileName,
 		//load our file param and close mapping
 		PutSharedMemParam(&memParm, item->pShared_Memory);
 		if (item->pShared_Memory)
-			UnmapViewOfFile(item->pShared_Memory);
+			::UnmapViewOfFile(item->pShared_Memory);
 
 		item->pShared_Memory = NULL;
 
@@ -718,7 +725,7 @@ HANDLE SharedMemory::CreateFile(LPCSTR lpFileName,
 									dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 
 	//get the error and return if abnormal fail
-	dwErr = GetLastError();
+	dwErr = ::GetLastError();
 	if (hFile == INVALID_HANDLE_VALUE && dwErr)
 	{
 		delete item; //closes the handle
@@ -845,7 +852,7 @@ BOOL SharedMemory::SetEndOfFile(HANDLE hFile)
 		item->sharedFilePosition = pMemParm->memMaxSize;
 		PutSharedMemParam(pMemParm, item->pShared_Memory);
 		delete pMemParm;
-		SetLastError(ERROR_SEEK_ON_DEVICE);
+		::SetLastError(ERROR_SEEK_ON_DEVICE);
 		PrintError(TEXT("SharedMemory::SetEndOfFile()::SEEK Error: "));
 		return FALSE;
 	}
@@ -1207,7 +1214,7 @@ BOOL SharedMemory::GetDiskFreeSpaceEx(LPCSTR lpDirectoryName,
 		return FALSE;
 	
 	//convert to 64MB Blocks
-	__int64 size = (__int64)((__int64)memStatus.dwAvailVirtual/(__int64)(1048576*64));
+	__int64 size = (__int64)((__int64)memStatus.dwAvailPhys/(__int64)(1048576*64));
 
 	//convert back to bytes
 	size = (__int64)(size*(__int64)(1048576*64));
@@ -1229,7 +1236,7 @@ void SharedMemory::PrintError(LPCTSTR lstring)
 					FORMAT_MESSAGE_FROM_SYSTEM | 
 					FORMAT_MESSAGE_IGNORE_INSERTS,
 					NULL,
-					GetLastError(),
+					::GetLastError(),
 					MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
 					(LPTSTR) &pMsg,
 					0,
@@ -1245,13 +1252,13 @@ void SharedMemory::PrintError(LPCTSTR lstring)
 void SharedMemory::PrintLongLong(LPCTSTR lstring, __int64 value)
 {
 	TCHAR sz[100];
-	double dVal = value;
+	double dVal = (double)value;
 	double len = log10(dVal);
-	int pos = len;
+	int pos = (int)len;
 	sz[pos+1] = '\0';
 	while (pos >= 0)
 	{
-		int val = value % 10;
+		int val = (int)(value % 10);
 		sz[pos] = '0' + val;
 		value /= 10;
 		pos--;

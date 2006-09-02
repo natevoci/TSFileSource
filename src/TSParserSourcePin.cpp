@@ -620,9 +620,76 @@ m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 		pcrStart = m_llPrevPCR;
 	}
 
-	//Read from buffer
-	m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
-	m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
+//*********************************************************************************
+
+	//
+	//Code for inserting a PAT every sample
+	//
+
+	//If no TSID then we won't have a PAT so create one
+
+	if (!m_TSIDSave && !m_PinTypeSave) 
+	{
+		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+		m_pTSBuffer->DequeFromBuffer(pData, lDataLength - m_PacketSave*3);
+
+		ULONG pos = 0; 
+		REFERENCE_TIME pcrPos = -1;
+
+		//Get the first occurance of a timing packet
+		hr = S_OK;
+		hr = m_pTSParserSourceFilter->m_pPidParser->FindNextPCR(pData, lDataLength - m_PacketSave*3, m_pPids, &pcrPos, &pos, 1); //Get the PCR
+		//If we have one then load our PAT, PMT & PCR Packets	
+		if(pcrPos && hr == S_OK)
+		{
+			memcpy(pData+pos+m_PacketSave*3, pData+pos, lDataLength - pos - m_PacketSave*3); 
+
+			DVBFormat::LoadPATPacket(pData + pos, m_TSIDSave, m_pPids->sid, m_pPids->pmt);
+			pos+= m_PacketSave;	//shift to the pmt packet
+
+			//Also insert a pmt if we don't have one already
+			if (!m_pPids->pmt){ 
+				DVBFormat::LoadPMTPacket(pData + pos,
+					  m_pPids->pcr - m_pPids->opcr,
+					  m_pPids->vid,
+					  m_pPids->aud,
+					  m_pPids->aud2,
+					  m_pPids->ac3,
+					  m_pPids->ac3_2,
+					  m_pPids->txt);
+			}
+			else {
+				//load another PAT instead
+				DVBFormat::LoadPATPacket(pData + pos, m_TSIDSave, m_pPids->sid, m_pPids->pmt);
+			}
+
+			pos+= m_PacketSave;	//shift to the pcr packet
+
+			//Load in our own pcr if we need to
+			if (m_pPids->opcr) {
+				DVBFormat::LoadPCRPacket(pData + pos, m_pPids->pcr - m_pPids->opcr, pcrPos);
+			}
+			else {
+				//load another PAT instead
+				DVBFormat::LoadPATPacket(pData + pos, m_TSIDSave, m_pPids->sid, m_pPids->pmt);
+			}
+		}
+		else
+		{
+			m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+			m_pTSBuffer->DequeFromBuffer(pData + lDataLength - m_PacketSave*3, m_PacketSave*3);
+		}
+
+	}
+	else
+//*********************************************************************************
+
+	{
+		//Normal Read from buffer
+		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
+	}
+
 	m_lPrevPCRByteOffset -= lDataLength;
 	m_lNextPCRByteOffset -= lDataLength;
 
@@ -748,7 +815,7 @@ PrintTime(TEXT("rtNextTime:"), (__int64)rtNextTime, 10000);
 //Old Capture format Additions
 
 	//If no TSID then we won't have a PAT so create one
-	if (!m_TSIDSave && firstPass == -1 && !m_PinTypeSave)
+	if ( FALSE && !m_TSIDSave && firstPass == -1 && !m_PinTypeSave)
 	{
 		ULONG pos = 0; 
 		REFERENCE_TIME pcrPos = -1;
@@ -759,7 +826,7 @@ PrintTime(TEXT("rtNextTime:"), (__int64)rtNextTime, 10000);
 		//If we have one then load our PAT, PMT & PCR Packets	
 		if(pcrPos && hr == S_OK) {
 			//Check if we can back up before timing packet	
-			if (pos > m_PacketSave*2) {
+			if (pos > (ULONG)m_PacketSave*2) {
 			//back up before timing packet
 				pos-= m_PacketSave*2;	//shift back to before pat & pmt packet
 			}
@@ -1279,7 +1346,7 @@ PrintTime(TEXT("seekin"), (__int64) seektime, 10000);
 	//Set the file pointer as quick as possible incase the thread ends prior to our seek finishing
 	__int64 fileStart, filelength = 0;
 	m_pTSParserSourceFilter->m_pFileReader->GetFileSize(&fileStart, &filelength);
-	__int64 nFileIndex;
+	__int64 nFileIndex = 0;
 	if (m_pTSParserSourceFilter->m_pPidParser->pids.dur>>14)
 		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSParserSourceFilter->m_pPidParser->pids.dur>>14);
 
@@ -1358,7 +1425,7 @@ PrintTime(TEXT("our pcr Delta SeekTime"), (__int64)pcrDeltaSeekTime, 90);
 //This is where we create a pcr time relative to the current stream position
 //
 	ULONG ulBytesRead = 0;
-	long lDataLength = min(filelength, MIN_FILE_SIZE*2);//1000000;
+	long lDataLength = (long)min(filelength, MIN_FILE_SIZE*2);//1000000;
 	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
 	//Set Pointer to end of file to get end pcr
 	m_pTSParserSourceFilter->m_pFileReader->setFilePointer((__int64) - ((__int64)lDataLength), FILE_END);
@@ -1684,7 +1751,7 @@ PrintTime(TEXT("UpdateDuration1"), (__int64) m_rtDuration, 10000);
 			filelength = fileEnd;
 			fileEnd += fileStart;
 //			LONG lDataLength = m_lTSPacketDeliverySize;
-			LONG lDataLength = min(filelength/4, 2000000);
+			LONG lDataLength = (LONG)min(filelength/4, 2000000);
 			lDataLength = max(m_lTSPacketDeliverySize, lDataLength);
 			if (fileStart != m_LastMultiFileStart)
 			{
@@ -1700,7 +1767,7 @@ PrintTime(TEXT("UpdateDuration1"), (__int64) m_rtDuration, 10000);
 					Debug(TEXT("Failed to read from start of file"));
 				}
 
-				if (ulBytesRead < lDataLength)
+				if (ulBytesRead < (ULONG)lDataLength)
 				{
 					Debug(TEXT("Didn't read as much as it should have"));
 				}
@@ -1765,7 +1832,7 @@ PrintTime(TEXT("UpdateDuration3"), (__int64) m_rtDuration, 10000);
 					Debug(TEXT("Failed to read from end of file"));
 				}
 
-				if (ulBytesRead < lDataLength)
+				if (ulBytesRead < (ULONG)lDataLength)
 				{
 					Debug(TEXT("Didn't read as much as it should have"));
 				}
@@ -1888,7 +1955,7 @@ PrintTime(TEXT("UpdateDuration6"), (__int64) m_rtDuration, 10000);
 					filelength = fileEnd;
 					fileEnd += fileStart;
 		//			LONG lDataLength = m_lTSPacketDeliverySize;
-					LONG lDataLength = min(filelength/4, 2000000);
+					LONG lDataLength = (LONG)min(filelength/4, 2000000);
 					lDataLength = max(m_lTSPacketDeliverySize, lDataLength);
 
 					//Do a quick parse of duration if not seeking
@@ -2217,13 +2284,13 @@ void CTSParserSourcePin::PrintTime(LPCTSTR lstring, __int64 value, __int64 divid
 void CTSParserSourcePin::PrintLongLong(LPCTSTR lstring, __int64 value)
 {
 	TCHAR sz[100];
-	double dVal = value;
+	double dVal = (double)value;
 	double len = log10(dVal);
-	int pos = len;
+	int pos = (int)len;
 	sz[pos+1] = '\0';
 	while (pos >= 0)
 	{
-		int val = value % 10;
+		int val = (int)(value % 10);
 		sz[pos] = '0' + val;
 		value /= 10;
 		pos--;

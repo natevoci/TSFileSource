@@ -182,7 +182,7 @@ HRESULT MultiFileWriter::Write(PBYTE pbData, ULONG lDataLength)
 		// Write some data to the current file if it's not full
 		if (dataToWrite > 0)
 		{
-			m_pCurrentTSFile->Write(pbData, dataToWrite);
+			m_pCurrentTSFile->Write(pbData, (ULONG)dataToWrite);
 		}
 
 		// Try to create a new file
@@ -195,7 +195,7 @@ HRESULT MultiFileWriter::Write(PBYTE pbData, ULONG lDataLength)
 
 		// Try writing the remaining data now that a new file has been created.
 		pbData += dataToWrite;
-		lDataLength -= dataToWrite;
+		lDataLength -= (ULONG)dataToWrite;
 		return Write(pbData, lDataLength);
 	}
 	else
@@ -242,11 +242,11 @@ HRESULT MultiFileWriter::PrepareTSFile()
 	}
 	else
 	{
-		if (m_tsFileNames.size() >= m_minTSFiles) 
+		if ((long)m_tsFileNames.size() >= m_minTSFiles) 
 		{
 			if FAILED(hr = ReuseTSFile())
 			{
-				if (m_tsFileNames.size() < m_maxTSFiles)
+				if ((long)m_tsFileNames.size() < m_maxTSFiles)
 				{
 					if (hr != 0x80070020) // ERROR_SHARING_VIOLATION
 						::OutputDebugString(TEXT("Failed to reopen old file. Unexpected reason. Trying to create a new file.\n"));
@@ -497,7 +497,7 @@ HRESULT MultiFileWriter::GetAvailableDiskSpace(__int64* llAvailableDiskSpace)
 	char	szDrive[4];
 	if (m_pTSBufferFileName[1] == ':')
 	{
-		szDrive[0] = m_pTSBufferFileName[0];
+		szDrive[0] = (char)m_pTSBufferFileName[0];
 		szDrive[1] = ':';
 		szDrive[2] = '\\';
 		szDrive[3] = '\0';
@@ -617,6 +617,7 @@ __int64 MultiFileWriter::getMaxTSFileSize(void)
 void MultiFileWriter::setMaxTSFileSize(__int64 maxSize)
 {
 	m_maxTSFileSize = maxSize;
+	m_pCurrentTSFile->SetChunkReserve(TRUE, m_chunkReserve, m_maxTSFileSize);
 }
 
 __int64 MultiFileWriter::getChunkReserve(void)
@@ -627,4 +628,5 @@ __int64 MultiFileWriter::getChunkReserve(void)
 void MultiFileWriter::setChunkReserve(__int64 chunkSize)
 {
 	m_chunkReserve = chunkSize;
+	m_pCurrentTSFile->SetChunkReserve(TRUE, m_chunkReserve, m_maxTSFileSize);
 }

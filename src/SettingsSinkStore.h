@@ -63,7 +63,7 @@ public:
 	long getMaxTSFilesReg();
 	void setMaxTSFilesReg(long lMaxFiles);
 	__int64 getMaxTSFileSizeReg();
-	void setMaxTSFileSizeReg(BOOL llMaxSize);
+	void setMaxTSFileSizeReg(__int64 llMaxSize);
 	__int64 getChunkReserveReg();
 	void setChunkReserveReg(__int64 llChunkSize);
 

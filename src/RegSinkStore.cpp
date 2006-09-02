@@ -291,7 +291,7 @@ BOOL CRegSinkStore::removeOld()
 	// Now remove old items
 	//
 	LPTSTR pName = "";
-	for(int x = 0; x < toRemove.size(); x++)
+	for(int x = 0; x < (int)toRemove.size(); x++)
 	{
 		pName = toRemove.at(x);
 		RegDeleteKey(settingsKey, pName);

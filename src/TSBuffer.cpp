@@ -162,14 +162,14 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			return hr;
 		}
 
-		if (ulBytesRead < m_lTSBufferItemSize) 
+		if (ulBytesRead < (ULONG)m_lTSBufferItemSize) 
 		{
 			WORD wReadOnly = 0;
 			m_pFileReader->get_ReadOnly(&wReadOnly);
 			if (wReadOnly && !bIgnoreDelay)
 			{
 				int count = 20; // 2 second max delay
-				while (ulBytesRead < m_lTSBufferItemSize && count) 
+				while (ulBytesRead < (ULONG)m_lTSBufferItemSize && count) 
 				{
 					::OutputDebugString(TEXT("TSBuffer::Require() Waiting for file to grow.\n"));
 
@@ -286,11 +286,11 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 			lOffset -= m_lTSBufferItemSize;
 
 			itemIndex++;
-			if(!m_Array.size() || m_Array.size() <= itemIndex)
+			if((m_Array.size() == 0) || ((long)m_Array.size() <= itemIndex))
 				return E_FAIL;
 		}
 
-		if(!m_Array.size() || m_Array.size() <= itemIndex)
+		if((m_Array.size() == 0) || ((long)m_Array.size() <= itemIndex))
 			return E_FAIL;
 
 		BYTE *item = m_Array.at(itemIndex);
@@ -310,13 +310,13 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 void CTSBuffer::PrintLongLong(LPCTSTR lstring, __int64 value)
 {
 	TCHAR sz[100];
-	double dVal = value;
+	double dVal = (double)value;
 	double len = log10(dVal);
-	int pos = len;
+	int pos = (int)len;
 	sz[pos+1] = '\0';
 	while (pos >= 0)
 	{
-		int val = value % 10;
+		int val = (int)(value % 10);
 		sz[pos] = '0' + val;
 		value /= 10;
 		pos--;
@@ -326,3 +326,4 @@ void CTSBuffer::PrintLongLong(LPCTSTR lstring, __int64 value)
 	::OutputDebugString(szout);
 	debugcount++;
 }
+

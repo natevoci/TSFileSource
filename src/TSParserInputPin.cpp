@@ -53,7 +53,7 @@ CTSParserInputPin::CTSParserInputPin(CTSParserSourceFilter *pParserFilter, LPUNK
 //Frodo code changes
 
 	m_writeBufferSize = 4096*32;
-	m_writeBuffer = new BYTE[m_writeBufferSize];
+	m_writeBuffer = new BYTE[(UINT)m_writeBufferSize];
     m_writeBufferLen = 0;
 
 	m_WriteSampleSize = 0;
@@ -77,7 +77,7 @@ CTSParserInputPin::CTSParserInputPin(CTSParserSourceFilter *pParserFilter, LPUNK
 
 	m_pRegFileName = new char[MAX_PATH];
 	if (m_pRegFileName != 0)
-		sprintf(m_pRegFileName, "G:\\Capture\\MyBufferFile");
+		sprintf(m_pRegFileName, "MyBufferFile");//"G:\\Capture\\MyBufferFile");
 	
 	if(m_pRegFileName && strlen(m_pRegFileName) > 0 && strlen(m_pRegFileName) <= MAX_PATH)
 	{
@@ -420,7 +420,7 @@ HRESULT CTSParserInputPin::Filter(byte* pbData,long sampleLen)
 	for(t=off;t<(DWORD)sampleLen;t+=packet)   
 	{
         //sanity check 
-		if (t+packet > sampleLen)
+		if ((int)t+packet > sampleLen)
 			break;
 		
 		if(!bProg)
@@ -684,13 +684,13 @@ void CTSParserInputPin::setNumbErrorPackets(__int64 lpllErrors)
 void CTSParserInputPin::PrintLongLong(LPCTSTR lstring, __int64 value)
 {
 	TCHAR sz[100];
-	double dVal = value;
+	double dVal = (double)value;
 	double len = log10(dVal);
-	int pos = len;
+	int pos = (int)len;
 	sz[pos+1] = '\0';
 	while (pos >= 0)
 	{
-		int val = value % 10;
+		int val = (int)(value % 10);
 		sz[pos] = '0' + val;
 		value /= 10;
 		pos--;

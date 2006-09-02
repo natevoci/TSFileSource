@@ -3388,7 +3388,7 @@ HRESULT Demux::IsStopped()
 	FILTER_STATE state = State_Stopped;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		// Get IMediaFilter interface
 		IMediaFilter* pMediaFilter = NULL;
@@ -3431,7 +3431,7 @@ HRESULT Demux::IsPlaying()
 	FILTER_STATE state = State_Stopped;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		// Get IMediaFilter interface
 		IMediaFilter* pMediaFilter = NULL;
@@ -3476,7 +3476,7 @@ HRESULT Demux::IsPaused()
 	FILTER_STATE state = State_Stopped;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		// Get IMediaFilter interface
 		IMediaFilter* pMediaFilter = NULL;
@@ -3518,7 +3518,7 @@ HRESULT Demux::DoStop()
 	HRESULT hr = S_OK;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		// Get IMediaFilter interface
 		IMediaFilter* pMediaFilter = NULL;
@@ -3551,7 +3551,7 @@ HRESULT Demux::DoStart()
 	HRESULT hr = S_OK;
 
 	FILTER_INFO Info;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		// Get IMediaFilter interface
 		IMediaFilter* pMediaFilter = NULL;
@@ -3584,7 +3584,7 @@ HRESULT Demux::DoPause()
 	HRESULT hr = S_OK;
 
 	FILTER_INFO Info;;
-	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)))
+	if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
 	{
 		// Get IMediaFilter interface
 		IMediaFilter* pMediaFilter = NULL;

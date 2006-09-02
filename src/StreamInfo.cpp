@@ -110,7 +110,7 @@ void StreamInfoArray::Add(StreamInfo *newStreamInfo)
 void StreamInfoArray::RemoveAt(int nPosition)
 {
 //	CAutoLock StreamInfoLock(&m_StreamInfoLock);
-	if ((nPosition >= 0) && (nPosition < m_Array.size()))
+	if ((nPosition >= 0) && (nPosition < (int)m_Array.size()))
 	{
 		m_Array.erase(m_Array.begin() + nPosition);
 	}

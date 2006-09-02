@@ -183,7 +183,7 @@ void PidInfoArray::Add(PidInfo *newPidInfo)
 void PidInfoArray::RemoveAt(int nPosition)
 {
 //	CAutoLock arraylock(&m_ArrayLock);
-	if ((nPosition >= 0) && (nPosition < m_Array.size()))
+	if ((nPosition >= 0) && (nPosition < (int)m_Array.size()))
 	{
 		m_Array.erase(m_Array.begin() + nPosition);
 	}

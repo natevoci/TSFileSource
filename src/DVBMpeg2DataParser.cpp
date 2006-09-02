@@ -694,7 +694,7 @@ HRESULT DVBMpeg2DataParser::ReadSection(DVBSection *pSection)
 	}
 	(log << "Supplied data buffer\n").Write();
 
-	DWORD dwWait = WaitForMultipleObjects(2, m_hScanningStopEvent, FALSE, pSection->timeout*1000);
+	DWORD dwWait = WaitForMultipleObjects(2, m_hScanningStopEvent, FALSE, (DWORD)pSection->timeout*1000);
 	(log << "Event or timeout triggered  " << (long)dwWait << "\n").Write();
 
 	if (dwWait == WAIT_OBJECT_0)

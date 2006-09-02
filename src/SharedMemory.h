@@ -27,7 +27,9 @@
 #ifndef SHAREDMEMORY_H
 #define SHAREDMEMORY_H
 
+#ifndef INVALID_SET_FILE_POINTER
 #define INVALID_SET_FILE_POINTER -1
+#endif
 
 #include <vector>
 

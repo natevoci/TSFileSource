@@ -510,18 +510,6 @@ STDMETHODIMP CTSParserSourceFilter::NonDelegatingQueryInterface(REFIID riid, voi
 	// Second element in the preceding KSTOPOLOGY_CONNECTION array.
 	};
 
-	const BDANODE_DESCRIPTOR NodeDescriptor[] =
-	{
-		1,						// The node type as it is used
-								// in the BDA template topology
-
-		(ULONG) &KSNODE_BDA_RF_TUNER,	// GUID from BdaMedia.h describing
-								// the node's function (e.g.
-								// KSNODE_BDA_RF_TUNER)
-
-		(ULONG) &GUID_NULL		// GUID that can be use to look up
-								// a displayable name for the node.
-	};
 /*
 	const KSPIN_DESCRIPTOR KsPin_Descriptor_Table[] =
 	{
@@ -594,8 +582,17 @@ STDMETHODIMP CTSParserSourceFilter::GetNodeDescriptors(ULONG *ulcNodeDescriptors
 	if (!ulcNodeDescriptorsMax) 
 		return S_OK;
 
+	BDANODE_DESCRIPTOR NodeDescriptor;
+	NodeDescriptor.ulBdaNodeType = 1;					// The node type as it is used in 
+														//the BDA template topology
+	NodeDescriptor.guidFunction = KSNODE_BDA_RF_TUNER;// GUID from BdaMedia.h describing
+														// the node's function (e.g.
+														// KSNODE_BDA_RF_TUNER)
+	NodeDescriptor.guidName = GUID_NULL;				// GUID that can be use to look up
+														// a displayable name for the node.
+
 	CheckPointer(rgNodeDescriptors, E_POINTER);
-	memcpy(rgNodeDescriptors, NodeDescriptor, sizeof(NodeDescriptor));
+	memcpy(rgNodeDescriptors, &NodeDescriptor, sizeof(NodeDescriptor));
 
 	return S_OK;
 }
@@ -808,7 +805,7 @@ STDMETHODIMP  CTSParserSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStr
 		m_pDemux->m_StreamAAC = m_pStreamParser->StreamArray[lIndex].AAC;
 		m_pDemux->m_StreamDTS = m_pStreamParser->StreamArray[lIndex].DTS;
 		m_pDemux->m_StreamAud2 = m_pStreamParser->StreamArray[lIndex].Aud2;
-		set_PgmNumb(m_pStreamParser->StreamArray[lIndex].group + 1);
+		set_PgmNumb((WORD)m_pStreamParser->StreamArray[lIndex].group + 1);
 		BoostThread Boost;
 		m_pStreamParser->SetStreamActive(m_pStreamParser->StreamArray[lIndex].group);
 		m_pDemux->m_StreamVid = 0;
@@ -3091,7 +3088,7 @@ HRESULT CTSParserSourceFilter::set_RegProgram()
 {
 	if (m_pPidParser->pids.sid && m_pPidParser->m_TStreamID)
 	{
-		TCHAR cNID_TSID_ID[10];
+		TCHAR cNID_TSID_ID[32];
 		sprintf(cNID_TSID_ID, "%i:%i", m_pPidParser->m_NetworkID, m_pPidParser->m_TStreamID);
 		SetRegStore(cNID_TSID_ID);
 	}
@@ -3498,13 +3495,13 @@ STDMETHODIMP CTSParserSourceFilter::SyncRead(
 	if (FAILED(hr))
 		return hr;
 
-	if (dwReadLength < dwBytesToRead) 
+	if (dwReadLength < (DWORD)dwBytesToRead) 
 	{
 		WORD wReadOnly = 0;
 		m_pFileReader->get_ReadOnly(&wReadOnly);
 		if (wReadOnly)
 		{
-			while (dwReadLength < dwBytesToRead) 
+			while (dwReadLength < (DWORD)dwBytesToRead) 
 			{
 				WORD bDelay = 0;
 				m_pFileReader->get_DelayMode(&bDelay);

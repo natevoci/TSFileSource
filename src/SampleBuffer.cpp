@@ -84,7 +84,7 @@ HRESULT CSampleBuffer::LoadMediaSample(IMediaSample *pSample)
 		return hr;
 	}
 
-::OutputDebugString(TEXT("CSampleBuffer::LoadMediaSample().\n"));
+//::OutputDebugString(TEXT("CSampleBuffer::LoadMediaSample().\n"));
 	LONG lDataLength = pSample->GetActualDataLength();
 	CBufferInfo *bufferInfo = new CBufferInfo();
 	bufferInfo->sample = new BYTE[lDataLength];
@@ -121,7 +121,7 @@ HRESULT CSampleBuffer::ReadSampleBuffer(PBYTE pbData, ULONG lDataLength, ULONG *
 
 	*dwReadBytes = 0;
 	int i = 0;
-	while (i < m_Array.size() && *dwReadBytes < bytesAvailable && *dwReadBytes < lDataLength)
+	while (i < (int)m_Array.size() && *dwReadBytes < bytesAvailable && *dwReadBytes < lDataLength)
 	{
 		CBufferInfo *bufferInfo = m_Array.at(i);
 		ULONG length = bufferInfo->size;
@@ -162,14 +162,14 @@ return E_FAIL;
 //			return hr;
 //		}
 
-		if (ulBytesRead < m_lSampleBufferItemSize) 
+		if (ulBytesRead < (ULONG)m_lSampleBufferItemSize) 
 		{
 			WORD wReadOnly = 0;
 //			m_pFileReader->get_ReadOnly(&wReadOnly);
 			if (wReadOnly && !bIgnoreDelay)
 			{
 				int count = 20; // 2 second max delay
-				while (ulBytesRead < m_lSampleBufferItemSize && count) 
+				while (ulBytesRead < (ULONG)m_lSampleBufferItemSize && count) 
 				{
 					::OutputDebugString(TEXT("SampleBuffer::Require() Waiting for file to grow.\n"));
 
@@ -284,11 +284,11 @@ HRESULT CSampleBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffs
 			lOffset -= m_Array.at(itemIndex)->size;
 			itemIndex++;
 
-			if(!m_Array.size() || m_Array.size() <= itemIndex)
+			if((m_Array.size() == 0) || ((long)m_Array.size() <= itemIndex))
 				return E_FAIL;
 		}
 
-		if(!m_Array.size() || m_Array.size() <= itemIndex)
+		if((m_Array.size() == 0) || ((long)m_Array.size() <= itemIndex))
 			return E_FAIL;
 
 		CBufferInfo *item = m_Array.at(itemIndex);
@@ -308,13 +308,13 @@ HRESULT CSampleBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffs
 void CSampleBuffer::PrintLongLong(LPCTSTR lstring, __int64 value)
 {
 	TCHAR sz[100];
-	double dVal = value;
+	double dVal = (double)value;
 	double len = log10(dVal);
-	int pos = len;
+	int pos = (int)len;
 	sz[pos+1] = '\0';
 	while (pos >= 0)
 	{
-		int val = value % 10;
+		int val = (int)(value % 10);
 		sz[pos] = '0' + val;
 		value /= 10;
 		pos--;

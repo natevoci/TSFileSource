@@ -436,9 +436,9 @@ BOOL CTSParserSinkProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 				case IDC_CURNAMECHG:
 				{
 					WCHAR wString[MAX_PATH];
-					if (GetDlgItemTextW(hwnd, IDC_CURNAME, (unsigned short *)&wString, MAX_PATH))
+					if (GetDlgItemTextW(hwnd, IDC_CURNAME, (LPWSTR)&wString, MAX_PATH))
 					{
-						m_pProgram->SetBufferFileName((unsigned short *)&wString);
+						m_pProgram->SetBufferFileName((LPWSTR)&wString);
 						OnRefreshProgram ();
 						SetDirty();
 					}

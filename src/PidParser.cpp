@@ -112,7 +112,7 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 
 	// Access the sample's data buffer
 	ULONG a = 0;
-	ULONG ulDataLength = min(filelength, MIN_FILE_SIZE*2);
+	ULONG ulDataLength = min((ULONG)filelength, MIN_FILE_SIZE*2);
 	ULONG ulDataRead = 0;
 	PBYTE pData = new BYTE[ulDataLength];
 	pFileReader->setFilePointer(0, FILE_BEGIN);
@@ -225,7 +225,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 	__int64 fileStart, filelength;
 	pFileReader->GetFileSize(&fileStart, &filelength);
-	ULONG ulDataLength = min(MIN_FILE_SIZE*2, filelength);
+	ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
 	fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
 	m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
 	if (filelength < MIN_FILE_SIZE*2)
@@ -1176,8 +1176,8 @@ HRESULT PidParser::CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, 
 
 HRESULT PidParser::CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime)
 {
-	if ((WORD)((0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2])) == pPids->opcr &&
-		(WORD)(pData[pos+1]&0xF0) == 0x40)
+	if (((WORD)((0x1F&pData[pos+1])<<8)|(0xFF&pData[pos+2])) == pPids->opcr
+		&& (pData[pos+1]&0xF0) == 0x40)
 	{
 //		if (((pData[pos+3] & 0x1F) == 0x10)
 		if (((pData[pos+3] & 0x10) == 0x10)
@@ -1187,7 +1187,7 @@ HRESULT PidParser::CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids,
 			&& ((pData[pos+7]) == 0xEA)
 			&& ((pData[pos+8] | pData[pos+9]) == 0x00)
 			&& ((pData[pos+10] & 0xC0) == 0x80)
-			&& ((pData[pos+11] & 0xC0) == 0x80 || (pData[pos+11] & 0xC0) == 0xC0)
+			&& ((pData[pos+11] & 0xC0))// == 0x80 || (pData[pos+11] & 0xC0) == 0xC0)
 			&& (pData[pos+12] >= 0x05)
 			)
 		{
@@ -1531,7 +1531,7 @@ HRESULT PidParser::CheckVAStreams(PBYTE pData, ULONG ulDataLength)
 				psiID = pesID>>16;
 				if (!psiID) {
 
-					pid = 0xFF&pesID;
+					pid = 0xFF&(WORD)pesID;
 
 					if (((0xFF0&pesID) == 0x1e0) && (pids.vid == 0)) {
 						pids.vid = pid;
@@ -1606,7 +1606,7 @@ HRESULT PidParser::CheckEPGFromFile()
 
 		__int64 fileStartPointer = m_pFileReader->getFilePointer();
 
-		iterations = ((fileSize - fileStartPointer) / MIN_FILE_SIZE); 
+		iterations = (int)((fileSize - fileStartPointer) / MIN_FILE_SIZE); 
 		if (iterations >= 64)
 			iterations = 64;
 		else if (iterations < 32)
@@ -2109,7 +2109,7 @@ HRESULT PidParser::ParseEISection (ULONG ulDataLength)
 	WORD DescTag;
 	int DescLen;
 
-	while (pos < ulDataLength)
+	while ((ULONG)pos < ulDataLength)
 	{
 		DescTag = (0xFF & m_pDummy[pos]);
 		DescLen = (int)(0xFF & m_pDummy[pos+1]);
@@ -2287,7 +2287,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 		if (totalduration > 0 && !bBitRateOK)
 		{
 			__int64 bitRate = (__int64)((__int64)filelength * (__int64)100);
-			pids.bitrate = (__int64)(bitRate/(__int64)((__int64)totalduration/(__int64)9000));
+			pids.bitrate = (long)(bitRate/(__int64)((__int64)totalduration/(__int64)9000));
 		}
 //PrintTime(TEXT("GetFileDuration ok"), (REFERENCE_TIME)(__int64)(((__int64)totalduration/(__int64)9) * (__int64)1000), 10000);
 		delete[] pData;

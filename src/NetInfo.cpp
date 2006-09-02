@@ -139,7 +139,7 @@ void NetInfoArray::Add(NetInfo *newNetInfo)
 
 void NetInfoArray::RemoveAt(int nPosition)
 {
-	if ((nPosition >= 0) && (nPosition < m_NetArray.size()))
+	if ((nPosition >= 0) && (nPosition < (int)m_NetArray.size()))
 	{
 		m_NetArray.erase(m_NetArray.begin() + nPosition);
 	}
