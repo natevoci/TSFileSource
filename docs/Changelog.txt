@@ -1,6 +1,7 @@
 Version 2.2.0.8 Beta 5
 =================
 bear:
+- Added a version check to the shared memory parameters.
 - Various fixes made.
 - Fixed a problem in the shared memory handler that was causing locking of the file ref count.
 

@@ -45,6 +45,7 @@ typedef struct
 	DWORD dwCreationDisposition;
 	DWORD dwFlagsAndAttributes;
 	TCHAR memID[MAX_PATH];
+	__int64 version;
 } SharedMemParam;
 
 //////////////////////////////////////////////////////////////////////

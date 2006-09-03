@@ -128,14 +128,30 @@ BOOL IsSameName(LPCSTR lpName1, LPCSTR lpName2)
 
 SharedMemParam* SharedMemory::GetSharedMemParam(LPVOID pShared_Memory)
 {
+	//clear any previous errors
+	::SetLastError(NO_ERROR);
+
 	SharedMemParam *pMemParm = new SharedMemParam();
 
 	memcpy(pMemParm, pShared_Memory, sizeof(SharedMemParam));
 
-	while (pMemParm->lock == TRUE)
+	int count = 0;
+
+	while (pMemParm->lock == TRUE || pMemParm->version != (__int64)2280)
 	{
 		Sleep(1);
 		memcpy(pMemParm, pShared_Memory, sizeof(SharedMemParam));
+		if (count > 1000)
+		{
+			if (pMemParm->lock)
+				::SetLastError(ERROR_OPEN_FILES);
+			else
+				::SetLastError(ERROR_BAD_FORMAT);
+
+			delete pMemParm;
+			return NULL;
+		}
+		count++;
 	}
 
 	//Lock the file
@@ -179,6 +195,16 @@ int SharedMemory::FindHandleCount(LPCSTR lpFileName)
 	}
 
 	SharedMemParam* pMemParm = GetSharedMemParam(pShared_Memory);
+	if (pMemParm == NULL)
+	{
+		PrintError(TEXT("SharedMemory::FindHandleCount()::GetSharedMemParam Error: "));
+		if (pShared_Memory)
+			::UnmapViewOfFile(pShared_Memory);
+
+		::CloseHandle(hFile);
+		return -1;
+	}
+
 	int count = pMemParm->handleCount;
 
 	//free the file
@@ -224,6 +250,13 @@ BOOL SharedMemory::UpdateHandleCount(LPCSTR lpFileName, int method)
 	}
 
 	SharedMemParam* pMemParm = GetSharedMemParam(pShared_Memory);
+	if (pMemParm == NULL)
+	{
+		PrintError(TEXT("SharedMemory::UpdateHandleCount()::GetSharedMemParam Error: "));
+		::CloseHandle(hFile);
+		return FALSE;
+	}
+
 	pMemParm->handleCount = pMemParm->handleCount + method;
 	if (pMemParm->handleCount < 1)
 	{
@@ -256,6 +289,12 @@ int SharedMemory::UpdateViewCount(LPVOID pShared_Memory, int method)
 	int handleCount = -1;
 
 	SharedMemParam* pMemParm = GetSharedMemParam(pShared_Memory);
+	if (pMemParm == NULL)
+	{
+		PrintError(TEXT("SharedMemory::UpdateViewCount()::GetSharedMemParam Error: "));
+		return -1;
+	}
+
 	pMemParm->handleCount = pMemParm->handleCount + method;
 	if (pMemParm->handleCount < 1)
 	{
@@ -388,7 +427,14 @@ HANDLE SharedMemory::OpenExistingFile(
 		{
 			//get the file params
 			SharedMemParam* pMemParm = GetSharedMemParam(pShared_Memory);
-			if ((pMemParm->dwShareMode == dwShareMode) ||
+			if (pMemParm == NULL)
+			{
+				PrintError(TEXT("SharedMemory::OpenExistingFile()::GetSharedMemParam Error: "));
+				::UnmapViewOfFile(pShared_Memory);
+				::CloseHandle(hFile);
+				return INVALID_HANDLE_VALUE;
+			}
+			else if ((pMemParm->dwShareMode == dwShareMode) ||
 				((pMemParm->dwDesiredAccess == (DWORD)GENERIC_WRITE) &&
 				(dwShareMode&FILE_SHARE_WRITE)))
 			{
@@ -449,8 +495,8 @@ HANDLE SharedMemory::OpenExistingFile(
 			else if (dwDesiredAccess == (DWORD)GENERIC_READ)
 			{
 				//Wait for the file to become free
-/*				int handleCount = pMemParm->handleCount;
-				int loop = 0;
+				int handleCount = pMemParm->handleCount;
+/*				int loop = 0;
 				while (handleCount > 0 && loop < 100)
 				{
 					loop++;
@@ -666,6 +712,7 @@ HANDLE SharedMemory::CreateFile(LPCSTR lpFileName,
 
 	//populate a file header with the file creation info.
 	memParm.memStartOffset = sizeof(SharedMemParam);
+	memParm.version = (__int64)2280;
 	memParm.lock = FALSE;
 	memParm.handleCount = 0;
 	sprintf(memParm.memID,"%s", lpFileName);
@@ -768,12 +815,18 @@ DWORD SharedMemory::SetFilePointer(HANDLE hFile,
 	{
 		PrintError(TEXT("SharedMemory::SetFilePointer()::hFile Error: "));
 		::SetLastError(ERROR_INVALID_HANDLE);
-		return 0;
+		return (DWORD)0xFFFFFFFF;
 	}
 
 	__int64 position = item->sharedFilePosition;
 
 	SharedMemParam* pMemParm = GetSharedMemParam(item->pShared_Memory);
+	if (pMemParm == NULL)
+	{
+		PrintError(TEXT("SharedMemory::SetFilePointer()::GetSharedMemParam Error: "));
+		return (DWORD)0xFFFFFFFF;
+	}
+
 	__int64 memSize = pMemParm->memSize;
 	__int64 memMaxSize = pMemParm->memMaxSize;
 	PutSharedMemParam(pMemParm, item->pShared_Memory);
@@ -845,6 +898,11 @@ BOOL SharedMemory::SetEndOfFile(HANDLE hFile)
 	}
 
 	SharedMemParam* pMemParm = GetSharedMemParam(item->pShared_Memory);
+	if (pMemParm == NULL)
+	{
+		PrintError(TEXT("SharedMemory::SetEndOfFile()::GetSharedMemParam Error: "));
+		return FALSE;
+	}
 
 	if (item->sharedFilePosition > pMemParm->memMaxSize)
 	{
@@ -901,6 +959,11 @@ BOOL SharedMemory::WriteFile(HANDLE hFile,
 		return TRUE;
 	
 	SharedMemParam* pMemParm = GetSharedMemParam(item->pShared_Memory);
+	if (pMemParm == NULL)
+	{
+		PrintError(TEXT("SharedMemory::WriteFile()::GetSharedMemParam Error: "));
+		return FALSE;
+	}
 
 	if (item->sharedFilePosition > pMemParm->memMaxSize)
 	{
@@ -970,6 +1033,11 @@ BOOL SharedMemory::ReadFile(HANDLE hFile,
 		return TRUE;
 	
 	SharedMemParam* pMemParm = GetSharedMemParam(item->pShared_Memory);
+	if (pMemParm == NULL)
+	{
+		PrintError(TEXT("SharedMemory::ReadFile()::GetSharedMemParam Error: "));
+		return FALSE;
+	}
 
 	if (item->sharedFilePosition > pMemParm->memMaxSize)
 	{
@@ -1020,13 +1088,19 @@ DWORD SharedMemory::GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh)
 
 	if (!item || item->hFile == NULL)
 	{
-		PrintError(TEXT("SharedMemory::ReadFile()::hFile Error: "));
+		PrintError(TEXT("SharedMemory::GetFileSize()::hFile Error: "));
 		::SetLastError(ERROR_INVALID_HANDLE);
 		return -1;
 	}
 
 	LARGE_INTEGER li;
 	SharedMemParam* pMemParm = GetSharedMemParam(item->pShared_Memory);
+	if (pMemParm == NULL)
+	{
+		PrintError(TEXT("SharedMemory::GetFileSize()::GetSharedMemParam Error: "));
+		return -1;
+	}
+
 	li.QuadPart = pMemParm->memSize;
 	PutSharedMemParam(pMemParm, item->pShared_Memory);
 	delete pMemParm;
