@@ -100,6 +100,16 @@ BOOL CSettingsStore::getCreateSubPinOnDemuxReg()
 	return subPinMode;
 }
 
+BOOL CSettingsStore::getSharedModeReg()
+{
+	return sharedMode;
+}
+
+BOOL CSettingsStore::getInjectModeReg()
+{
+	return injectMode;
+}
+
 BOOL CSettingsStore::getDelayModeReg()
 {
 	return delayMode;
@@ -181,6 +191,18 @@ void CSettingsStore::setCreateTxtPinOnDemuxReg(BOOL bTxtPin)
 void CSettingsStore::setCreateSubPinOnDemuxReg(BOOL bSubPin)
 {
 	subPinMode = bSubPin;
+	return;
+}
+
+void CSettingsStore::setSharedModeReg(BOOL bSharedMode)
+{
+	sharedMode = bSharedMode;
+	return;
+}
+
+void CSettingsStore::setInjectModeReg(BOOL bInjectMode)
+{
+	injectMode = bInjectMode;
 	return;
 }
 

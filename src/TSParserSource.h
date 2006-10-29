@@ -164,7 +164,7 @@ protected:
 
 	// IFileSourceFilter
 	STDMETHODIMP Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE *pmt);
-	STDMETHODIMP GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TYPE *pmt);
+//	STDMETHODIMP GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TYPE *pmt);
 
 	// ITSParserSource
 	STDMETHODIMP GetVideoPid(WORD *pVPid);
@@ -237,13 +237,24 @@ protected:
 	STDMETHODIMP ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt);
 	STDMETHODIMP GetPCRPosition(REFERENCE_TIME *pos);
 	STDMETHODIMP ShowStreamMenu(HWND hwnd);
+
+//New method added after 2.2.0.3
 	STDMETHODIMP GetFixedAspectRatio(WORD *pbFixedAR);
 	STDMETHODIMP SetFixedAspectRatio(WORD pbFixedAR);
+
+//New method added after 2.2.0.6
+	STDMETHODIMP GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TYPE *pmt);
 	STDMETHODIMP GetDTSPid(WORD *pAacPid);
 	STDMETHODIMP GetDTS2Pid(WORD *pAac2Pid);
 	STDMETHODIMP GetSubtitlePid(WORD *pSubPid);
 	STDMETHODIMP GetCreateSubPinOnDemux(WORD *pbCreatePin);
 	STDMETHODIMP SetCreateSubPinOnDemux(WORD bCreatePin);
+
+//New method added after 2.2.0.8
+	STDMETHODIMP GetSharedMode(WORD* pSharedMode);
+	STDMETHODIMP SetSharedMode(WORD SharedMode);
+	STDMETHODIMP GetInjectMode(WORD* pInjectMode);
+	STDMETHODIMP SetInjectMode(WORD InjectMode);
 
 	CFilterList m_FilterRefList;	// List to hold the Removed filters.string
 
@@ -270,6 +281,7 @@ protected:
 	FileReader *m_pFileReader;
 	Demux *m_pDemux;
 	BOOL m_bRotEnable;
+	BOOL m_bSharedMode;
 	BOOL m_bColdStart;
 	CCritSec m_Lock;                // Main renderer critical section
 	CCritSec m_SelectLock;                // Main renderer critical section
@@ -289,6 +301,7 @@ protected:
     Command GetRequest(void) { return (Command) CAMThread::GetRequest(); }
     BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
 
+	ParserFunctions parserFunctions;
 
 
 //*****************************************************************************************

@@ -100,7 +100,9 @@ HRESULT CTSParserSinkPin::BreakConnect()
 
 HRESULT CTSParserSinkPin::Run(REFERENCE_TIME tStart)
 {
-	StartThread();
+	if (!m_WriteThreadActive && IsConnected())
+		StartThread();
+
 	return CBaseInputPin::Run(tStart);
 }
 

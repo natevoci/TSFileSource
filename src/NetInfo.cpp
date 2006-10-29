@@ -59,6 +59,7 @@ void NetInfo::Clear()
 	flowRate = 0;
 	lastTime = 0;
 	retry = 0;
+	bParserSink = FALSE;
 	
 }
 
@@ -85,6 +86,8 @@ void NetInfo::CopyFrom(NetInfo *netInfo)
 	flowRate = netInfo->flowRate;
 	lastTime = netInfo->lastTime;
 	retry = netInfo->retry;
+	bParserSink = netInfo->bParserSink;
+	
 }
 
 void NetInfo::CopyTo(NetInfo *netInfo)
@@ -110,6 +113,7 @@ void NetInfo::CopyTo(NetInfo *netInfo)
 	netInfo->flowRate = flowRate;
 	netInfo->lastTime = lastTime;
 	netInfo->retry = retry;
+	netInfo->bParserSink = bParserSink;
 }
 
 NetInfoArray::NetInfoArray()

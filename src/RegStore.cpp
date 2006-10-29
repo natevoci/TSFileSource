@@ -39,7 +39,7 @@ CRegStore::CRegStore(LPCSTR lpSubKey)
 	LONG resp = 0;
 	DWORD action_result = 0;
 
-	resp = RegCreateKeyEx(	HKEY_LOCAL_MACHINE,
+	resp = RegCreateKeyEx(	HKEY_CURRENT_USER, //HKEY_LOCAL_MACHINE,
 							lpSubKey,
 							NULL,
 							NULL,
@@ -179,6 +179,30 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			return FALSE;
 		}
 		setStore->setDelayModeReg(regDelay);
+
+		BOOL regShared(FALSE);
+		datalen = 1;
+		type = 0;
+
+		resp = RegQueryValueEx(settingsKey, "enableSharedMode", NULL, &type, (BYTE*)&regShared, &datalen);
+		if(resp != ERROR_SUCCESS)
+		{
+			RegCloseKey(settingsKey);
+			return FALSE;
+		}
+		setStore->setSharedModeReg(regShared);
+
+		BOOL regInject(FALSE);
+		datalen = 1;
+		type = 0;
+
+		resp = RegQueryValueEx(settingsKey, "enableInjectMode", NULL, &type, (BYTE*)&regInject, &datalen);
+		if(resp != ERROR_SUCCESS)
+		{
+			RegCloseKey(settingsKey);
+			return FALSE;
+		}
+		setStore->setInjectModeReg(regInject);
 
 		BOOL regRate(FALSE);
 		datalen = 1;
@@ -329,6 +353,12 @@ BOOL CRegStore::setSettingsInfo(CSettingsStore *setStore)
 
 		BOOL regDelay = setStore->getDelayModeReg();
 		resp = RegSetValueEx(settingsKey, "enableDelay", NULL, REG_BINARY, (BYTE*)&regDelay, 1);
+
+		BOOL regShared = setStore->getSharedModeReg();
+		resp = RegSetValueEx(settingsKey, "enableSharedMode", NULL, REG_BINARY, (BYTE*)&regShared, 1);
+
+		BOOL regInject = setStore->getInjectModeReg();
+		resp = RegSetValueEx(settingsKey, "enableInjectMode", NULL, REG_BINARY, (BYTE*)&regInject, 1);
 
 		BOOL regRate = setStore->getRateControlModeReg();
 		resp = RegSetValueEx(settingsKey, "enableRateControl", NULL, REG_BINARY, (BYTE*)&regRate, 1);

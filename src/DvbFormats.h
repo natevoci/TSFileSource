@@ -30,7 +30,7 @@ static BYTE	PatPacket [] = {
 	0x40,0x00,							// 0x40 & table_id	0							
 	0x10,								//section_syntax_indicator	0x10		
 	0x00,								// must be 0
-//CRC begin	
+//CRC begin here	
 	0x00,								//reserved
 //6
 	0xB0, 0x11,							// 0xB0 & section_length 17bytes from next inc crc's
@@ -41,7 +41,7 @@ static BYTE	PatPacket [] = {
 	0x00,								//version_number		
 	0x00,								//current_next_indicator 0
 	0x00, 0x00,							//section_number	
-	0xE0, 0x10,							//last_section_number 16
+	0xE0, 0x10,							//must be 0xE0 & EIT Pid 
 //17	
 	0x04, 0x01,							//program_number 1025
 //19

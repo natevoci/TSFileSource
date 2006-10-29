@@ -158,22 +158,40 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	//
 	// Create the Sink Filter and add it to the FilterGraph
 	//
-    hr = CoCreateInstance(
-//                        CLSID_TSParserSink, 
-                        CLSID_TSFileSink, 
-                        NULL, 
-                        CLSCTX_INPROC_SERVER,
-                        IID_IBaseFilter, 
-                        reinterpret_cast<void**>(&netAddr->pFileSink)
-                        );
+	if (netAddr->bParserSink)
+	{
+		hr = CoCreateInstance(CLSID_TSParserSink, 
+							NULL, 
+							CLSCTX_INPROC_SERVER,
+							IID_IBaseFilter, 
+							reinterpret_cast<void**>(&netAddr->pFileSink)
+							);
+	}
+	else
+	{
+		hr = CoCreateInstance(CLSID_TSFileSink, 
+								NULL, 
+								CLSCTX_INPROC_SERVER,
+								IID_IBaseFilter, 
+								reinterpret_cast<void**>(&netAddr->pFileSink)
+								);
+	}
+
     if (FAILED (hr))
     {
 		DeleteNetworkGraph(netAddr);
         return hr;
     }
 
-	hr = netAddr->pNetworkGraph->AddFilter(netAddr->pFileSink, L"Memory Sink");
-//	hr = netAddr->pNetworkGraph->AddFilter(netAddr->pFileSink, L"File Sink");
+	if (netAddr->bParserSink)
+	{
+		hr = netAddr->pNetworkGraph->AddFilter(netAddr->pFileSink, L"Memory Sink");
+	}
+	else
+	{
+		hr = netAddr->pNetworkGraph->AddFilter(netAddr->pFileSink, L"File Sink");
+	}
+
     if (FAILED (hr))
     {
 		DeleteNetworkGraph(netAddr);
@@ -268,8 +286,16 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	//
 //	CComPtr <ITSParserSink> pITSFileSink;
 	CComPtr <ITSFileSink> pITSFileSink;
-//	hr = netAddr->pFileSink->QueryInterface(IID_ITSParserSink, (void**)&pITSFileSink);
-	hr = netAddr->pFileSink->QueryInterface(IID_ITSFileSink, (void**)&pITSFileSink);
+
+	if (netAddr->bParserSink)
+	{
+		hr = netAddr->pFileSink->QueryInterface(IID_ITSParserSink, (void**)&pITSFileSink);
+	}
+	else
+	{
+		hr = netAddr->pFileSink->QueryInterface(IID_ITSFileSink, (void**)&pITSFileSink);
+	}
+
     if(FAILED (hr))
     {
 		DeleteNetworkGraph(netAddr);
@@ -432,7 +458,6 @@ BOOL CNetRender::UpdateNetFlow(NetInfoArray *netArray)
 		// Get the Sink Filter Interface 
 		//
 		ITSFileSink *pITSFileSink;
-//		ITSParserSink *pITSFileSink;
 		hr = (*netArray)[i].pFileSink->QueryInterface(IID_ITSFileSink, (void**)&pITSFileSink);
 		if(SUCCEEDED(hr))
 		{

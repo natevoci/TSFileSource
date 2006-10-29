@@ -78,6 +78,12 @@ public:
 	BOOL getDelayModeReg();
 	void setDelayModeReg(BOOL bDelay);
 
+	BOOL getSharedModeReg();
+	void setSharedModeReg(BOOL bSharedMode);
+
+	BOOL getInjectModeReg();
+	void setInjectModeReg(BOOL bInjectMode);
+
 	BOOL getRateControlModeReg();
 	void setRateControlModeReg(BOOL bRate);
 
@@ -109,6 +115,8 @@ private:
 	BOOL	tsPinMode;
 	BOOL	txtPinMode;
 	BOOL	subPinMode;
+	BOOL	sharedMode;
+	BOOL	injectMode;
 	BOOL	delayMode;
 	BOOL	rateMode;
 	BOOL	audio2Mode;

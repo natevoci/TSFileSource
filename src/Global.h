@@ -66,6 +66,11 @@
 #define RT_2_SECOND 20000000 //2 sec
 #endif
 
+#ifndef MAX_PCR
+#define MAX_PCR (__int64)0x1FFFFFFFF 
+#endif
+
+
 /**********************************************
  *
  *  CBufferInfo Class

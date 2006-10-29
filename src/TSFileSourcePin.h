@@ -48,6 +48,7 @@ class CTSFileSourcePin : public CSourceStream,
 						 public CSourceSeeking					 
 {
 public:
+
 	CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter, HRESULT *phr);
 	~CTSFileSourcePin();
 
@@ -101,14 +102,13 @@ public:
 	static HRESULT RenderOutputPins(IBaseFilter *pFilter);
 	HRESULT RenderOutputPin(IBaseFilter *pFilter);
 
+	BOOL get_InjectMode();
+	void set_InjectMode(BOOL bInjectMode);
 	BOOL get_RateControl();
 	void set_RateControl(BOOL bRateControl);
 
 	long get_BitRate();
 	void set_BitRate(long rate);
-	virtual void PrintTime(LPCTSTR lstring, __int64 value, __int64 divider);
-	virtual void PrintLongLong(LPCTSTR lstring, __int64 value);
-	virtual __int64 ConvertPCRtoRT(REFERENCE_TIME pcrtime);
 
 protected:
 
@@ -137,6 +137,7 @@ protected:
 
 	int debugcount;
 	BOOL m_bRateControl;
+	BOOL m_bInjectMode;
 	BOOL m_biMpegDemux;
 	long m_lNextPCRByteOffset;
 	long m_lPrevPCRByteOffset;
@@ -163,6 +164,11 @@ protected:
 	int m_PinTypeSave;
 	BOOL m_bGetAvailableMode;
 	__int64 m_currPosition;
+
+	ParserFunctions parserFunctions;
+	ParserFunctions fillFunctions;
+	ParserFunctions seekFunctions;
+	ParserFunctions positionFunctions;
 
 public:
 	BOOL	m_DemuxLock;

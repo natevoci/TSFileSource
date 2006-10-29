@@ -137,5 +137,13 @@ DECLARE_INTERFACE_(ITSParserSource, IUnknown) //compatable to 2.0.1.7 official r
 	STDMETHOD(GetCreateSubPinOnDemux) (THIS_ WORD * pbCreatePin) PURE;
 	STDMETHOD(SetCreateSubPinOnDemux) (THIS_ WORD bCreatePin) PURE;
 	STDMETHOD(GetSubtitlePid) (THIS_ WORD * subpid) PURE;
+
+//New method added after 2.2.0.8
+	STDMETHOD(GetSharedMode) (THIS_ WORD * pSharedMode) PURE;
+	STDMETHOD(SetSharedMode) (THIS_ WORD SharedMode) PURE;
+	STDMETHOD(GetInjectMode) (THIS_ WORD * pInjectMode) PURE;
+	STDMETHOD(SetInjectMode) (THIS_ WORD InjectMode) PURE;
+
+
 };
 

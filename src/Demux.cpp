@@ -3650,6 +3650,11 @@ BOOL Demux::get_AC3Mode()
 
 void Demux::set_AC3Mode(BOOL bAC3Mode)
 {
+	m_StreamMP2 = !bAC3Mode;
+//	m_StreamAAC = 0;
+//	m_StreamDTS = 0;
+	m_StreamMP2 = !bAC3Mode;
+	m_StreamAC3 = bAC3Mode;
 	m_bAC3Mode = bAC3Mode;
 }
 
@@ -3710,6 +3715,7 @@ BOOL Demux::get_MPEG2Audio2Mode()
 
 void Demux::set_MPEG2Audio2Mode(BOOL bMPEG2Audio2Mode)
 {
+	m_StreamAud2 = bMPEG2Audio2Mode;
 	m_bMPEG2Audio2Mode = bMPEG2Audio2Mode;
 	return;
 }

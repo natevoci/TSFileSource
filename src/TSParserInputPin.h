@@ -62,6 +62,7 @@ public:
 	HRESULT CompleteConnect(IPin *pReceivePin);
     HRESULT BreakConnect();
 	HRESULT Run(REFERENCE_TIME tStart);
+	HRESULT Load();
 
     STDMETHODIMP NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate);
 	virtual void ThreadProc();

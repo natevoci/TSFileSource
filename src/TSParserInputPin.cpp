@@ -224,10 +224,11 @@ STDMETHODIMP  CTSParserInputPin::Connect(IPin * pReceivePin, const AM_MEDIA_TYPE
 
 HRESULT CTSParserInputPin::BreakConnect()
 {
+	Clear();
+
     if (m_pFileWriter)
         CloseFile();
 
-	Clear();
 
 //////////////////    if (m_pTSParserSourceFilter->m_pPosition != NULL) {
 /////////////////        m_pTSParserSourceFilter->m_pPosition->ForceRefresh();
@@ -243,10 +244,7 @@ HRESULT CTSParserInputPin::BreakConnect()
 
 HRESULT CTSParserInputPin::CompleteConnect(IPin *pReceivePin)
 {
-    HRESULT hr =  CRenderedInputPin::CompleteConnect(pReceivePin);
-	if SUCCEEDED(hr)
-	    if (m_pFileWriter)
-    		OpenFile();
+    HRESULT hr =  CBasePin::CompleteConnect(pReceivePin);
 
     return hr;
 }
@@ -257,6 +255,56 @@ HRESULT CTSParserInputPin::Run(REFERENCE_TIME tStart)
 		StartThread();
 
 	return CRenderedInputPin::Run(tStart);
+}
+
+HRESULT CTSParserInputPin::Load()
+{
+	if (!m_WriteThreadActive && IsConnected())
+	{
+		Clear();
+
+	    if (m_pFileWriter)
+			CloseFile();
+
+	    if (m_pFileWriter)
+    		OpenFile();
+
+		StartThread();
+
+		__int64 lpllsize = 0;
+		int count = 0;
+//		Sleep(200);
+		while (lpllsize < 200000 && count < 100)
+		{
+			m_pFileWriter->GetFileSize(&lpllsize);
+			Sleep(20);
+			count++;
+		}
+
+		LPWSTR wsz = new WCHAR[1+lstrlenW(m_pFileName)];
+		if (wsz == NULL)
+			return E_OUTOFMEMORY;
+
+		lstrcpyW(wsz, m_pFileName);
+		m_pTSParserSourceFilter->ReLoad(wsz, NULL);
+
+		REFERENCE_TIME stop, start = (__int64)max(0,(__int64)(m_pTSParserSourceFilter->m_pPidParser->pids.dur - RT_2_SECOND));
+		IMediaSeeking *pMediaSeeking;
+		if(m_pTSParserSourceFilter->GetFilterGraph() && SUCCEEDED(m_pTSParserSourceFilter->GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+		{
+			pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_AbsolutePositioning);
+			pMediaSeeking->Release();
+		}
+
+		delete[] wsz;
+
+		return CRenderedInputPin::Run(start);
+	}
+	else if (IsConnected() && m_WriteThreadActive)
+	{
+	}
+
+	return 0;
 }
 
 STDMETHODIMP CTSParserInputPin::ReceiveCanBlock()
@@ -721,6 +769,7 @@ HRESULT CTSParserInputPin::CloseFile()
     // Must lock this section to prevent problems related to
     // closing the file while still receiving data in Receive()
 //    CAutoLock lock(&m_Lock);
+    CAutoLock lock(&m_ReceiveLock);
 
 	m_pFileWriter->CloseFile();
 
@@ -797,9 +846,7 @@ STDMETHODIMP CTSParserInputPin::SetFileName(LPCWSTR pszFileName, const AM_MEDIA_
 			wcscpy(m_pFileName, pszFileName);
 		}
 	}
-	HRESULT hr = S_OK;
-
-    return hr;
+    return S_OK;
 }
 
 STDMETHODIMP CTSParserInputPin::GetCurFile(LPOLESTR * ppszFileName, AM_MEDIA_TYPE *pmt)

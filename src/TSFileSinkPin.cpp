@@ -105,7 +105,9 @@ HRESULT CTSFileSinkPin::BreakConnect()
 
 HRESULT CTSFileSinkPin::Run(REFERENCE_TIME tStart)
 {
-	StartThread();
+	if (!m_WriteThreadActive && IsConnected())
+		StartThread();
+
 	return CBaseInputPin::Run(tStart);
 }
 

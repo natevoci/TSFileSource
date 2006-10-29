@@ -39,7 +39,7 @@ CRegSinkStore::CRegSinkStore(LPCSTR lpSubKey)
 	LONG resp = 0;
 	DWORD action_result = 0;
 
-	resp = RegCreateKeyEx(	HKEY_LOCAL_MACHINE,
+	resp = RegCreateKeyEx(	HKEY_CURRENT_USER, //HKEY_LOCAL_MACHINE,
 							lpSubKey,
 							NULL,
 							NULL,

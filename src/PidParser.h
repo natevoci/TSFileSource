@@ -35,10 +35,34 @@
 #include "FileReader.h"
 #include "SampleBuffer.h"
 
-class PidParser
+class ParserFunctions
 {
+	friend class PidParser;
+
 public:
-PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader);
+	void PrintTime(LPCTSTR lstring, __int64 value, __int64 divider, int *debugcount);
+	void PrintLongLong(LPCTSTR lstring, __int64 value, int *debugcount);
+	__int64 ConvertPCRtoRT(REFERENCE_TIME pcrtime);
+	__int64 SubConvertPCRtoRT(__int64 pcrTime, __int64 pcrSubTime);
+	__int64 SubtractPCR(__int64 pcrTime, __int64 pcrSubTime);
+	HRESULT FindFirstPCR(PidParser * pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
+	HRESULT FindLastPCR(PidParser * pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
+	HRESULT FindNextPCR(PidParser * pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
+	HRESULT FindNextOPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
+	HRESULT CheckForPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
+	HRESULT CheckForOPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
+	HRESULT FindSyncByte(PidParser *pPidParser, PBYTE pbData, ULONG ulDataLength, ULONG* a, int step);
+
+private:
+	CCritSec  m_ParserLock;
+	CCritSec  m_ConvertLock;
+};
+
+class PidParser :public ParserFunctions
+{
+
+public:
+	PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader);
 	virtual ~PidParser();
 
 
@@ -48,11 +72,11 @@ PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader);
 	HRESULT RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader);
 	HRESULT get_EPGFromFile();
 	HRESULT set_ProgramSID();
-	HRESULT FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int step);
-	HRESULT FindFirstPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
-	HRESULT FindLastPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
-	HRESULT FindNextPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
-	HRESULT FindNextOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
+//	HRESULT FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int step);
+//	HRESULT FindFirstPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
+//	HRESULT FindLastPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos);
+//	HRESULT FindNextPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
+//	HRESULT FindNextOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step);
 	void get_ChannelNumber(BYTE *pointer);
 	void get_NetworkName(BYTE *pointer);
 	void get_ONetworkName(BYTE *pointer);
@@ -72,7 +96,6 @@ PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader);
 	BOOL get_AsyncMode();
 	void set_AsyncMode(BOOL mode);
 	ULONG get_PacketSize();
-	void PrintTime(LPCTSTR lstring, __int64 value, __int64 divider);
 
 	int m_NitPid;
 	int m_NetworkID;
@@ -110,8 +133,8 @@ protected:
 		__int64* pEndFilePos,
 		FileReader *pFileReader);
 
-	HRESULT CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
-	HRESULT CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
+//	HRESULT CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
+//	HRESULT CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
 
 	void AddPidArray();
 	void SetPidArray(int n);

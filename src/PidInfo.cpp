@@ -27,7 +27,6 @@
 #include <streams.h>
 #include "PidInfo.h"
 #include <crtdbg.h>
-#include <WXUtil.h>
 
 
 PidInfo::PidInfo()

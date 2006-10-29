@@ -30,22 +30,14 @@
 #include <vector>
 #include "FileReader.h"
 #include "TSFileSourceClock.h"
-#include "PidParser.h"
-#include "TSThread.h"
 
-class CTSBuffer : public TSThread
+class CTSBuffer 
 {
 public:
-
-
-	CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock);
+	CTSBuffer(CTSFileSourceClock *pClock);
 	virtual ~CTSBuffer();
 
 	void SetFileReader(FileReader *pFileReader);
-
-	void StartBufferThread();
-	void StopBufferThread();
-	virtual void ThreadProc();
 
 	void Clear();
 	long Count();
@@ -53,11 +45,9 @@ public:
 
 	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
 	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
-	void PrintLongLong(LPCTSTR lstring, __int64 value);
 
 protected:
 	FileReader *m_pFileReader;
-	PidParser *m_pPidParser;
 	CTSFileSourceClock *m_pClock;
 	std::vector<BYTE *> m_Array;
 	long m_lItemOffset;
@@ -65,9 +55,6 @@ protected:
 
 	long m_lTSBufferItemSize;
 	int debugcount;
-	long m_lbuflen;
-
-	BOOL m_BufferThreadActive;
 };
 
 #endif

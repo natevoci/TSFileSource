@@ -58,6 +58,7 @@ CUnknown * WINAPI CTSFileSourceFilter::CreateInstance(LPUNKNOWN punk, HRESULT *p
 CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	CSource(NAME("CTSFileSourceFilter"), pUnk, CLSID_TSFileSource),
 	m_bRotEnable(FALSE),
+	m_bSharedMode(FALSE),
 	m_pPin(NULL),
 	m_FilterRefList(NAME("MyFilterRefList"))
 {
@@ -315,6 +316,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 						}
 					}
 					//check pids every 5sec or quicker if no pids parsed
+//					else if (count & 1 || !m_pPidParser->pidArray.Count())
 //					else if (count == 5 || !m_pPidParser->pidArray.Count())
 					else if (!m_pPidParser->pidArray.Count())
 					{
@@ -347,6 +349,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 					&& TRUE) //cold start
 				{
 					hr = m_pPin->UpdateDuration(m_pFileDuration);
+					if (hr == S_OK)
 					{
 						if (!m_bColdStart)
 							if (m_pDemux->CheckDemuxPids() == S_FALSE)
@@ -354,6 +357,8 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 								m_pDemux->AOnConnect();
 							}
 					}
+					else
+						count = 0; //skip the pid update if seeking
 				}
 			}
 			//randomly park the file pointer to help minimise HDD clogging
@@ -423,6 +428,10 @@ STDMETHODIMP CTSFileSourceFilter::NonDelegatingQueryInterface(REFIID riid, void 
     {
 		return GetInterface((IAMFilterMiscFlags*)this, ppv);
     }
+    if (riid == IID_IAMPushSource)
+    {
+		return GetInterface((IAMPushSource*)this, ppv);
+    }
 	if (riid == IID_IAMStreamSelect && (m_pDemux->get_Auto() | m_bColdStart))
 	{
 		return GetInterface((IAMStreamSelect*)this, ppv);
@@ -456,6 +465,46 @@ ULONG STDMETHODCALLTYPE CTSFileSourceFilter::GetMiscFlags(void)
 {
 	return (ULONG)AM_FILTER_MISC_FLAGS_IS_SOURCE; 
 }//IAMFilterMiscFlags
+
+//IAMPushSource
+STDMETHODIMP CTSFileSourceFilter::GetPushSourceFlags(ULONG *pFlags)
+{
+	if (pFlags)
+		return E_POINTER;
+
+	*pFlags = AM_PUSHSOURCECAPS_NOT_LIVE;
+	return S_OK;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetPushSourceFlags(ULONG Flags)
+{
+	return E_NOTIMPL;
+}
+        
+STDMETHODIMP CTSFileSourceFilter::SetStreamOffset(REFERENCE_TIME rtOffset)
+{
+	return E_NOTIMPL;
+}
+        
+STDMETHODIMP CTSFileSourceFilter::GetStreamOffset(REFERENCE_TIME *prtOffset)
+{
+	return E_NOTIMPL;
+}
+        
+STDMETHODIMP CTSFileSourceFilter::GetMaxStreamOffset(REFERENCE_TIME *prtMaxOffset)
+{
+	return E_NOTIMPL;
+}
+        
+STDMETHODIMP CTSFileSourceFilter::SetMaxStreamOffset(REFERENCE_TIME rtMaxOffset)
+{
+	return E_NOTIMPL;
+}
+        
+STDMETHODIMP CTSFileSourceFilter::GetLatency(REFERENCE_TIME *prtLatency)
+{
+	return E_NOTIMPL;
+}//IAMPushSource
 
 STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams) //IAMStreamSelect
 {
@@ -723,7 +772,8 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 			CAMThread::CallWorker(CMD_RUN);
 	}
 
-	return CSource::Run(tStart);
+//	return CSource::Run(tStart);
+	return CBaseFilter::Run(tStart);
 }
 
 HRESULT CTSFileSourceFilter::Pause()
@@ -788,7 +838,8 @@ HRESULT CTSFileSourceFilter::Pause()
 
 	}
 
-	return CSource::Pause();
+	return CBaseFilter::Pause();
+//	return CSource::Pause();
 }
 
 STDMETHODIMP CTSFileSourceFilter::Stop()
@@ -798,7 +849,8 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 
 //	if (m_bThreadRunning && CAMThread::ThreadExists())
 //		CAMThread::CallWorker(CMD_STOP);
-	HRESULT hr = CSource::Stop();
+//	HRESULT hr = CSource::Stop();
+	HRESULT hr = CBaseFilter::Stop();
 
 	m_pTunerEvent->UnRegisterForTunerEvents();
 	m_pFileReader->CloseFile();
@@ -845,7 +897,7 @@ HRESULT CTSFileSourceFilter::OnConnect()
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(100);};
+		while (m_bThreadRunning){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
@@ -929,6 +981,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	//
 	NetInfo *netAddr = new NetInfo();
 	netAddr->rotEnable = m_bRotEnable;
+	netAddr->bParserSink = m_bSharedMode;
 
 	//
 	// Check if the FileName is a Network address 
@@ -1015,6 +1068,9 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 
 	//Get clock type
 	int clock = m_pDemux->get_ClockMode();
+
+	//Get Inject Mode 
+	BOOL bInjectMode = m_pPin->get_InjectMode();
 
 	//Get Rate Mode 
 	BOOL bRateControl = m_pPin->get_RateControl();
@@ -1346,7 +1402,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(100);};
+		while (m_bThreadRunning){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
@@ -1379,6 +1435,9 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 	//Get clock type
 	int clock = m_pDemux->get_ClockMode();
+
+	//Get Inject Mode 
+	BOOL bInjectMode = m_pPin->get_InjectMode();
 
 	//Get Rate Mode 
 	BOOL bRateControl = m_pPin->get_RateControl();
@@ -1720,9 +1779,8 @@ HRESULT CTSFileSourceFilter::LoadPgmReg(void)
 HRESULT CTSFileSourceFilter::Refresh()
 {
 	CAutoLock lock(&m_Lock);
-//	if (m_pFileDuration)
-//		return UpdatePidParser(m_pFileDuration);
-//	else if (m_pFileReader)
+
+	 if (m_pFileReader)
 		return UpdatePidParser(m_pFileReader);
 
 	return E_FAIL;
@@ -1738,18 +1796,19 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 	int sidsave = m_pPidParser->m_ProgramSID;
 
 	int count = 0;
-	while(m_pDemux->m_bConnectBusyFlag && count < 20)
+	while(m_pDemux->m_bConnectBusyFlag && count < 200)
 	{
 		{
 //			BrakeThread Brake;
-			Sleep(100);
+			Sleep(10);
 		}
 //		Sleep(100);
 		count++;
 	}
 	m_pDemux->m_bConnectBusyFlag = TRUE;
 
-	__int64 intBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+//	__int64 intBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+	__int64 intBaseTimePCR = parserFunctions.SubtractPCR(m_pPin->m_IntStartTimePCR, m_pPin->m_IntBaseTimePCR);
 	intBaseTimePCR = (__int64)max(0, intBaseTimePCR);
 
 	if (pPidParser->RefreshPids() == S_OK)
@@ -1821,7 +1880,8 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 
 		if (m_pDemux->CheckDemuxPids() == S_FALSE)
 		{
-			m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - intBaseTimePCR));
+//			m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - intBaseTimePCR));
+			m_pPin->m_IntBaseTimePCR = parserFunctions.SubtractPCR(m_pPidParser->pids.start, intBaseTimePCR);
 			m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntBaseTimePCR));
 			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
@@ -1875,9 +1935,15 @@ STDMETHODIMP CTSFileSourceFilter::GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TY
 	if(pmt)
 	{
 		ZeroMemory(pmt, sizeof(*pmt));
-		pmt->majortype = MEDIATYPE_Stream;
 //		pmt->majortype = MEDIATYPE_Video;
-		pmt->subtype = MEDIASUBTYPE_MPEG2_TRANSPORT;
+		pmt->majortype = MEDIATYPE_Stream;
+
+		//Are we in Program mode
+		if (m_pPidParser && m_pPidParser->get_ProgPinMode())
+			pmt->subtype = MEDIASUBTYPE_MPEG2_PROGRAM;
+		else //Are we in Transport mode
+			pmt->subtype = MEDIASUBTYPE_MPEG2_TRANSPORT;
+
 		pmt->subtype = MEDIASUBTYPE_NULL;
 	}
 
@@ -2275,20 +2341,20 @@ HRESULT CTSFileSourceFilter::set_PgmNumb(WORD PgmNumb)
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(100);};
+		while (m_bThreadRunning){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
-//	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
-	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+//	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+	m_pPin->m_IntBaseTimePCR = parserFunctions.SubtractPCR(m_pPin->m_IntStartTimePCR, m_pPin->m_IntBaseTimePCR);
 	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntBaseTimePCR));
 
 //	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumber);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 
-//	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
-	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
+//	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
+	m_pPin->m_IntBaseTimePCR = parserFunctions.SubtractPCR(m_pPidParser->pids.start, m_pPin->m_IntBaseTimePCR);
 	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntBaseTimePCR));
 
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
@@ -2334,20 +2400,20 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(100);};
+		while (m_bThreadRunning){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
-//	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
-	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+//	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+	m_pPin->m_IntBaseTimePCR = parserFunctions.SubtractPCR(m_pPin->m_IntStartTimePCR, m_pPin->m_IntBaseTimePCR);
 	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntBaseTimePCR));
 
 //	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber(PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 
-//	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
-	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
+//	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
+	m_pPin->m_IntBaseTimePCR = parserFunctions.SubtractPCR(m_pPidParser->pids.start, m_pPin->m_IntBaseTimePCR);
 	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntBaseTimePCR));
 
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
@@ -2395,20 +2461,21 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(100);};
+		while (m_bThreadRunning){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
-//	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
-	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+
+//	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+	m_pPin->m_IntBaseTimePCR = parserFunctions.SubtractPCR(m_pPin->m_IntStartTimePCR, m_pPin->m_IntBaseTimePCR);
 	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntBaseTimePCR));
 
 //	m_pPin->m_DemuxLock = TRUE;
 	m_pPidParser->set_ProgramNumber((WORD)PgmNumb);
 	m_pPin->SetDuration(m_pPidParser->pids.dur);
 
-//	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
-	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
+//	m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - m_pPin->m_IntBaseTimePCR));
+	m_pPin->m_IntBaseTimePCR = parserFunctions.SubtractPCR(m_pPidParser->pids.start, m_pPin->m_IntBaseTimePCR);
 	m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntBaseTimePCR));
 
 	m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
@@ -2593,6 +2660,40 @@ STDMETHODIMP CTSFileSourceFilter::SetDelayMode(WORD DelayMode)
 	return NOERROR;
 }
 
+STDMETHODIMP CTSFileSourceFilter::GetSharedMode(WORD* pSharedMode)
+{
+	if (!pSharedMode)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pSharedMode = m_bSharedMode;
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetSharedMode(WORD SharedMode)
+{
+	CAutoLock lock(&m_Lock);
+	m_bSharedMode = SharedMode;
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::GetInjectMode(WORD* pInjectMode)
+{
+	if (!pInjectMode)
+		return E_INVALIDARG;
+
+	CAutoLock lock(&m_Lock);
+	*pInjectMode = m_pPin->get_InjectMode();
+	return NOERROR;
+}
+
+STDMETHODIMP CTSFileSourceFilter::SetInjectMode(WORD InjectMode)
+{
+	CAutoLock lock(&m_Lock);
+	m_pPin->set_InjectMode(InjectMode);
+	return NOERROR;
+}
+
 STDMETHODIMP CTSFileSourceFilter::GetRateControlMode(WORD* pRateControl)
 {
 	if (!pRateControl)
@@ -2768,6 +2869,8 @@ STDMETHODIMP CTSFileSourceFilter::SetRegStore(LPTSTR nameReg)
 		WORD delay;
 		m_pFileReader->get_DelayMode(&delay);
 		m_pSettingsStore->setDelayModeReg((BOOL)delay);
+		m_pSettingsStore->setSharedModeReg((BOOL)m_bSharedMode);
+		m_pSettingsStore->setInjectModeReg((BOOL)m_pPin->get_InjectMode());
 		m_pSettingsStore->setRateControlModeReg((BOOL)m_pPin->get_RateControl());
 		m_pSettingsStore->setAutoModeReg((BOOL)m_pDemux->get_Auto());
 		m_pSettingsStore->setNPControlReg((BOOL)m_pDemux->get_NPControl());
@@ -2817,6 +2920,8 @@ STDMETHODIMP CTSFileSourceFilter::GetRegStore(LPTSTR nameReg)
 			m_pDemux->set_AC3Mode(m_pSettingsStore->getAC3ModeReg());
 			m_pDemux->set_FixedAspectRatio(m_pSettingsStore->getFixedAspectRatioReg());
 			m_pDemux->set_CreateTSPinOnDemux(m_pSettingsStore->getCreateTSPinOnDemuxReg());
+			m_bSharedMode = m_pSettingsStore->getSharedModeReg();
+			m_pPin->set_InjectMode(m_pSettingsStore->getInjectModeReg());
 			m_pPin->set_RateControl(m_pSettingsStore->getRateControlModeReg());
 			m_bRotEnable = m_pSettingsStore->getROTModeReg();
 			m_pDemux->set_ClockMode(m_pSettingsStore->getClockModeReg());

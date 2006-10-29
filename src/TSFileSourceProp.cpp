@@ -459,6 +459,12 @@ BOOL CTSFileSourceProp::RefreshDialog()
 	m_pProgram->GetNPSlave(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_NPSLAVE,PidNr);
 
+	m_pProgram->GetSharedMode(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_SHAREDMODE,PidNr);
+
+	m_pProgram->GetInjectMode(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_INJECTMODE,PidNr);
+
 	m_pProgram->GetRateControlMode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_RATECONTROL,PidNr);
 
@@ -582,6 +588,39 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					{
 						char * pEnd;
 						m_dRate = strtod(psz, &pEnd);
+						CComPtr <IBaseFilter> pIBaseFilter;
+						if SUCCEEDED(m_pProgram->QueryInterface(&pIBaseFilter))
+						{
+							FILTER_INFO filterInfo;
+							if SUCCEEDED(pIBaseFilter->QueryFilterInfo(&filterInfo) && filterInfo.pGraph)
+							{
+								CComPtr <IMediaSeeking> pIMediaSeeking;
+								if SUCCEEDED(filterInfo.pGraph->QueryInterface(&pIMediaSeeking))
+								{
+									pIMediaSeeking->SetRate(m_dRate);
+//	TCHAR sz[128];
+//	sprintf(sz, "%u", pIMediaSeeking->SetRate(m_dRate));
+//	MessageBox(NULL, sz,"test", NULL);
+
+								}
+								filterInfo.pGraph->Release();
+							}
+						}
+						OnRefreshProgram () ;
+						SetDirty();
+						delete[]psz;
+						break;
+					}
+					delete[]psz;
+				}
+/*
+				case IDC_RATECHG:
+				{
+					CHAR *psz = new CHAR[MAX_PATH];
+					if (GetDlgItemText(hwnd, IDC_RATE, psz, 5))
+					{
+						char * pEnd;
+						m_dRate = strtod(psz, &pEnd);
 						CComPtr <IMediaSeeking> pIMediaSeeking;
 						if SUCCEEDED(m_pProgram->QueryInterface(&pIMediaSeeking))
 						{
@@ -594,7 +633,7 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					}
 					delete[]psz;
 				}
-
+*/
 				case IDC_NEXT:
 				{
 					m_pProgram->NextPgmNumb();
@@ -724,6 +763,24 @@ BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_DELAYMODE);
 					m_pProgram->SetDelayMode(checked);
 					OnRefreshProgram () ;
+					SetDirty();
+					break;
+				}
+
+				case IDC_SHAREDMODE:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_SHAREDMODE);
+					m_pProgram->SetSharedMode(checked);
+					OnRefreshProgram ();
+					SetDirty();
+					break;
+				}
+
+				case IDC_INJECTMODE:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_INJECTMODE);
+					m_pProgram->SetInjectMode(checked);
+					OnRefreshProgram ();
 					SetDirty();
 					break;
 				}

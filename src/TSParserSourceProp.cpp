@@ -458,6 +458,12 @@ BOOL CTSParserSourceProp::RefreshDialog()
 	m_pProgram->GetNPSlave(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_NPSLAVE,PidNr);
 
+	m_pProgram->GetSharedMode(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_SHAREDMODE,PidNr);
+
+	m_pProgram->GetInjectMode(&PidNr);
+	CheckDlgButton(m_hwnd,IDC_INJECTMODE,PidNr);
+
 	m_pProgram->GetRateControlMode(&PidNr);
 	CheckDlgButton(m_hwnd,IDC_RATECONTROL,PidNr);
 
@@ -723,6 +729,24 @@ BOOL CTSParserSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, 
 					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_DELAYMODE);
 					m_pProgram->SetDelayMode(checked);
 					OnRefreshProgram () ;
+					SetDirty();
+					break;
+				}
+
+				case IDC_SHAREDMODE:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_SHAREDMODE);
+					m_pProgram->SetSharedMode(checked);
+					OnRefreshProgram ();
+					SetDirty();
+					break;
+				}
+
+				case IDC_INJECTMODE:
+				{
+					checked = (BOOL)IsDlgButtonChecked(hwnd, IDC_INJECTMODE);
+					m_pProgram->SetInjectMode(checked);
+					OnRefreshProgram ();
 					SetDirty();
 					break;
 				}

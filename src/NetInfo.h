@@ -69,6 +69,7 @@ public:
 	REFERENCE_TIME lastTime;
 	time_t time;
 	struct tm *tmTime;
+	BOOL bParserSink;
 
 };
 

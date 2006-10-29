@@ -1,6 +1,8 @@
-Version 2.2.0.8 Beta 5
+Version 2.2.0.8 Beta 6
 =================
 bear:
+- Fixed a problem with the regular update parser stalling the fillbuffer thread.
+- Fixed some PCR rollover issues with seeking & positioning return functions.
 - Added a version check to the shared memory parameters.
 - Various fixes made.
 - Fixed a problem in the shared memory handler that was causing locking of the file ref count.
