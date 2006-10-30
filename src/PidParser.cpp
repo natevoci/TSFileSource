@@ -44,7 +44,7 @@ PidParser::PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader)
 	m_pFileReader = pFileReader;
 	m_PacketSize = 188; //Start with Transport packet size 
 	m_ATSCFlag = false;
-	m_NitPid = 0x10;
+	m_NitPid = 0x00;
 	m_NetworkID = 0; //NID store
 	ZeroMemory(m_NetworkName, 128);
 	m_ONetworkID = 0; //ONID store
@@ -215,7 +215,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	pids.Clear();
 	
 	m_ATSCFlag = false;
-	m_NitPid = 0x10;
+	m_NitPid = 0x00;
 	m_NetworkID = 0; //NID store
 	ZeroMemory(m_NetworkName, 128);
 	m_ONetworkID = 0; //ONID store
@@ -700,7 +700,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 //Sleep(1000);
 		//Check for a ONID in file
-		if (!m_ATSCFlag && !m_ProgPinMode)
+		if (m_NitPid && !m_ATSCFlag && !m_ProgPinMode)
 		{
 Sleep(10);
 			if (CheckONIDInFile(pFileReader) == S_OK)
@@ -709,7 +709,7 @@ Sleep(10);
 		}
 
 		//Check for a NID in file
-		if (!m_ATSCFlag && !m_ProgPinMode)
+		if (m_NitPid && !m_ATSCFlag && !m_ProgPinMode)
 		{
 Sleep(10);
 			if(CheckNIDInFile(pFileReader) != S_OK)
@@ -786,14 +786,14 @@ HRESULT PidParser::RefreshPids()
 			m_pFileReader->GetFileSize(&fileStart, &fileSize);
 			fileSizeSave = fileSize;
 			ParseFromFile(filestartpointer); 
-			if (m_ONetworkID > 0 || m_ProgPinMode) //cold start
+			if (!m_NitPid || m_ONetworkID > 0 || m_ProgPinMode) //cold start
 				return S_OK;
 		}
 	}
 	else
 	{
 		ParseFromFile(filestartpointer);
-		if (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0 || m_ProgPinMode) //cold start
+		if (!m_NitPid || (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0) || m_ProgPinMode) //cold start
 			return S_OK;
 	}
 	return S_FALSE;
@@ -1602,7 +1602,7 @@ HRESULT PidParser::CheckEPGFromFile()
 {
 	HRESULT hr = S_FALSE;
 
-	if (m_NetworkID != 0 && m_ONetworkID != 0 && m_TStreamID !=0)
+	if (m_NitPid || m_NetworkID != 0 && m_ONetworkID != 0 && m_TStreamID !=0)
 	{
 
 		FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
