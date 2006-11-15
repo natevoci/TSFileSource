@@ -36,6 +36,9 @@
 #include <atlbase.h>
 #include "TunerEvent.h"
 
+//static GUID H264_SubType = {0x8D2D71CB, 0x243F, 0x45E3, {0xB2, 0xD8, 0x5F, 0xD7, 0x96, 0x7E, 0xC0, 0x9B}};
+//static GUID MEDIASUBTYPE_H264 = {0x8D2D71CB, 0x243F, 0x45E3, {0xB2, 0xD8, 0x5F, 0xD7, 0x96, 0x7E, 0xC0, 0x9B}};
+
 Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter, CFilterList *pFList) :
 
 	m_bAuto(TRUE),
@@ -68,6 +71,8 @@ Demux::Demux(PidParser *pPidParser, IBaseFilter *pFilter, CFilterList *pFList) :
 	m_pFilterRefList = pFList;
 	m_pTSFileSourceFilter = pFilter;
 	m_pPidParser = pPidParser;
+	ZeroMemory(&m_SelAudioType, sizeof(AM_MEDIA_TYPE));
+	ZeroMemory(&m_SelVideoType, sizeof(AM_MEDIA_TYPE));
 }
 
 Demux::~Demux()
@@ -344,10 +349,41 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 		return S_FALSE;
 	}
 
+	BOOL bParserConnected = FALSE;
+
 	// Get an instance of the Demux control interface
 	IMpeg2Demultiplexer* muxInterface = NULL;
 	if(SUCCEEDED(pDemux->QueryInterface (&muxInterface)))
 	{
+		//update Parser pin
+		if (FALSE && !bParserConnected && !m_pPidParser->get_ProgPinMode() && CheckParserPin(pDemux) != S_OK){
+			// change pin type if we have to
+			LPWSTR PinName = L"Parser";
+			BOOL connect = FALSE;
+			ChangeDemuxPin(pDemux, &PinName, &connect);
+			if (FAILED(CheckParserPin(pDemux))){
+				// if we can't change the pin type to the new parser make a new pin
+				muxInterface->DeleteOutputPin(PinName);
+				hr = NewParserPin(muxInterface, PinName);
+			}
+			if (connect){
+				// If old pin was already connected
+				IPin* pIPin;
+				if (SUCCEEDED(pDemux->FindPin(PinName, &pIPin))){
+					// Reconnect pin
+					RenderFilterPin(pIPin);
+					pIPin->Release();
+				}
+			}
+			else
+			{
+				CComPtr<IBaseFilter>pMpegSections;
+				GetParserFilter(pMpegSections);
+			}
+
+			bParserConnected = connect;
+		}
+
 		// Update Video Pin
 		if (CheckVideoPin(pDemux) != S_OK){
 			// change pin type if we do have a Video pid & can don't already have an video pin
@@ -902,6 +938,27 @@ HRESULT Demux::CheckTIFPin(IBaseFilter* pDemux)
 	return hr;
 }
 
+HRESULT Demux::CheckParserPin(IBaseFilter* pDemux)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pDemux == NULL)
+		return hr;
+
+	AM_MEDIA_TYPE pintype;
+	GetParserMedia(&pintype);
+
+	IPin* pIPin = NULL;
+	if (SUCCEEDED(CheckDemuxPin(pDemux, pintype, &pIPin))){
+
+		if (SUCCEEDED(LoadParserPin(pIPin))){
+			pIPin->Release();
+			return S_OK;
+		}
+	}
+	return hr;
+}
+
 HRESULT Demux::CheckVideoPin(IBaseFilter* pDemux)
 {
 	HRESULT hr = E_INVALIDARG;
@@ -1133,6 +1190,108 @@ HRESULT Demux::CheckTsPin(IBaseFilter* pDemux)
 			pIPin->Release();
 			return S_OK;
 		}
+	}
+	return hr;
+}
+
+HRESULT Demux::NewParserPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(muxInterface == NULL)
+		return hr;
+
+	// Create out new pin  
+	AM_MEDIA_TYPE type;
+	GetParserMedia(&type);
+
+	IPin* pIPin = NULL;
+	hr = muxInterface->CreateOutputPin(&type, pinName ,&pIPin);
+	if(SUCCEEDED(hr) || hr == VFW_E_DUPLICATE_NAME)
+	{
+		//the following should not happen if it is a MS Demux
+		if(pIPin == NULL)
+		{
+			IBaseFilter *pIBaseFilter = NULL;
+			hr = muxInterface->QueryInterface(IID_IBaseFilter, (void **)&pIBaseFilter);
+			if (FAILED(hr) || pIBaseFilter == NULL)
+				return hr;
+
+			pIBaseFilter->FindPin(pinName ,&pIPin);
+			pIBaseFilter->Release();
+			if(pIPin == NULL)
+				return hr;
+			
+			IPin* pInpPin = NULL;
+			if (SUCCEEDED(pIPin->ConnectedTo(&pInpPin))){
+
+				IPin* pInpPin2 = NULL;
+				PIN_INFO pinInfo;
+				pInpPin->QueryPinInfo(&pinInfo);
+
+				if (m_WasPlaying) {
+					
+					if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+					if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+				}
+
+				if (SUCCEEDED(pIPin->Disconnect())){
+
+					BOOL connect = FALSE;
+
+					muxInterface->SetOutputPinMediaType(pinName, &type);
+					if (FAILED(pInpPin->QueryAccept(&type)))
+						connect = TRUE;
+					else if (FAILED(ReconnectFilterPin(pInpPin)))
+						connect = TRUE;
+					else if (FAILED(pIPin->ConnectedTo(&pInpPin2)))
+						connect = TRUE;
+					else {
+
+						pInpPin->BeginFlush();
+						pInpPin->EndFlush();
+					}
+							
+					if (pInpPin2) pInpPin2->Release();
+
+					if (connect == TRUE){
+
+						pInpPin->Disconnect();
+						if (pInpPin)
+							pInpPin->Release();
+
+						RemoveFilterChain(pinInfo.pFilter, pinInfo.pFilter);
+					}
+
+					if (pInpPin)
+						pInpPin->Release();
+
+					if (connect)
+						RenderFilterPin(pIPin);
+					else
+						pinInfo.pFilter->Release();
+				}
+				else
+				{
+					pinInfo.pFilter->Release();
+					pIPin->Release();
+					return hr;
+				}
+			}
+			else
+			{
+				hr = muxInterface->SetOutputPinMediaType(pinName, &type);
+				if FAILED(hr)
+				{
+					pIPin->Release();
+					return hr;
+				}
+			}
+		}
+
+		hr = LoadParserPin(pIPin);
+		pIPin->Release();
+		hr = S_OK;
 	}
 	return hr;
 }
@@ -2001,6 +2160,27 @@ HRESULT Demux::NewSubtitlePin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName)
 	return hr;
 }
 
+HRESULT Demux::LoadParserPin(IPin* pIPin)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if(pIPin == NULL)
+		return hr;
+
+	ClearDemuxPin(pIPin);
+
+	// Get the Pid Map interface of the pin
+	// and map the pids we want.
+	IMPEG2PIDMap* muxMapPid;
+	if(SUCCEEDED(pIPin->QueryInterface (&muxMapPid)))
+	{
+		muxMapPid->MapPID(1, 0, MEDIA_MPEG2_PSI);
+		muxMapPid->Release();
+		hr = S_OK;
+	}
+	return hr;
+}
+
 HRESULT Demux::LoadTsPin(IPin* pIPin)
 {
 	HRESULT hr = E_INVALIDARG;
@@ -2081,6 +2261,7 @@ HRESULT Demux::LoadAudioPin(IPin* pIPin, ULONG pid)
 		if (pid)
 		{
 			muxMapPid->MapPID(1, &pid , MEDIA_ELEMENTARY_STREAM);
+			pIPin->ConnectionMediaType(&m_SelAudioType);
 			m_SelAudioPid = pid;
 		}
 
@@ -2106,6 +2287,7 @@ HRESULT Demux::LoadAudioPin(IPin* pIPin, ULONG pid)
 				if (pid == get_DTS_AudioPid())
 					muxMapPid->MapStreamId(pid, MPEG2_PROGRAM_ELEMENTARY_STREAM, 0x00, 0x00);
 
+				pIPin->ConnectionMediaType(&m_SelAudioType);
 				m_SelAudioPid = pid;
 			}
 
@@ -2291,6 +2473,7 @@ HRESULT Demux::CheckDemuxPids(void)
 	if ((m_SelSubtitlePid != m_pPidParser->pids.sub) && m_bCreateSubPinOnDemux)
 		return S_FALSE;
 
+
 	if (m_pPidParser->pids.aud | m_pPidParser->pids.ac3 | m_pPidParser->pids.aac | m_pPidParser->pids.dts)
 		if (((m_SelAudioPid != m_pPidParser->pids.aud)
 				&& (m_SelAudioPid != m_pPidParser->pids.aud2)
@@ -2303,6 +2486,35 @@ HRESULT Demux::CheckDemuxPids(void)
 				|| !m_SelAudioPid)
 			return S_FALSE;
 
+	if (m_SelAudioPid &&
+		((m_SelAudioPid == m_pPidParser->pids.aud2)||
+		 (m_SelAudioPid == m_pPidParser->pids.aud)))
+		 if ((m_SelAudioType.majortype != MEDIATYPE_Audio)||
+			((m_SelAudioType.subtype != MEDIASUBTYPE_MPEG2_AUDIO)&&
+			(m_SelAudioType.subtype != MEDIASUBTYPE_MPEG1Payload)))
+			return S_FALSE;
+
+	if (m_SelAudioPid &&
+		((m_SelAudioPid == m_pPidParser->pids.ac3_2)||
+		 (m_SelAudioPid == m_pPidParser->pids.ac3)))
+		 if ((m_SelAudioType.majortype != MEDIATYPE_Audio)||
+			 (m_SelAudioType.subtype != MEDIASUBTYPE_DOLBY_AC3))
+			return S_FALSE;
+
+	if (m_SelAudioPid &&
+		((m_SelAudioPid == m_pPidParser->pids.aac2)||
+		 (m_SelAudioPid == m_pPidParser->pids.aac)))
+		 if ((m_SelAudioType.majortype != MEDIATYPE_Audio)||
+			 (m_SelAudioType.subtype != MEDIASUBTYPE_AAC))
+			return S_FALSE;
+
+	if (m_SelAudioPid &&
+		((m_SelAudioPid == m_pPidParser->pids.dts2)||
+		 (m_SelAudioPid == m_pPidParser->pids.dts)))
+		 if ((m_SelAudioType.majortype != MEDIATYPE_Audio)||
+			 (m_SelAudioType.subtype != MEDIASUBTYPE_DTS))
+			return S_FALSE;
+		 
 	if (m_pPidParser->pids.vid | m_pPidParser->pids.h264 | m_pPidParser->pids.mpeg4)
 		if (((m_SelVideoPid != m_pPidParser->pids.vid)
 				&& (m_SelVideoPid != m_pPidParser->pids.h264)
@@ -2310,6 +2522,20 @@ HRESULT Demux::CheckDemuxPids(void)
 				|| !m_SelVideoPid)
 			return S_FALSE;
 
+	if (m_SelAudioPid && m_SelAudioPid == m_pPidParser->pids.vid)
+		 if ((m_SelAudioType.majortype != KSDATAFORMAT_TYPE_VIDEO)||
+			 (m_SelAudioType.subtype != MEDIASUBTYPE_MPEG2_VIDEO))
+			return S_FALSE;
+
+	if (m_SelAudioPid && m_SelAudioPid == m_pPidParser->pids.h264)
+		 if ((m_SelAudioType.majortype != MEDIATYPE_Video)||
+			 (m_SelAudioType.subtype != H264_SubType))
+			return S_FALSE;
+
+	if (m_SelAudioPid && m_SelAudioPid == m_pPidParser->pids.mpeg4)
+		 if ((m_SelAudioType.majortype != MEDIATYPE_Video)||
+			 (m_SelAudioType.subtype != FOURCCMap(MAKEFOURCC('A','V','C','1'))))
+			return S_FALSE;
 	return hr;
 
 }
@@ -2325,6 +2551,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 	IMpeg2Demultiplexer* muxInterface = NULL;
 	if(SUCCEEDED(pDemux->QueryInterface (&muxInterface)))
 	{
+		char parsercheck[128] ="";
 		char audiocheck[128] ="";
 		char videocheck[128] ="";
 		char telexcheck[128] ="";
@@ -2337,6 +2564,7 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 		wcscpy((wchar_t*)telexcheck, L"Teletext");
 		wcscpy((wchar_t*)subtitlecheck, L"Subtitle");
 		wcscpy((wchar_t*)tscheck, L"TS");
+		wcscpy((wchar_t*)parsercheck, L"Parser");
 
 		if (strcmp(audiocheck, pinname) == 0){
 
@@ -3004,6 +3232,89 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 				return S_OK;
 			}
 		}
+		else if (strcmp(parsercheck, pinname) == 0){
+
+			IPin* pIPin = NULL;
+			AM_MEDIA_TYPE pintype;
+
+			//Check if we have a Parser pin type
+			GetTSMedia(&pintype);
+			if (FAILED(CheckDemuxPin(pDemux, pintype, &pIPin))){
+
+				muxInterface->DeleteOutputPin(*pPinName);
+				muxInterface->Release();
+				return S_FALSE;
+			}
+
+			//parse teletext type to set media type & pid value
+			USHORT pPid;
+			pPid = m_pPidParser->pids.sub;
+
+			if (pIPin) {
+
+				ClearDemuxPin(pIPin);
+				pIPin->QueryId(pPinName);
+				*pConnect = FALSE;
+				IPin* pInpPin;
+				if (SUCCEEDED(pIPin->ConnectedTo(&pInpPin))){
+
+					IPin* pInpPin2 = NULL;
+					PIN_INFO pinInfo;
+					pInpPin->QueryPinInfo(&pinInfo);
+
+					if (m_WasPlaying) {
+
+						if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+						if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+					}
+
+					if (SUCCEEDED(pIPin->Disconnect())){
+
+						muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+						if (FAILED(pInpPin->QueryAccept(&pintype)))
+							*pConnect = TRUE;
+						else if (FAILED(ReconnectFilterPin(pInpPin)))
+							*pConnect = TRUE;
+						else if (FAILED(pIPin->ConnectedTo(&pInpPin2)))
+							*pConnect = TRUE;
+						else {
+
+							pInpPin->BeginFlush();
+							pInpPin->EndFlush();
+						}
+								
+						if (pInpPin2)
+							pInpPin2->Release();
+
+						if (*pConnect == TRUE){
+							pInpPin->Disconnect();
+							if (pInpPin)
+								pInpPin->Release();
+
+							RemoveFilterChain(pinInfo.pFilter, pinInfo.pFilter);
+						}
+						if (pInpPin)
+							pInpPin->Release();
+					}
+
+					if (!*pConnect)
+						pinInfo.pFilter->Release();
+
+					if (pIPin) pIPin->Release();
+					muxInterface->Release();
+					return S_FALSE;
+				}
+				else
+				{
+					muxInterface->SetOutputPinMediaType(*pPinName, &pintype);
+				}
+
+				LoadParserPin(pIPin);
+				if (pIPin) pIPin->Release();
+				muxInterface->Release();
+				return S_OK;
+			}
+		}
 		muxInterface->Release();
 	}
 		return hr;
@@ -3142,9 +3453,6 @@ HRESULT Demux::GetVideoMedia(AM_MEDIA_TYPE *pintype)
 
 	return S_OK;
 }
-static GUID H264_SubType = {0x8D2D71CB, 0x243F, 0x45E3, {0xB2, 0xD8, 0x5F, 0xD7, 0x96, 0x7E, 0xC0, 0x9B}};
-//static GUID MEDIASUBTYPE_H264 = {0x8D2D71CB, 0x243F, 0x45E3, {0xB2, 0xD8, 0x5F, 0xD7, 0x96, 0x7E, 0xC0, 0x9B}};
-
 
 HRESULT Demux::GetH264Media(AM_MEDIA_TYPE *pintype)
 
@@ -3190,7 +3498,6 @@ HRESULT Demux::GetMpeg4Media(AM_MEDIA_TYPE *pintype)
 }
 
 HRESULT Demux::GetTIFMedia(AM_MEDIA_TYPE *pintype)
-
 {
 	HRESULT hr = E_INVALIDARG;
 
@@ -3205,8 +3512,22 @@ HRESULT Demux::GetTIFMedia(AM_MEDIA_TYPE *pintype)
 	return S_OK;
 }
 
-HRESULT Demux::GetTelexMedia(AM_MEDIA_TYPE *pintype)
+HRESULT Demux::GetParserMedia(AM_MEDIA_TYPE *pintype)
+{
+	HRESULT hr = E_INVALIDARG;
 
+	if(pintype == NULL)
+		return hr;
+
+	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
+	pintype->majortype = KSDATAFORMAT_TYPE_MPEG2_SECTIONS;
+	pintype->subtype = MEDIASUBTYPE_MPEG2DATA; 
+	pintype->formattype = KSDATAFORMAT_SPECIFIER_NONE;
+
+	return S_OK;
+}
+
+HRESULT Demux::GetTelexMedia(AM_MEDIA_TYPE *pintype)
 {
 	HRESULT hr = E_INVALIDARG;
 
@@ -3959,6 +4280,117 @@ void Demux::SetRefClock()
 	}
 
 }
+
+HRESULT Demux::GetParserFilter(CComPtr<IBaseFilter>&pMpegSections)
+{
+	// Parse only the existing Sections & Tables Filter
+	// in the filter graph, we do this by looking for filters
+	// that implement the IMpeg2Data interface while
+	// the count is still active.
+	CFilterList FList(NAME("MyList"));  // List to hold the downstream peers.
+	if (SUCCEEDED(GetPeerFilters(m_pTSFileSourceFilter, PINDIR_OUTPUT, FList)) && FList.GetHeadPosition())
+	{
+		IBaseFilter* pFilter = NULL;
+		POSITION pos = FList.GetHeadPosition();
+		pFilter = FList.Get(pos);
+		while (SUCCEEDED(GetPeerFilters(pFilter, PINDIR_OUTPUT, FList)) && pos)
+		{
+			pFilter = FList.GetNext(pos);
+		}
+
+		pos = FList.GetHeadPosition();
+		while (pos)
+		{
+			pFilter = FList.GetNext(pos);
+			if(pFilter != NULL)
+			{
+				//Keep a reference for later destroy, will not add the same object
+                AddFilterUnique(*m_pFilterRefList, pFilter);
+
+				// Get an instance of the Mpeg2Data interface
+				CComPtr <IMpeg2Data> piMpeg2Data;
+				if(SUCCEEDED(pFilter->QueryInterface (&piMpeg2Data)))
+				{
+					if (pMpegSections != pFilter)
+					{
+						pMpegSections.Release();
+						pMpegSections = pFilter;
+					}
+					return S_OK;
+				}
+				pFilter = NULL;
+			}
+		}
+
+		pos = FList.GetHeadPosition();
+		while (pos)
+		{
+			pFilter = FList.GetNext(pos);
+			if(pFilter != NULL)
+			{
+				//Keep a reference for later destroy, will not add the same object
+                AddFilterUnique(*m_pFilterRefList, pFilter);
+
+				// Get an instance of the IMpeg2Demultiplexer interface
+				CComPtr <IMpeg2Demultiplexer> muxInterface;
+				if(SUCCEEDED(pFilter->QueryInterface (&muxInterface)))
+				{
+					FILTER_INFO Info;
+					if (SUCCEEDED(m_pTSFileSourceFilter->QueryFilterInfo(&Info)) && Info.pGraph != NULL)
+					{
+						CComPtr<IGraphBuilder>piGraphBuilder;
+						if(SUCCEEDED(Info.pGraph->QueryInterface(&piGraphBuilder)))
+						{
+							if(pMpegSections)
+							{
+								piGraphBuilder->RemoveFilter(pMpegSections);
+								pMpegSections.Release();
+							}
+
+							// MPEG2 Sections and Tables Loading
+							if (SUCCEEDED(graphTools.AddFilterByName(
+											piGraphBuilder,
+											&pMpegSections,
+											KSCATEGORY_BDA_TRANSPORT_INFORMATION,
+											L"MPEG-2 Sections and Tables")))
+							{
+								if (m_WasPlaying) {
+							
+									if (DoPause() == S_OK){while(IsPaused() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+									if (DoStop() == S_OK){while(IsStopped() == S_FALSE){if (Sleeps(100,m_TimeOut) != S_OK) break;}}
+								}
+
+								if (SUCCEEDED(graphTools.ConnectFilters(piGraphBuilder, pFilter, pMpegSections)))
+								{
+									Info.pGraph->Release();
+									return S_OK;
+								}
+
+								piGraphBuilder->RemoveFilter(pMpegSections);
+								pMpegSections.Release();
+								Info.pGraph->Release();
+							}
+						}
+					}
+				}
+				pFilter = NULL;
+			}
+		}
+	}
+
+	//Clear the filter list;
+	POSITION pos = FList.GetHeadPosition();
+	while (pos){
+
+		if (FList.Get(pos) != NULL)
+				FList.Get(pos)->Release();
+
+		FList.Remove(pos);
+		pos = FList.GetHeadPosition();
+	}
+	return S_FALSE;
+}
+	
 
 //TCHAR sz[128];
 //sprintf(sz, "%u", pClock);

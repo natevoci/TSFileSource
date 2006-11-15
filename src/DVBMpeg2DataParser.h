@@ -159,6 +159,8 @@ public:
 	void ReleaseFilter();
 
 	HRESULT StartScan();
+	BOOL IsScanRunning();
+	HRESULT EndScan();
 	DWORD WaitForThreadToFinish();
 
 	void StartScanThread();

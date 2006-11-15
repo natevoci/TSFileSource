@@ -37,9 +37,15 @@ enum DVBTChannels_Service_PID_Types
 {
 	unknown,
 	video,
+	h264,
+	mpeg4,
+	mp1,
 	mp2,
 	ac3,
+	aac,
+	dts,
 	teletext,
+	subtitle,
 	pmt,
 	pcr,
 	DVBTChannels_Service_PID_Types_Count
@@ -48,10 +54,16 @@ enum DVBTChannels_Service_PID_Types
 static const LPWSTR DVBTChannels_Service_PID_Types_String[] =
 {
 	L"Unknown",
-	L"Video",
-	L"MPEG-2 Audio",
+	L"MPEG2 Video",
+	L"H264 Video",
+	L"MPEG4 Video",
+	L"MPEG Audio",
+	L"MPEG2 Audio",
 	L"AC3 Audio",
+	L"AAC Audio",
+	L"DTS Audio",
 	L"Teletext",
+	L"Subtitle",
 	L"PMT",
 	L"PCR"
 };
@@ -62,6 +74,8 @@ class DVBTChannels_Stream : public LogMessageCaller
 public:
 	DVBTChannels_Stream();
 	virtual ~DVBTChannels_Stream();
+
+	virtual void SetLogCallback(LogMessageCallback *callback);
 
 	void UpdateStream(DVBTChannels_Stream *pNewStream);
 	void PrintStreamDetails();
@@ -84,6 +98,7 @@ public:
 
 	virtual void SetLogCallback(LogMessageCallback *callback);
 
+	void AddStream(DVBTChannels_Stream* pStream);
 //	HRESULT LoadFromXML(XMLElement *pElement);
 //	HRESULT SaveToXML(XMLElement *pElement);
 
@@ -137,6 +152,7 @@ public:
 	virtual LPWSTR GetListName();
 	virtual LPWSTR GetListItem(LPWSTR name, long nIndex = 0);
 	virtual long GetListSize();
+	virtual HRESULT FindListItem(LPWSTR name, int *pIndex);
 
 public:
 	long originalNetworkId;
@@ -205,13 +221,14 @@ public:
 	//Update Methods
 	BOOL UpdateNetwork(DVBTChannels_Network *pNewNetwork);
 
-	HRESULT MoveNetworkUp(long originalNetworkId);
-	HRESULT MoveNetworkDown(long originalNetworkId);
+	HRESULT MoveNetworkUp(long transportStreamId);
+	HRESULT MoveNetworkDown(long transportStreamId);
 
 	//IDWOSDDataList Methods
 	virtual LPWSTR GetListName();
 	virtual LPWSTR GetListItem(LPWSTR name, long nIndex = 0);
 	virtual long GetListSize();
+	virtual HRESULT FindListItem(LPWSTR name, int *pIndex);
 
 protected:
 	long m_bandwidth;

@@ -263,7 +263,7 @@ STDMETHODIMP CTSFileSink::SetFileName(LPCWSTR pszFileName, const AM_MEDIA_TYPE *
 		if (m_pFileName)
 			delete[] m_pFileName;
 
-		long length = lstrlenW(pszFileName);
+		long length = wcslen(pszFileName);
 
 		// Check that the filename ends with .tsbuffer. If it doesn't we'll add it
 		if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
@@ -296,11 +296,11 @@ STDMETHODIMP CTSFileSink::GetCurFile(LPOLESTR * ppszFileName, AM_MEDIA_TYPE *pmt
     if (m_pFileName != NULL) 
     {
 		//QzTask = CoTask
-        *ppszFileName = (LPOLESTR)CoTaskMemAlloc(sizeof(WCHAR) * (1+lstrlenW(m_pFileName)));
+        *ppszFileName = (LPOLESTR)CoTaskMemAlloc(sizeof(WCHAR) * (1+wcslen(m_pFileName)));
 
         if (*ppszFileName != NULL)
         {
-            lstrcpyW(*ppszFileName, m_pFileName);
+            wcscpy(*ppszFileName, m_pFileName);
         }
     }
 
@@ -437,7 +437,7 @@ STDMETHODIMP CTSFileSink::GetBufferFileName(LPWSTR fileName)
 	if (fileName == NULL)
 		return E_OUTOFMEMORY;
 	
-	lstrcpyW(fileName, m_pFileName);
+	wcscpy(fileName, m_pFileName);
 //	sprintf((char *)fileName, "%S", m_pFileName);
 //	sprintf((char *)fileName, "%S", m_pFileWriter->getBufferFileName());
 */
@@ -458,11 +458,11 @@ STDMETHODIMP CTSFileSink::SetBufferFileName(LPWSTR fileName)
 		delete[] m_pFileName;
 		m_pFileName = NULL;
 	}
-	m_pFileName = new WCHAR[1+lstrlenW(fileName)];
+	m_pFileName = new WCHAR[1+wcslen(fileName)];
 	if (m_pFileName == NULL)
 		return E_OUTOFMEMORY;
 
-	lstrcpyW(m_pFileName, fileName);
+	wcscpy(m_pFileName, fileName);
 
     return NOERROR;
 }

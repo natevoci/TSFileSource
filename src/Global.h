@@ -58,12 +58,20 @@
 #define MIN_FILE_SIZE 2000000 //Minimum filesize to parse
 #endif
 
+#ifndef RT_05_SECOND
+#define RT_05_SECOND 5000000 //0.5 sec
+#endif
+
 #ifndef RT_SECOND
 #define RT_SECOND 10000000 //1sec
 #endif
 
 #ifndef RT_2_SECOND
 #define RT_2_SECOND 20000000 //2 sec
+#endif
+
+#ifndef RT_4_SECOND
+#define RT_4_SECOND 40000000 //2 sec
 #endif
 
 #ifndef MAX_PCR

@@ -72,7 +72,7 @@ class CTSFileSourceFilter : public ISpecifyPropertyPages,
 							public IAMFilterMiscFlags,
 							protected CAMThread,
 							public IAMPushSource,					 
-							public CSource
+							public CSource, public UpdateThread
 {
 	friend class CTSFileSourcePin;
 public:
@@ -274,12 +274,14 @@ protected:
     DWORD m_dwGraphRegister;		//registration number for the RunningObjectTable
 
 	FileReader *m_pFileDuration;
-	REFERENCE_TIME m_rtLastCurrentTime;
+//	REFERENCE_TIME m_rtLastCurrentTime;
 	BOOL m_bThreadRunning;
 	BOOL m_bReload;
 	__int64 m_llLastMultiFileStart;
 	__int64 m_llLastMultiFileLength;
     enum Command {CMD_INIT, CMD_PAUSE, CMD_RUN, CMD_STOP, CMD_EXIT};
+	void UpdateThreadProc(void);
+	BOOL m_WriteThreadActive;
     DWORD ThreadProc();
 	HRESULT DoProcessingLoop(void);
 	BOOL ThreadRunning(void);
@@ -287,6 +289,7 @@ protected:
     BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
 
 	ParserFunctions parserFunctions;
+	DVBTChannels *m_pDVBTChannels;
 
 //*****************************************************************************************
 //ASync Additions

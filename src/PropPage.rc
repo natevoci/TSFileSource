@@ -157,7 +157,7 @@ BEGIN
     EDITTEXT        IDC_CURR,14,49,48,12,ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Force 720x576 A.R.",IDC_FIXED_AR,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,210,44,85,10
-    GROUPBOX        "Description",IDC_STATIC,7,263,288,34
+    GROUPBOX        "Description",IDC_STATIC,7,257,288,36
     LTEXT           "Subtitle",IDC_STATIC,129,128,27,8
     EDITTEXT        IDC_SUB,159,126,40,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "DTS",IDC_STATIC,129,97,27,8
@@ -172,8 +172,8 @@ BEGIN
                     WS_TABSTOP,246,151,11,14
     PUSHBUTTON      "&Change",IDC_RATECHG,259,151,36,13,WS_GROUP
     CTEXT           "TSFileSource Version 2.2.0.9\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
-                    IDC_STATIC,22,271,241,26
-    CTEXT           "Beta 1",IDC_STATIC,259,271,28,8
+                    IDC_STATIC,22,265,241,26
+    CTEXT           "Beta 3",IDC_STATIC,259,265,28,8
     CONTROL         "Packet Inject Enable",IDC_INJECTMODE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,210,139,85,10
     LTEXT           "Clock Speed",IDC_STATIC,202,149,23,18
@@ -226,7 +226,7 @@ BEGIN
     LTEXT           "Total Files In Use",IDC_STATIC,189,32,68,10
     CTEXT           "TSFileSink of TSFileSource Version 2.2.0.8\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,26,175,237,26
-    CTEXT           "Beta 7",IDC_STATIC,259,174,28,8
+    CTEXT           "Beta 3",IDC_STATIC,259,174,28,8
 END
 
 IDD_PARSERPROPPAGE DIALOGEX 0, 0, 304, 308
@@ -338,8 +338,8 @@ BEGIN
                     WS_TABSTOP,248,153,11,14
     PUSHBUTTON      "&Change",IDC_RATECHG,261,153,36,13,WS_GROUP
     CTEXT           "TSParserSource Version 2.2.0.9\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
-                    IDC_STATIC,27,268,235,25,0,WS_EX_TRANSPARENT
-    CTEXT           "Beta 1",IDC_STATIC,263,269,28,8
+                    IDC_STATIC,27,270,235,25,0,WS_EX_TRANSPARENT
+    CTEXT           "Beta 3",IDC_STATIC,263,269,28,8
     CONTROL         "Packet Injection",IDC_INJECTMODE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,212,141,85,10
     CONTROL         "Use Shared Mem",IDC_SHAREDMODE,"Button",BS_AUTOCHECKBOX | 
@@ -391,7 +391,7 @@ BEGIN
     LTEXT           "Total Files In Use",IDC_STATIC,189,32,68,10
     CTEXT           "TSParserSink of TSFileSource Version 2.2.0.8\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,23,175,235,26
-    CTEXT           "Beta 7",IDC_STATIC,260,174,28,8
+    CTEXT           "Beta 3",IDC_STATIC,260,174,28,8
 END
 
 
@@ -408,7 +408,6 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 295
         TOPMARGIN, 7
-        BOTTOMMARGIN, 297
     END
 
     IDD_SINKPROPPAGE, DIALOG

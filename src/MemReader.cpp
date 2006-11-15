@@ -39,6 +39,7 @@ MemReader::MemReader(SharedMemory* pSharedMemory) :
 	m_fileStartPos(0),
 	m_hInfoFile(INVALID_HANDLE_VALUE),
 	m_bDelay(FALSE),
+	m_llBufferPointer(0),	
 	m_bDebugOutput(FALSE)
 {
 }
@@ -174,6 +175,7 @@ HRESULT MemReader::OpenFile()
 			NULL);
 
 	SetFilePointer(0, FILE_BEGIN);
+	m_llBufferPointer = 0;	
 
 	return S_OK;
 
@@ -554,3 +556,12 @@ __int64 MemReader::getFilePointer()
 	return GetFilePointer();
 }
 
+__int64 MemReader::getBufferPointer()
+{
+	return 	m_llBufferPointer;	
+}
+
+void MemReader::setBufferPointer()
+{
+	m_llBufferPointer = GetFilePointer();	
+}

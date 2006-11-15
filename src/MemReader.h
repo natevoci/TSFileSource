@@ -57,6 +57,8 @@ public:
 	virtual __int64 GetFilePointer();
 	virtual DWORD setFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual __int64 getFilePointer();
+	virtual __int64 getBufferPointer();
+	virtual void setBufferPointer();
 
 	void SetDebugOutput(BOOL bDebugOutput);
 
@@ -70,6 +72,7 @@ protected:
 	__int64 m_fileSize;
 	__int64 m_infoFileSize;
 	__int64 m_fileStartPos;
+	__int64 m_llBufferPointer;	
 
 	BOOL     m_bDebugOutput;
 };

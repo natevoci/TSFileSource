@@ -177,6 +177,8 @@ void LogMessageWriter::SetFilename(LPWSTR filename)
 		strCopy(m_logFilename, str);
 		delete[] str;
 	}
+//	USES_CONVERSION;
+//	::OutputDebugString(W2T(m_logFilename));
 }
 
 void LogMessageWriter::Write(LPWSTR pStr)

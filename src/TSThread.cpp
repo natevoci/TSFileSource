@@ -112,3 +112,81 @@ void TSThread::thread_function(void* p)
 	TSThread *thread = reinterpret_cast<TSThread *>(p);
 	thread->InternalThreadProc();
 }
+
+/////////////////////////////////////
+// UpdateThread Class
+/////////////////////////////////////
+
+UpdateThread::UpdateThread()
+{
+	m_hStopEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
+	m_hDoneEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
+	m_threadHandle = INVALID_HANDLE_VALUE;
+}
+
+UpdateThread::~UpdateThread()
+{
+	StopThread();
+	CloseHandle(m_hStopEvent);
+	CloseHandle(m_hDoneEvent);
+}
+
+HRESULT UpdateThread::StartThread()
+{
+	ResetEvent(m_hStopEvent);
+	unsigned long m_threadHandle = _beginthread(&UpdateThread::thread_function, 0, (void *) this);
+	if (m_threadHandle == (unsigned long)INVALID_HANDLE_VALUE)
+		return E_FAIL;
+
+	return S_OK;
+}
+
+HRESULT UpdateThread::StopThread(DWORD dwTimeoutMilliseconds)
+{
+	HRESULT hr = S_OK;
+
+	SetEvent(m_hStopEvent);
+	DWORD result = WaitForSingleObject(m_hDoneEvent, dwTimeoutMilliseconds);
+
+	if ((result == WAIT_TIMEOUT) && (m_threadHandle != INVALID_HANDLE_VALUE))
+	{
+		TerminateThread(m_threadHandle, -1);
+		CloseHandle(m_threadHandle);
+		hr = S_FALSE;
+	}
+	else if (result != WAIT_OBJECT_0)
+	{
+		DWORD err = GetLastError();
+		return HRESULT_FROM_WIN32(err);
+	}
+
+	m_threadHandle = INVALID_HANDLE_VALUE;
+
+	return hr;
+}
+
+BOOL UpdateThread::ThreadIsStopping(DWORD dwTimeoutMilliseconds)
+{
+	DWORD result = WaitForSingleObject(m_hStopEvent, dwTimeoutMilliseconds);
+	return (result != WAIT_TIMEOUT);
+}
+
+void UpdateThread::InternalThreadProc()
+{
+	ResetEvent(m_hDoneEvent);
+	try
+	{
+		UpdateThreadProc();
+	}
+	catch (LPWSTR pStr)
+	{
+		pStr = NULL;
+	}
+	SetEvent(m_hDoneEvent);
+}
+
+void UpdateThread::thread_function(void* p)
+{
+	UpdateThread *thread = reinterpret_cast<UpdateThread *>(p);
+	thread->InternalThreadProc();
+}

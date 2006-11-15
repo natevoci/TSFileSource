@@ -60,6 +60,8 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_bRotEnable(FALSE),
 	m_bSharedMode(FALSE),
 	m_pPin(NULL),
+	m_pDVBTChannels(NULL),
+	m_WriteThreadActive(FALSE),
 	m_FilterRefList(NAME("MyFilterRefList"))
 {
 	ASSERT(phr);
@@ -81,8 +83,9 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
 	m_pMpeg2DataParser = NULL;
-//	m_pMpeg2DataParser = new DVBMpeg2DataParser();
-//	m_pMpeg2DataParser->SetDVBTChannels(NULL);
+	m_pMpeg2DataParser = new DVBMpeg2DataParser();
+	m_pDVBTChannels = new DVBTChannels();
+	m_pMpeg2DataParser->SetDVBTChannels(m_pDVBTChannels);
 
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, phr);
 	if (m_pPin == NULL)
@@ -162,9 +165,51 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	if (m_pSampleBuffer) delete  m_pSampleBuffer;
 	if (m_pSharedMemory) delete m_pSharedMemory;
 	if (m_pClock) delete  m_pClock;
+}
 
-//	netArray.Clear();
-//    if (m_pClock) m_pClock = NULL;
+void CTSFileSourceFilter::UpdateThreadProc(void)
+{
+	m_WriteThreadActive = TRUE;
+	REFERENCE_TIME rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+
+	int count = 1;
+
+	while (!ThreadIsStopping(100))
+	{
+		HRESULT hr = S_OK;// if an error occurs.
+
+		REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+
+		//Reparse the file for service change	
+		if ((REFERENCE_TIME)(rtLastCurrentTime + (REFERENCE_TIME)RT_SECOND) < rtCurrentTime)
+		{
+			if(m_State != State_Stopped	&& TRUE)
+			{
+				//check pids every 5sec or quicker if no pids parsed
+				if (count & 1 || !m_pPidParser->pidArray.Count())
+				{
+					UpdatePidParser(m_pFileReader);
+				}
+
+				//Change back to normal Auto operation if not already
+				if (count == 6 && m_pPidParser->pidArray.Count() && m_bColdStart)
+				{
+					//Change back to normal Auto operation
+					m_pDemux->set_Auto(m_bColdStart);
+					m_bColdStart = FALSE; 
+				}
+			}
+
+			count++;
+			if (count > 6)
+				count = 0;
+
+			rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+		}
+
+		Sleep(100);
+	}
+	m_WriteThreadActive = FALSE;
 }
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
@@ -269,7 +314,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
     Command com;
 
 	m_pFileDuration->GetFileSize(&m_llLastMultiFileStart, &m_llLastMultiFileLength);
-	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+	REFERENCE_TIME rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
 	int count = 1;
 
@@ -278,6 +323,9 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
     {
         while(!CheckRequest(&com))
         {
+			if (!m_WriteThreadActive)
+				UpdateThread::StartThread();
+
 			HRESULT hr = S_OK;// if an error occurs.
 
 			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
@@ -285,7 +333,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 			WORD bReadOnly = FALSE;
 			m_pFileDuration->get_ReadOnly(&bReadOnly);
 			//Reparse the file for service change	
-			if ((REFERENCE_TIME)(m_rtLastCurrentTime + (REFERENCE_TIME)RT_SECOND) < rtCurrentTime && bReadOnly)
+			if ((REFERENCE_TIME)(rtLastCurrentTime + (REFERENCE_TIME)RT_SECOND) < rtCurrentTime && bReadOnly)
 			{
 				CNetRender::UpdateNetFlow(&netArray);
 				if(m_State != State_Stopped	&& TRUE)
@@ -305,29 +353,42 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 						LPOLESTR pszFileName;
 						if (m_pFileDuration->GetFileName(&pszFileName) == S_OK)
 						{
-							LPOLESTR pFileName = new WCHAR[1+lstrlenW(pszFileName)];
+							LPOLESTR pFileName = new WCHAR[1+wcslen(pszFileName)];
 							if (pFileName != NULL)
 							{
-								lstrcpyW(pFileName, pszFileName);
+								wcscpy(pFileName, pszFileName);
 								load(pFileName, NULL);
 								if (pFileName)
 									delete[] pFileName;
 							}
 						}
 					}
+/*
 					//check pids every 5sec or quicker if no pids parsed
-//					else if (count & 1 || !m_pPidParser->pidArray.Count())
+					else if (count & 1 || !m_pPidParser->pidArray.Count())
 //					else if (count == 5 || !m_pPidParser->pidArray.Count())
-					else if (!m_pPidParser->pidArray.Count())
+//					else if (!m_pPidParser->pidArray.Count())
 					{
-						//update the parser
-						UpdatePidParser(m_pFileReader);
+						if(m_pPidParser->get_ProgPinMode())
+						{
+							//update the parser
+							UpdatePidParser(m_pFileReader);
+						}
+						else
+						{
+//							if (m_pDVBTChannels->GetListSize() > 0)
+//							{
+								UpdatePidParser(m_pFileReader);
+//								m_pDVBTChannels->Clear();
+//							}
+						}
+
 					}
-					
+*/
 					m_llLastMultiFileStart = fileStart;
 					m_llLastMultiFileLength = filelength;
 				}
-
+/*
 				//Change back to normal Auto operation if not already
 				if (count == 6 && m_pPidParser->pidArray.Count() && m_bColdStart)
 				{
@@ -339,8 +400,8 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				count++;
 				if (count > 6)
 					count = 0;
-
-				m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+*/
+				rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 			}
 
 			if (m_State != State_Stopped && bReadOnly)
@@ -361,6 +422,19 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 						count = 0; //skip the pid update if seeking
 				}
 			}
+/*
+			if(m_State != State_Stopped && !m_pPidParser->get_ProgPinMode())
+			{
+				CComPtr<IBaseFilter>pMpegSections;
+				if (SUCCEEDED(m_pDemux->GetParserFilter(pMpegSections)))
+				{
+					m_pMpeg2DataParser->SetFilter(pMpegSections);
+					m_pMpeg2DataParser->SetDVBTChannels(m_pDVBTChannels);
+					m_pMpeg2DataParser->StartScan();
+				}
+			}
+
+*/			
 			//randomly park the file pointer to help minimise HDD clogging
 //			if (rtCurrentTime&1)
 				m_pFileDuration->SetFilePointer(0, FILE_END);
@@ -391,6 +465,12 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
         }
     } while(com != CMD_STOP);
 
+	if (m_WriteThreadActive)
+	{
+		UpdateThread::StopThread(100);
+		m_WriteThreadActive = FALSE;
+	}
+	m_pMpeg2DataParser->ReleaseFilter();
 	m_bThreadRunning = FALSE;
 
     return S_FALSE;
@@ -647,7 +727,7 @@ STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStrea
 	else if (lIndex > m_pStreamParser->StreamArray.Count() - indexOffset) //Select multicast streams
 	{
 		WCHAR wfilename[MAX_PATH];
-		lstrcpyW(wfilename, netArray[lIndex - (m_pStreamParser->StreamArray.Count() - netArray.Count())].fileName);
+		wcscpy(wfilename, netArray[lIndex - (m_pStreamParser->StreamArray.Count() - netArray.Count())].fileName);
 		if (SUCCEEDED(load(wfilename, NULL)))
 		{
 //			m_pFileReader->set_DelayMode(TRUE);
@@ -935,8 +1015,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	// Is this a valid filename supplied
 	CheckPointer(pszFileName,E_POINTER);
 
-	LPOLESTR wFileName = new WCHAR[lstrlenW(pszFileName)+1];
-	lstrcpyW(wFileName, pszFileName);
+	LPOLESTR wFileName = new WCHAR[wcslen(pszFileName)+1];
+	wcscpy(wFileName, pszFileName);
 
 	if (_wcsicmp(wFileName, L"") == 0)
 	{
@@ -962,8 +1042,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			if(wFileName)
 				delete[] wFileName;
 
-			wFileName = new WCHAR[1+lstrlenW(T2W(ptFilename))];
-			lstrcpyW(wFileName, T2W(ptFilename));
+			wFileName = new WCHAR[1+wcslen(T2W(ptFilename))];
+			wcscpy(wFileName, T2W(ptFilename));
 		}
 		else
 		{
@@ -1012,8 +1092,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			if(wFileName)
 				delete[] wFileName;
 
-			wFileName = new WCHAR[1+lstrlenW(netAddr->fileName)];
-			lstrcpyW(wFileName, netAddr->fileName);
+			wFileName = new WCHAR[1+wcslen(netAddr->fileName)];
+			wcscpy(wFileName, netAddr->fileName);
 //			m_pFileReader->set_DelayMode(TRUE);
 //			m_pFileDuration->set_DelayMode(TRUE);
 			m_pFileReader->set_DelayMode(FALSE);
@@ -1025,8 +1105,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			if(wFileName)
 				delete[] wFileName;
 
-			wFileName = new WCHAR[1+lstrlenW(netArray[pos].fileName)];
-			lstrcpyW(wFileName, netArray[pos].fileName);
+			wFileName = new WCHAR[1+wcslen(netArray[pos].fileName)];
+			wcscpy(wFileName, netArray[pos].fileName);
 			delete netAddr;
 		}
 	}
@@ -1035,7 +1115,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 
 	for (int pos = 0; pos < netArray.Count(); pos++)
 	{
-		if (!lstrcmpiW(wFileName, netArray[pos].fileName))
+		if (!wcsicmp(wFileName, netArray[pos].fileName))
 			netArray[pos].playing = TRUE;
 		else
 			netArray[pos].playing = FALSE;
@@ -1108,7 +1188,7 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	delete m_pFileReader;
 	delete m_pFileDuration;
 
-	long length = lstrlenW(wFileName);
+	long length = wcslen(wFileName);
 	if ((length < 9) || (_wcsicmp(wFileName+length-9, L".tsbuffer") != 0))
 	{
 		m_pFileReader = new FileReader(m_pSharedMemory);
@@ -1350,7 +1430,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		//also loads it into the File buffer for a smoother change over.
 		FileReader *pFileReader = NULL;
 		SharedMemory *pSharedMemory = NULL;
-		long length = lstrlenW(pszFileName);
+		long length = wcslen(pszFileName);
 		if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
 		{
 			pSharedMemory = new SharedMemory(64000000);
@@ -1476,7 +1556,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	delete m_pFileReader;
 	delete m_pFileDuration;
 
-	long length = lstrlenW(pszFileName);
+	long length = wcslen(pszFileName);
 	if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
 	{
 		m_pFileReader = new FileReader(m_pSharedMemory);
@@ -1717,7 +1797,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 		m_pDemux->AOnConnect();
 	}
 	m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
-	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+//	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 
 
 	if (bState_Paused || bState_Running)
@@ -1790,29 +1870,33 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 {
 	HRESULT hr = S_FALSE;// if an error occurs.
 
+	REFERENCE_TIME start, stop;
+	m_pPin->GetPositions(&start, &stop);
+
 	PidParser *pPidParser = new PidParser(m_pSampleBuffer, pFileReader);
 	
 	int sid = m_pPidParser->pids.sid;
 	int sidsave = m_pPidParser->m_ProgramSID;
 
-	int count = 0;
-	while(m_pDemux->m_bConnectBusyFlag && count < 200)
-	{
-		{
-//			BrakeThread Brake;
-			Sleep(10);
-		}
-//		Sleep(100);
-		count++;
-	}
-	m_pDemux->m_bConnectBusyFlag = TRUE;
-
-//	__int64 intBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
-	__int64 intBaseTimePCR = parserFunctions.SubtractPCR(m_pPin->m_IntStartTimePCR, m_pPin->m_IntBaseTimePCR);
-	intBaseTimePCR = (__int64)max(0, intBaseTimePCR);
-
+//	BrakeThread Brake;
 	if (pPidParser->RefreshPids() == S_OK)
 	{
+		int count = 0;
+		while(m_pDemux->m_bConnectBusyFlag && count < 200)
+		{
+			{
+	//			BrakeThread Brake;
+				Sleep(10);
+			}
+	//		Sleep(100);
+			count++;
+		}
+		m_pDemux->m_bConnectBusyFlag = TRUE;
+
+	//	__int64 intBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
+		__int64 intBaseTimePCR = parserFunctions.SubtractPCR(m_pPin->m_IntStartTimePCR, m_pPin->m_IntBaseTimePCR);
+		intBaseTimePCR = (__int64)max(0, intBaseTimePCR);
+
 		if (pPidParser->pidArray.Count())
 		{
 			hr = S_OK;
@@ -1880,21 +1964,70 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 
 		if (m_pDemux->CheckDemuxPids() == S_FALSE)
 		{
+
 //			m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - intBaseTimePCR));
 			m_pPin->m_IntBaseTimePCR = parserFunctions.SubtractPCR(m_pPidParser->pids.start, intBaseTimePCR);
 			m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntBaseTimePCR));
 			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 
-			m_pDemux->AOnConnect();
-		}
+/*
+	BOOL bState_Running = FALSE;
+	BOOL bState_Paused = FALSE;
+
+	if (m_State == State_Running)
+		bState_Running = TRUE;
+	else if (m_State == State_Paused)
+		bState_Paused = TRUE;
+
+	if (bState_Paused || bState_Running)
+	{
+//		CAutoLock lock(&m_Lock);
+		m_pDemux->DoStop();
+	}
+*/
 		m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+			m_pDemux->AOnConnect();
+//		set_PgmNumb(m_pPidParser->get_ProgramNumber());
+//m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+/*
+	if (bState_Paused || bState_Running)
+	{
+////		CAutoLock cObjectLock(m_pLock);
+		m_pDemux->DoStart();
+	}
+				
+	if (bState_Paused)
+	{
+//		CAutoLock cObjectLock(m_pLock);
+		m_pDemux->DoPause();
+	}
+*/
+	{
+//		CAutoLock cObjectLock(m_pLock);
+		IMediaSeeking *pMediaSeeking;
+		if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+		{
+			CAutoLock cObjectLock(m_pLock);
+			start += RT_SECOND;
+//			m_pPin->m_DemuxLock = TRUE;
+			hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+//			m_pPin->m_DemuxLock = FALSE;
+			pMediaSeeking->Release();
+		}
+	}
+//TCHAR sz[128];
+//sprintf(sz, "%u", 0);
+//MessageBox(NULL, sz,"test", NULL);
+
+		}
+		else
+			m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+
+		m_pDemux->m_bConnectBusyFlag = FALSE;
 
 	}
 	delete  pPidParser;
-
-	m_pDemux->m_bConnectBusyFlag = FALSE;
-
 	return hr;
 }
 
@@ -1924,11 +2057,11 @@ STDMETHODIMP CTSFileSourceFilter::GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TY
 	if (pFileName != NULL)
 	{
 		*ppszFileName = (LPOLESTR)
-		QzTaskMemAlloc(sizeof(WCHAR) * (1+lstrlenW(pFileName)));
+		QzTaskMemAlloc(sizeof(WCHAR) * (1+wcslen(pFileName)));
 
 		if (*ppszFileName != NULL)
 		{
-			lstrcpyW(*ppszFileName, pFileName);
+			wcscpy(*ppszFileName, pFileName);
 		}
 	}
 

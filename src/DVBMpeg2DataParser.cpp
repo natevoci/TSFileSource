@@ -461,11 +461,12 @@ DVBMpeg2DataParser::DVBMpeg2DataParser() :
 
 	m_currentTransponder = NULL;
 
-	m_logWriter.SetFilename(L"BDA_DVB-T\\Scanning.log");
+	m_logWriter.SetFilename(L"TSFileSource.log");
 	log.AddCallback(&m_logWriter);
 	log.ClearFile();
-	(log << "-------------------------\nDigitalWatch Scanning log\n").Write();
-	log.LogVersionNumber();
+	(log << "-------------------------\nTSFileSource Scanning log\n").Write();
+	(log << "Ver 2.2.0.9\n").Write();
+//	log.LogVersionNumber();
 	(log << "-------------------------\n").Write();
 
 	m_networks.SetLogCallback(&m_logWriter);
@@ -492,6 +493,9 @@ void DVBMpeg2DataParser::SetFrequency(long frequency)
 
 void DVBMpeg2DataParser::SetFilter(CComPtr <IBaseFilter> pBDASecTab)
 {
+	if (m_bThreadStarted)
+		return;
+
 	m_piMpeg2Data.Release();
 
 	if (pBDASecTab != NULL)
@@ -506,6 +510,7 @@ void DVBMpeg2DataParser::ReleaseFilter()
 	WaitForThreadToFinish();
 	m_piMpeg2Data.Release();
 	ResetEvent(m_hScanningStopEvent[0]);
+	m_bThreadStarted = FALSE;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -529,6 +534,25 @@ HRESULT DVBMpeg2DataParser::StartScan()
 	return S_OK;
 }
 
+BOOL DVBMpeg2DataParser::IsScanRunning()
+{
+	return m_bThreadStarted;
+}
+
+HRESULT DVBMpeg2DataParser::EndScan()
+{
+	//Stop the thread 
+
+	if (!m_bThreadStarted)
+		return S_OK;
+
+	SetEvent(m_hScanningStopEvent[0]);
+	WaitForThreadToFinish();
+
+	m_bThreadStarted = FALSE;
+	return S_OK;
+}
+
 DWORD DVBMpeg2DataParser::WaitForThreadToFinish()
 {
 	DWORD result = WAIT_TIMEOUT;
@@ -546,11 +570,13 @@ void DVBMpeg2DataParser::StartScanThread()
 {
 	HRESULT hr;
 
+//	BrakeThread Brake;
+
+	m_logWriter.SetLogBufferLimit(100);
+
 	try
 	{
 		ResetEvent(m_hScanningDoneEvent);
-//		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-		//SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
 
 		(log << "\nStarting Scan Thread...\n").Write();
 
@@ -564,7 +590,7 @@ void DVBMpeg2DataParser::StartScanThread()
 				DWORD dwWait = WaitForSingleObject(m_hScanningStopEvent[0], 100);
 				if (dwWait != WAIT_TIMEOUT)
 					break;
-//				Sleep(100);
+				Sleep(100);
 				continue;
 			}
 
@@ -579,8 +605,9 @@ void DVBMpeg2DataParser::StartScanThread()
 			{
 				// Clear the log file every so often so that it doesn't grow huge
 				m_logWriter.Clear();
-				(log << "-------------------------\nDigitalWatch Scanning log\n").Write();
-				log.LogVersionNumber();
+				(log << "-------------------------\nTSFileSource Scanning log\n").Write();
+				(log << "Ver 2.2.0.9\n").Write();
+//				log.LogVersionNumber();
 				(log << "-------------------------\n").Write();
 				(log << "\nStarting Scan " << nScanCount << "\n").Write();
 			}
@@ -593,7 +620,7 @@ void DVBMpeg2DataParser::StartScanThread()
 			// Scan tables
 			hr = ReadSection(pPATSection);	// if PAT fails then there's no point doing NIT or SDT
 			delete pPATSection;
-
+/*
 			if SUCCEEDED(hr)
 			{
 				DVBSection *pSection;
@@ -622,7 +649,7 @@ void DVBMpeg2DataParser::StartScanThread()
 					delete pSection;
 				}
 			}
-
+*/
 			if SUCCEEDED(hr)
 				UpdateInformation();
 
@@ -636,7 +663,7 @@ void DVBMpeg2DataParser::StartScanThread()
 //				g_pOSD->Data()->SetItem(L"Scanning", L"");
 //			}
 
-			DWORD dwWait = WaitForSingleObject(m_hScanningStopEvent[0], 1000);
+			DWORD dwWait = WaitForSingleObject(m_hScanningStopEvent[0], 5000);
 			if (dwWait != WAIT_TIMEOUT)
 				break;
 		}
@@ -694,7 +721,7 @@ HRESULT DVBMpeg2DataParser::ReadSection(DVBSection *pSection)
 	}
 	(log << "Supplied data buffer\n").Write();
 
-	DWORD dwWait = WaitForMultipleObjects(2, m_hScanningStopEvent, FALSE, (DWORD)pSection->timeout*1000);
+	DWORD dwWait = WaitForMultipleObjects(2, m_hScanningStopEvent, FALSE, (DWORD)(pSection->timeout*1000));
 	(log << "Event or timeout triggered  " << (long)dwWait << "\n").Write();
 
 	if (dwWait == WAIT_OBJECT_0)
@@ -1011,6 +1038,7 @@ void DVBMpeg2DataParser::ParsePMT(unsigned char *buf, int sectionLength, int ser
 				break;
 			}
 			case 0x06:
+			case 0x81:
 			{
 				if (FindDescriptor(0x56, buf, streamInfoLen, NULL, NULL))
 				{
@@ -1025,7 +1053,7 @@ void DVBMpeg2DataParser::ParsePMT(unsigned char *buf, int sectionLength, int ser
 					 * will also be present; so we can be quite confident
 					 * that we catch DVB subtitling streams only here, w/o
 					 * parsing the descriptor. */
-					pStream->Type = teletext;
+					pStream->Type = subtitle;
 					log.showf("SUBTITLING  : PID 0x%04x\n", pStream->PID);
 					break;
 				}
@@ -1037,6 +1065,32 @@ void DVBMpeg2DataParser::ParsePMT(unsigned char *buf, int sectionLength, int ser
 					//ParseLangDescriptor(buf, streamInfoLen, audio);
 					break;
 				}
+				else if (FindDescriptor(0x73, buf, streamInfoLen, NULL, NULL))
+				{
+					pStream->Type = dts;
+					log.showf("DTS AUDIO   : PID 0x%04x\n", pStream->PID);
+					//LogMessageIndent indent2(&log);
+					//ParseLangDescriptor(buf, streamInfoLen, audio);
+					break;
+				}
+			}
+			case 0x1B:
+			{
+				pStream->Type = h264;
+				log.showf("H264 VIDEO       : PID 0x%04x\n", pStream->PID);
+				break;
+			}
+			case 0x0F:
+			{
+				pStream->Type = aac;
+				log.showf("AAC AUDIO       : PID 0x%04x\n", pStream->PID);
+				break;
+			}
+			case 0x10:
+			{
+				pStream->Type = mpeg4;
+				log.showf("MPEG4 VIDEO       : PID 0x%04x\n", pStream->PID);
+				break;
 			}
 			/* fall through */
 			default:

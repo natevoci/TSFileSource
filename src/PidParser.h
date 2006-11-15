@@ -115,6 +115,7 @@ protected:
 
 	HRESULT ParsePAT(PBYTE pData, ULONG ulDataLength, long pos);
 	HRESULT ParsePMT(PBYTE pData, ULONG ulDataLength, long pos);
+	PBYTE ParseExtendedPacket(int tableID, PBYTE pData, ULONG ulDataLength, ULONG pos);
 	HRESULT IsValidPMT(PBYTE pData, ULONG ulDataLength);
 	HRESULT ACheckVAPids(PBYTE pData, ULONG ulDataLength);
 	HRESULT CheckVAStreams(PBYTE pData, ULONG ulDataLength);

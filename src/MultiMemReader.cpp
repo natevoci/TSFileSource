@@ -42,6 +42,7 @@ MultiMemReader::MultiMemReader(SharedMemory* pSharedMemory) :
 	m_TSFileId = 0;
 	m_bReadOnly = 1;
 	m_bDelay = 0;
+	m_llBufferPointer = 0;	
 }
 
 MultiMemReader::~MultiMemReader()
@@ -90,6 +91,7 @@ HRESULT MultiMemReader::OpenFile()
 	RefreshTSBufferFile();
 
 	m_currentPosition = 0;
+	m_llBufferPointer = 0;	
 
 	return hr;
 }
@@ -555,3 +557,15 @@ __int64 MultiMemReader::getFilePointer()
 		
 }
 
+__int64 MultiMemReader::getBufferPointer()
+{
+	return 	m_llBufferPointer;	
+}
+
+void MultiMemReader::setBufferPointer()
+{
+	__int64 fileStart, fileEnd, fileLength;
+	GetFileSize(&fileStart, &fileLength);
+	fileEnd = fileLength + fileStart;
+	m_llBufferPointer = (__int64)(GetFilePointer() - fileStart);	
+}

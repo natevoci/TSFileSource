@@ -61,6 +61,8 @@ public:
 	virtual HRESULT get_ReaderMode(WORD *ReaderMode);
 	virtual DWORD setFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual __int64 getFilePointer();
+	virtual __int64 getBufferPointer();
+	virtual void setBufferPointer();
 
 	//TODO: GetFileSize should go since get_FileSize should do the same thing.
 	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pLength);
@@ -79,6 +81,7 @@ protected:
 	__int64 m_startPosition;
 	__int64 m_endPosition;
 	__int64 m_currentPosition;
+	__int64 m_llBufferPointer;	
 	long m_filesAdded;
 	long m_filesRemoved;
 

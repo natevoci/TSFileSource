@@ -404,6 +404,14 @@ SOURCE=.\src\DVBTChannels.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\FilterGraphTools.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\FilterGraphTools.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\GlobalFunctions.cpp
 # End Source File
 # Begin Source File

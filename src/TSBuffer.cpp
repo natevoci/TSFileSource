@@ -159,9 +159,9 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			}
 
 		}
-
 		m_Array.push_back(newItem);
 		bytesAvailable += m_lTSBufferItemSize;
+		m_pFileReader->setBufferPointer();
 	}
 	return S_OK;
 }

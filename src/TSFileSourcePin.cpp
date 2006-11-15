@@ -1218,6 +1218,7 @@ seekFunctions.PrintTime(TEXT("setPositions/PositioningBitsMask"), (__int64) *pCu
 				if (CurrentFlags & AM_SEEKING_ReturnTime)
 					*pCurrent  = rtCurrent;
 
+/////////////////////////m_pTSFileSourceFilter->RefreshPids();
 ::OutputDebugString(TEXT("setPositions CSourceSeeking::SetPositions() pre seeklock\n"));
 				CAutoLock lock(&m_SeekLock);
 				return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
@@ -1385,9 +1386,9 @@ seekFunctions.PrintTime(TEXT("seekin"), (__int64) seektime, 10000, &debugcount);
 	//Do MultiFile timeshifting mode
 	if(bMultiMode)
 	{
-		if (m_bGetAvailableMode && ((__int64)(seektime + (__int64)RT_2_SECOND) > m_pTSFileSourceFilter->m_pPidParser->pids.dur))
+		if (m_bGetAvailableMode && ((__int64)(seektime + (__int64)RT_05_SECOND) > m_pTSFileSourceFilter->m_pPidParser->pids.dur))
 		{
-			seektime = max(0, m_pTSFileSourceFilter->m_pPidParser->pids.dur -(__int64)RT_2_SECOND);
+			seektime = max(0, m_pTSFileSourceFilter->m_pPidParser->pids.dur -(__int64)RT_05_SECOND);
 			m_rtStart = seektime;
 			m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
 			m_rtTimeShiftPosition = seektime;

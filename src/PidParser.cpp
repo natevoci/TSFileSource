@@ -224,20 +224,22 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
 	m_AsyncMode = FALSE; //Set for control by filter
 
+	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
 	__int64 fileStart, filelength;
+	ULONG ulDataRead = 0;
 	pFileReader->GetFileSize(&fileStart, &filelength);
 	ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
-	fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
-	m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
-	if (filelength < MIN_FILE_SIZE*2)
-		pFileReader->setFilePointer(0, FILE_BEGIN);
-	else
-		pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
+//	if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+	{
+		fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
+		m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
+		if (filelength < MIN_FILE_SIZE*2)
+			pFileReader->setFilePointer(0, FILE_BEGIN);
+		else
+			pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
 
-	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
-	ULONG ulDataRead = 0;
-	if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
 		pFileReader->Read(pData, ulDataLength, &ulDataRead);
+	}
 
 	if (ulDataRead < 1)
 	{
@@ -761,7 +763,8 @@ HRESULT PidParser::RefreshPids()
 //	CAutoLock parserlock(&m_ParserLock);
 	__int64 fileStart, fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
-	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getFilePointer());
+	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getBufferPointer());
+//	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getFilePointer());
 	filestartpointer = max(get_StartOffset(), filestartpointer);
 
 	WORD readonly = 0;;
@@ -935,53 +938,109 @@ HRESULT PidParser::ParsePAT(PBYTE pData, ULONG lDataLength, long pos)
 {
 	HRESULT hr = S_FALSE;
 
-	if ((((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x00 &&
-		 (0x10 & pData[pos + 3]) == 0x10 ){
+	if ((WORD)(((0x1F & pData[pos+1])<<8) | (0xFF & pData[pos+2])) != 0) //must be pid 0 for PAT
+		return S_FALSE;
 
-		if ((0xf0&pData[pos+3]) == 0x30 && pData[pos+5] == 0)
-			pos += pData[pos+4] + 1;
+	PBYTE pSection = ParseExtendedPacket(0, pData, lDataLength, pos);
+	if (pSection == NULL)
+		return S_FALSE;
 
-		if (pData[pos + 4] == 0 && pData[pos + 5] == 0
-			&& (0xf0 & pData[pos + 6]) == 0xB0) {
+	pos = 0;
 
-			int sectionLen = (WORD)(((0x0F & pData[pos + 6]) << 8) | (0xFF & pData[pos + 7]));
-			m_TStreamID = ((0xFF & pData[pos + 8]) << 8) | (0xFF & pData[pos + 9]); //Get TSID Pid
-//			m_TStreamID = (WORD)-1; //Get TSID Pid
+	if ((0x20&pSection[pos+3]) == 0x20)
+//	if ((0xf0&pSection[pos+3]) == 0x30 && pSection[pos+5] == 0)
+		pos += pSection[pos+4] + 1;
 
-			for (long b = pos + 7 + 5 ; b < pos + sectionLen + 7 - 4 ; b = b + 4) //less 4 crc bytes
-			{
-				//Get Program value and skip if nit pid
-				if ((((0xFF & pData[b + 1]) << 8) | (0xFF & pData[b + 2])) == 0)
-				{
-					m_NitPid = (WORD)(0x1F & pData[b + 3]) << 8 | (0xFF & pData[b + 4]);
-				}
-//				else if (((0xe0 & pData[b + 3]) == 0xe0) && ((pData[b + 3]) != 0xff))
-				else
-				{
-					PidInfo *newPidInfo = new PidInfo();
+	int sectionLen = (WORD)(((0x0F & pSection[pos + 6]) << 8) | (0xFF & pSection[pos + 7]));
+	m_TStreamID = ((0xFF & pSection[pos + 8]) << 8) | (0xFF & pSection[pos + 9]); //Get TSID Pid
 
-					newPidInfo->sid =
-						(WORD)(0xFF & pData[b + 1]) << 8 | (0xFF & pData[b + 2]);
+	for (long b = pos + 7 + 5 ; b < pos + sectionLen + 7 - 4 ; b = b + 4) //less 4 crc bytes
+	{
+		//Get Program value and skip if nit pid
+		if ((((0xFF & pSection[b + 1]) << 8) | (0xFF & pSection[b + 2])) == 0)
+		{
+			m_NitPid = (WORD)(0x1F & pSection[b + 3]) << 8 | (0xFF & pSection[b + 4]);
+		}
+//		else if (((0xe0 & pData[b + 3]) == 0xe0) && ((pData[b + 3]) != 0xff))
+		else
+		{
+			PidInfo *newPidInfo = new PidInfo();
 
-					newPidInfo->pmt =
-						(WORD)(0x1F & pData[b + 3]) << 8 | (0xFF & pData[b + 4]);
+			newPidInfo->sid =
+				(WORD)(0xFF & pSection[b + 1]) << 8 | (0xFF & pSection[b + 2]);
 
-					pidArray.Add(newPidInfo);
-				}
-			}
+			newPidInfo->pmt =
+				(WORD)(0x1F & pSection[b + 3]) << 8 | (0xFF & pSection[b + 4]);
 
-			//If no Program PMT Info as with an ATSC
-			if (pidArray.Count() != 0)
-			{
-				//Set flag to enable searching for NID
-				m_ATSCFlag = false;
-				return S_OK;
-			}
-			//Set flag to disable searching for NID
-			m_ATSCFlag = true;
+			pidArray.Add(newPidInfo);
 		}
 	}
+
+	//If no Program PMT Info as with an ATSC
+	if (pidArray.Count() != 0)
+	{
+		//Set flag to enable searching for NID
+		m_ATSCFlag = false;
+		return S_OK;
+	}
+	//Set flag to disable searching for NID
+	m_ATSCFlag = true;
 	return hr;
+}
+
+PBYTE PidParser::ParseExtendedPacket(int tableID, PBYTE pData, ULONG ulDataLength, ULONG pos)
+{
+	HRESULT hr = S_OK;
+
+	if ((0x40&pData[pos+1])!=0x40 || (0x10&pData[pos+3])!=0x10)
+		return NULL;
+
+	int pos_save = pos;
+	WORD pmt = (WORD)(0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2]);
+
+	if ((0x30&pData[pos+3]) == 0x30)	//adaptation field + payload
+//	if ((0xf0&pData[pos+3]) == 0x30 && pData[pos+5] == 0)
+			pos += pData[pos+4] + 1;
+
+	if (pData[pos+4] != 0x0 || pData[pos+5] != tableID || (0xf0&pData[pos+6])!=0xb0)
+		return NULL;
+
+	int sectionLen	= min(4096, (WORD)((0x0F & pData[pos+6])<<8 | (0xFF & pData[pos+7])));
+	sectionLen -= m_PacketSize - ((pos+7)-pos_save);
+
+	PBYTE pSectionData = new BYTE[4096];
+	PBYTE pSectionDataSave = pSectionData;
+	memcpy(pSectionData, pData+pos, 188); //save first pmt data packet
+	pSectionData += m_PacketSize;
+	pos +=m_PacketSize;
+
+	while (hr == S_OK && sectionLen > 0)
+	{
+		//search at the head of the file
+		hr = FindSyncByte(this, pData, ulDataLength, &pos, 1);
+		if (hr == S_OK)
+		{
+			//parse next packet for the section
+			if ((0x40&pData[pos+1])==0x00 && (0x10&pData[pos+3])==0x10 &&
+				pmt == (WORD)(((0x1F&pData[pos+1])<<8)|(0xFF&pData[pos+2])))
+			{
+				memcpy(pSectionData, pData+pos+4, 184); //save first section data packet
+				pSectionData +=184;
+				pos +=184;
+				sectionLen -= 184;
+			}
+			
+		}
+		pos += m_PacketSize;
+	}
+
+	if (sectionLen > 0)
+	{
+		delete[] pSectionDataSave;
+		return NULL;
+	}
+
+	return pSectionDataSave;
 }
 
 HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
@@ -993,122 +1052,122 @@ HRESULT PidParser::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
 	WORD privatepid = 0;
 	WORD sectionLen = 0;
 
-	if ((0x10&pData[pos+3])==0x10 && pData[pos+5] <= 0x2)
+	PBYTE pSection = ParseExtendedPacket(2, pData, ulDataLength, pos);
+	if (pSection == NULL)
+		return S_FALSE;
+
+	pos = 0;
+
+	if ((0x20&pSection[pos+3]) == 0x20)
+//	if ((0xf0&pSection[pos+3]) == 0x30 && pSection[pos+5] == 0)
+		pos += pSection[pos+4] + 1;
+
+	pids.pmt =	(WORD)(0x1F & pSection[pos+1])<<8 | (0xFF & pSection[pos+2]);
+	pids.pcr      = (WORD)(0x1F & pSection[pos+13])<<8 | (0xFF & pSection[pos+14]);
+	pids.sid      = (WORD)(0xFF & pSection[pos+8 ])<<8 | (0xFF & pSection[pos+9 ]);
+	pids.chnumb    = pids.sid; //We do this to make up a channel number incase we don't parse the correct one later
+	sectionLen = (WORD)((0x0F & pSection[pos+6])<<8 | (0xFF & pSection[pos+7]));
+
+	channeloffset = (WORD)(0x0F & pSection[pos+15])<<8 | (0xFF & pSection[pos+16]);
+
+	for (long b=17+channeloffset+pos; b<pos+sectionLen; b=b+5)
 	{
-		int pmt_save = (WORD)(0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2]);
-		if ((0xf0&pData[pos+3]) == 0x30 && pData[pos+5] == 0)
-			pos += pData[pos+4] + 1;
-
-		if (pData[pos+4] == 0x0 && pData[pos+5] == 0x2 && (0xf0&pData[pos+6])==0xb0)
+//		if ( (0xe0&pData[b+1]) == 0xe0 )
 		{
-			pids.pmt = pmt_save;
-			pids.pcr      = (WORD)(0x1F & pData[pos+13])<<8 | (0xFF & pData[pos+14]);
-			pids.sid      = (WORD)(0xFF & pData[pos+8 ])<<8 | (0xFF & pData[pos+9 ]);
-			pids.chnumb    = pids.sid; //We do this to make up a channel number incase we don't parse the correct one later
-			sectionLen	  = (WORD)min(182, (WORD)((0x0F & pData[pos+6])<<8 | (0xFF & pData[pos+7])));
-			channeloffset = (WORD)(0x0F & pData[pos+15])<<8 | (0xFF & pData[pos+16]);
+			pid = (WORD)(0x1F & pSection[b+1])<<8 | (0xFF & pSection[b+2]);
+			EsDescLen = (WORD)(0x0F&pSection[b+3]<<8 | 0xFF&pSection[b+4]);
 
-			for (long b=17+channeloffset+pos; b<pos+sectionLen; b=b+5)
+			StreamType = (WORD)(0xFF&pSection[b]);
+
+			if (StreamType == 0x02)
 			{
-//				if ( (0xe0&pData[b+1]) == 0xe0 )
+				pids.vid = pid;
+			}
+
+			if (StreamType == 0x1b)
+			{
+				pids.h264 = pid;
+			}
+
+			if (StreamType == 0x10)
+			{
+				pids.mpeg4 = pid;
+			}
+
+			if ((StreamType == 0x03) || (StreamType == 0x04))
+			{
+				if (pids.aud != 0)
+					pids.aud2 = pid;
+				else
+					pids.aud = pid;
+			}
+
+			if (StreamType == 0x06)
+			{
+				if (CheckEsDescriptorForDTS(pSection, ulDataLength, b + 5, b + 5 + EsDescLen))
 				{
-					pid = (WORD)(0x1F & pData[b+1])<<8 | (0xFF & pData[b+2]);
-					EsDescLen = (WORD)(0x0F&pData[b+3]<<8 | 0xFF&pData[b+4]);
-
-					StreamType = (WORD)(0xFF&pData[b]);
-
-					if (StreamType == 0x02)
+					if (pids.dts == 0)
+						pids.dts = pid;
+					else
+						pids.dts2 = pid;// If already have DTS then get next.
+				}
+				else if (CheckEsDescriptorForSubtitle(pSection, ulDataLength, b + 5, b + 5 + EsDescLen))
+					pids.sub = pid;
+				else if (CheckEsDescriptorForAC3(pSection, ulDataLength, b + 5, b + 5 + EsDescLen))
+				{
+					if (pids.ac3 == 0)
+						pids.ac3 = pid;
+					else
+						pids.ac3_2 = pid;// If already have AC3 then get next.
+				}
+				else if (CheckEsDescriptorForTeletext(pSection, ulDataLength, b + 5, b + 5 + EsDescLen))
+					pids.txt = pid;
+				else
+				{
+					//This could be a bid dodgy. What if there is an ac3 or txt in a future loop?
+					if (pids.ac3 == 0 && pids.txt != 0)
 					{
-						pids.vid = pid;
+						pids.ac3 = pid;
 					}
-
-					if (StreamType == 0x1b)
+					else if (pids.ac3 != 0 && pids.txt == 0)
 					{
-						pids.h264 = pid;
+						pids.txt = pid;
 					}
-
-					if (StreamType == 0x10)
-					{
-						pids.mpeg4 = pid;
-					}
-
-					if ((StreamType == 0x03) || (StreamType == 0x04))
-					{
-						if (pids.aud != 0)
-							pids.aud2 = pid;
-						else
-							pids.aud = pid;
-					}
-
-					if (StreamType == 0x06)
-					{
-						if (CheckEsDescriptorForDTS(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
-						{
-							if (pids.dts == 0)
-								pids.dts = pid;
-							else
-								pids.dts2 = pid;// If already have DTS then get next.
-						}
-						else if (CheckEsDescriptorForSubtitle(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
-							pids.sub = pid;
-						else if (CheckEsDescriptorForAC3(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
-						{
-							if (pids.ac3 == 0)
-								pids.ac3 = pid;
-							else
-								pids.ac3_2 = pid;// If already have AC3 then get next.
-						}
-						else if (CheckEsDescriptorForTeletext(pData, ulDataLength, b + 5, b + 5 + EsDescLen))
-							pids.txt = pid;
-						else
-						{
-							//This could be a bid dodgy. What if there is an ac3 or txt in a future loop?
-							if (pids.ac3 == 0 && pids.txt != 0)
-							{
-								pids.ac3 = pid;
-							}
-							else if (pids.ac3 != 0 && pids.txt == 0)
-							{
-								pids.txt = pid;
-							}
-						}
-					}
-
-					if (StreamType == 0x81 || StreamType == 0x83 || StreamType == 0x85 || StreamType == 0x8a)
-					{
-						if (pids.ac3 == 0)
-							pids.ac3 = pid;
-						else
-							pids.ac3_2 = pid;// If already have AC3 then get next.
-					}
-
-	//				if (StreamType == 0x0b)
-	//					if (pids.txt == 0)
-	//						pids.txt = pid;
-
-					if (StreamType == 0x0b) //Subtitle
-						if (pids.sub == 0)
-							pids.sub = pid;
-
-					if (StreamType == 0x0f) // AAC
-						if (pids.aac == 0)
-							pids.aac = pid;
-						else
-							pids.aac2 = pid;
-	/*
-					if (StreamType >= 0x88 && StreamType <= 0x8a) // DTS
-						if (pids.dts == 0)
-							pids.dts = pid;
-						else
-							pids.dts2 = pid;
-	*/
-					b+=EsDescLen;
 				}
 			}
-			return S_OK;
+
+			if (StreamType == 0x81 || StreamType == 0x83 || StreamType == 0x85 || StreamType == 0x8a)
+			{
+				if (pids.ac3 == 0)
+					pids.ac3 = pid;
+				else
+					pids.ac3_2 = pid;// If already have AC3 then get next.
+			}
+//				if (StreamType == 0x0b)
+//					if (pids.txt == 0)
+//						pids.txt = pid;
+
+			if (StreamType == 0x0b) //Subtitle
+				if (pids.sub == 0)
+					pids.sub = pid;
+
+			if (StreamType == 0x0f) // AAC
+				if (pids.aac == 0)
+					pids.aac = pid;
+				else
+					pids.aac2 = pid;
+/*
+			if (StreamType >= 0x88 && StreamType <= 0x8a) // DTS
+				if (pids.dts == 0)
+					pids.dts = pid;
+				else
+					pids.dts2 = pid;
+*/
+			b+=EsDescLen;
 		}
 	}
-	return S_FALSE;
+	delete[] pSection;
+	return S_OK;
 }
 /*
 HRESULT PidParser::CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime)
@@ -1635,7 +1694,8 @@ HRESULT PidParser::CheckEPGFromFile()
 		__int64 fileStart, fileSize;
 		pFileReader->GetFileSize(&fileStart, &fileSize);
 
-		__int64 fileStartPointer = m_pFileReader->getFilePointer();
+		__int64 fileStartPointer = m_pFileReader->getBufferPointer();
+//		__int64 fileStartPointer = m_pFileReader->getFilePointer();
 
 		iterations = (int)((fileSize - fileStartPointer) / MIN_FILE_SIZE); 
 		if (iterations >= 64)
@@ -1732,6 +1792,7 @@ bool PidParser::CheckForEPG(PBYTE pData, int pos, bool *extPacket, int *sectlen,
 		&& (*extPacket == false) // parse the first packet only 
 		&& ((0xF0 & pData[pos+1]) == 0x40)
 		&& (((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x12 
+		&& ((0xFF & pData[pos+4]) == 0x00)
 		&& ((0xFF & pData[pos+5]) == 0x4e)
 		&& (pidArray[*sidcount].sid == (((0xFF & pData[pos + 8]) << 8) | (0xFF & pData[pos + 9])))
 		)
@@ -1844,18 +1905,22 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 		int iterations = 0;
 		bool nitfound = false;
 
-		ULONG ulDataLength = MIN_FILE_SIZE;
-		ULONG ulDataRead = 0;
-		PBYTE pData = new BYTE[ulDataLength];
-
 		__int64 fileStart, filelength;
 		pFileReader->GetFileSize(&fileStart, &filelength);
-		pFileReader->setFilePointer(min((__int64)(filelength - (__int64)ulDataLength), m_FileStartPointer), FILE_BEGIN);
-///////////////		pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
-		pFileReader->Read(pData, ulDataLength, &ulDataRead);
+		ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
+		PBYTE pData = new BYTE[ulDataLength];
+		ULONG ulDataRead = 0;
+//		if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+		{
+			if (filelength < MIN_FILE_SIZE*2)
+				pFileReader->setFilePointer(0, FILE_BEGIN);
+			else
+				pFileReader->setFilePointer(min((__int64)(filelength - (__int64)ulDataLength), m_FileStartPointer), FILE_BEGIN);
+
+			pFileReader->Read(pData, ulDataLength, &ulDataRead);
+		}
 
 		hr = FindSyncByte(this, pData, ulDataLength, &pos, 1);
-
 		while ((pos < ulDataLength) && (hr == S_OK) && (nitfound == false))
 		{
 			nitfound = CheckForNID(pData, pos, &extPacket, &sectLen);
@@ -1872,7 +1937,8 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 					if (pos >= MIN_FILE_SIZE)
 					{
 						ULONG ulBytesRead = 0;
-						hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
+//						if FAILED(hr = m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+							hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
 
 						iterations++;
 						pos = 0;
@@ -1992,18 +2058,22 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 		int iterations = 0;
 		bool onitfound = false;
 
-		ULONG ulDataLength = MIN_FILE_SIZE;
-		ULONG ulDataRead = 0;
-		PBYTE pData = new BYTE[ulDataLength];
-
 		__int64 fileStart, filelength;
 		pFileReader->GetFileSize(&fileStart, &filelength);
-		pFileReader->setFilePointer(min((__int64)(filelength - (__int64)ulDataLength), m_FileStartPointer), FILE_BEGIN);
-/////////////		pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
-		pFileReader->Read(pData, ulDataLength, &ulDataRead);
+		ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
+		PBYTE pData = new BYTE[ulDataLength];
+		ULONG ulDataRead = 0;
+//		if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+		{
+			if (filelength < MIN_FILE_SIZE*2)
+				pFileReader->setFilePointer(0, FILE_BEGIN);
+			else
+				pFileReader->setFilePointer(min((__int64)(filelength - (__int64)ulDataLength), m_FileStartPointer), FILE_BEGIN);
+
+			pFileReader->Read(pData, ulDataLength, &ulDataRead);
+		}
 
 		hr = FindSyncByte(this, pData, ulDataLength, &pos, 1);
-
 		while ((pos < ulDataLength) && (hr == S_OK) && (onitfound == false)) 
 		{
 			if (!onitfound)
@@ -2024,7 +2094,8 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 					if (pos >= MIN_FILE_SIZE)
 					{
 						ULONG ulBytesRead = 0;
-						hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
+//						if FAILED(hr = m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+							hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
 
 						iterations++;
 						pos = 0;
@@ -2053,6 +2124,8 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 //						&& 0xFD80 == (((0xFF & m_pDummy[i + 2]) << 8) | (0x80 & m_pDummy[i + 3])))
 //						&& 0xFD80 == (((0xFF & m_pDummy[i + 2]) << 8) | (0xFF & m_pDummy[i + 3])))
 					{
+//						int a = i + 7;
+//						int b = min(m_pDummy[i + 6], 128);
 						int a = i + 9;
 						int b = min(m_pDummy[i + 8], 128);
 						memcpy(pidArray[n].onetname, m_pDummy + a, b);
@@ -2084,10 +2157,10 @@ bool PidParser::CheckForONID(PBYTE pData, int pos, bool *extpacket, int *sectlen
 	//Test if we have an ONID discriptor
 	if ((*extpacket == false)
 		&&  (pData[pos + 4] == 0)
-		&& (pData[pos + 5] == 0x42) 
+		&& ((pData[pos + 5]) == 0x42) 
 		&& ((0xF0 & pData[pos + 6]) == 0xF0)
-		&& ((0xBF & pData[pos + 1]) == 0x00) //first packet of ID's
-//		&& ((0xF0 & pData[pos + 1]) == 0x40) //first packet of ID's
+//		&& ((0xBF & pData[pos + 1]) == 0x00) //first packet of ID's
+		&& ((0xC0 & pData[pos + 1]) == 0x40) //first packet of ID's
 		&& ((0x01 & pData[pos+11]) == 0x00)    // should be start of parsing
 		&& ((((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x11) 
 		&& ((((0x1F & pData[pos + 11]) << 8)|(0xFF & pData[pos + 12])) == 0)	//yes if we have the ONID flag
@@ -2108,8 +2181,8 @@ bool PidParser::CheckForONID(PBYTE pData, int pos, bool *extpacket, int *sectlen
 		};
 	}
 	else if ((*extpacket == true)	//Test if we have an ext ID discriptor
-			&& (0xF0 & pData[pos + 3]) == 0x10 
-			&& (0xF0 & pData[pos + 1]) == 0x00 //NOT first packet of ID's
+			&& (0x30 & pData[pos + 3]) == 0x10 
+			&& (0xC0 & pData[pos + 1]) == 0x00 //NOT first packet of ID's
 			&& (((0x1F & pData[pos + 1]) << 8)|(0xFF & pData[pos + 2])) == 0x11
 			)
 	{

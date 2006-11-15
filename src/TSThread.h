@@ -49,4 +49,29 @@ private:
 	static void thread_function(void* p);
 };
 
+/////////////////////////////////////
+// UpdateThread Class
+/////////////////////////////////////
+
+class UpdateThread  
+{
+public:
+	UpdateThread();
+	virtual ~UpdateThread();
+
+	virtual void UpdateThreadProc() = 0;
+	HRESULT StartThread();
+	HRESULT StopThread(DWORD dwTimeoutMilliseconds = 1000);
+
+	BOOL ThreadIsStopping(DWORD dwTimeoutMilliseconds = 10);
+
+protected:
+	void InternalThreadProc();
+
+private:
+	HANDLE m_hDoneEvent;
+	HANDLE m_hStopEvent;
+	HANDLE m_threadHandle;
+	static void thread_function(void* p);
+};
 #endif

@@ -31,6 +31,8 @@ typedef CGenericList<IBaseFilter> CFilterList;
 
 #include "PidParser.h"
 #include "Control.h"
+#include "FilterGraphTools.h"
+#include "mpeg2data.h"
 
 class Demux
 {
@@ -82,6 +84,7 @@ public:
 	HRESULT	GetTelexMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT GetSubtitleMedia(AM_MEDIA_TYPE *pintype);
 	HRESULT	GetTSMedia(AM_MEDIA_TYPE *pintype);
+	HRESULT	GetParserMedia(AM_MEDIA_TYPE *pintype);
 	static	HRESULT GetPeerFilters(IBaseFilter *pFilter, PIN_DIRECTION Dir, CFilterList &FilterList);  
 	static  HRESULT GetNextFilter(IBaseFilter *pFilter, PIN_DIRECTION Dir, IBaseFilter **ppNext);
 	static  void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
@@ -94,6 +97,7 @@ public:
 	HRESULT	DoStop();
 	HRESULT	DoStart();
 	HRESULT	DoPause();
+	HRESULT GetParserFilter(CComPtr<IBaseFilter>&pMpegSections);
 
 protected:
 	HRESULT UpdateDemuxPins(IBaseFilter* pDemux);
@@ -106,6 +110,8 @@ protected:
 	HRESULT CheckTelexPin(IBaseFilter* pDemux);
 	HRESULT CheckSubtitlePin(IBaseFilter* pDemux);
 	HRESULT CheckTsPin(IBaseFilter* pDemux);
+	HRESULT CheckParserPin(IBaseFilter* pDemux);
+	HRESULT	NewParserPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewTsPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewVideoPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewAudioPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
@@ -114,6 +120,7 @@ protected:
 	HRESULT	NewAC3Pin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewTelexPin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
 	HRESULT	NewSubtitlePin(IMpeg2Demultiplexer* muxInterface, LPWSTR pinName);
+	HRESULT	LoadParserPin(IPin* pIPin);
 	HRESULT	LoadTsPin(IPin* pIPin);
 	HRESULT	LoadAudioPin(IPin* pIPin, ULONG pid);
 	HRESULT	LoadVideoPin(IPin* pIPin, ULONG pid);
@@ -134,6 +141,7 @@ protected:
 	PidParser *m_pPidParser;
 	CFilterList *m_pFilterRefList;
 	CCritSec m_DemuxLock;
+	FilterGraphTools graphTools;
 
 	BOOL m_bAuto;
 	BOOL m_bNPControl;
@@ -165,6 +173,8 @@ public:
 	int  m_SelVideoPid;
 	int  m_SelTelexPid;
 	int  m_SelSubtitlePid;
+	AM_MEDIA_TYPE m_SelAudioType;
+	AM_MEDIA_TYPE m_SelVideoType;
 };
 
 #endif
