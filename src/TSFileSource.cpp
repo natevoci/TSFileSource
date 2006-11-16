@@ -1994,8 +1994,8 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 		m_pDemux->DoStop();
 	}
 */
-		m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 			m_pDemux->AOnConnect();
+		m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 //		set_PgmNumb(m_pPidParser->get_ProgramNumber());
 //m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 /*
@@ -2010,7 +2010,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 //		CAutoLock cObjectLock(m_pLock);
 		m_pDemux->DoPause();
 	}
-*/
+
 	{
 //		CAutoLock cObjectLock(m_pLock);
 		IMediaSeeking *pMediaSeeking;
@@ -2027,7 +2027,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 //TCHAR sz[128];
 //sprintf(sz, "%u", 0);
 //MessageBox(NULL, sz,"test", NULL);
-
+*/
 		}
 		else
 			m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
