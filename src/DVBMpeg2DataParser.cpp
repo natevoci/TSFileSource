@@ -506,11 +506,19 @@ void DVBMpeg2DataParser::SetFilter(CComPtr <IBaseFilter> pBDASecTab)
 
 void DVBMpeg2DataParser::ReleaseFilter()
 {
-	SetEvent(m_hScanningStopEvent[0]);
-	WaitForThreadToFinish();
-	m_piMpeg2Data.Release();
-	ResetEvent(m_hScanningStopEvent[0]);
-	m_bThreadStarted = FALSE;
+	if (m_bThreadStarted)
+	{
+		SetEvent(m_hScanningStopEvent[0]);
+		WaitForThreadToFinish();
+		m_piMpeg2Data.Release();
+		ResetEvent(m_hScanningStopEvent[0]);
+		m_bThreadStarted = FALSE;
+	}
+	else
+		m_piMpeg2Data.Release();
+
+	return;
+
 }
 
 //////////////////////////////////////////////////////////////////////

@@ -83,9 +83,13 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
 	m_pMpeg2DataParser = NULL;
-	m_pMpeg2DataParser = new DVBMpeg2DataParser();
-	m_pDVBTChannels = new DVBTChannels();
-	m_pMpeg2DataParser->SetDVBTChannels(m_pDVBTChannels);
+//	m_pMpeg2DataParser = new DVBMpeg2DataParser();
+	m_pDVBTChannels = NULL;
+	if (m_pMpeg2DataParser)
+	{
+		m_pDVBTChannels = new DVBTChannels();
+		m_pMpeg2DataParser->SetDVBTChannels(m_pDVBTChannels);
+	}
 
 	m_pPin = new CTSFileSourcePin(GetOwner(), this, phr);
 	if (m_pPin == NULL)
@@ -124,6 +128,10 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	if (CAMThread::ThreadExists())
 	{
 		CAMThread::CallWorker(CMD_STOP);
+		int count = 200;
+		while (m_bThreadRunning && count--)
+			Sleep(10);
+
 		CAMThread::CallWorker(CMD_EXIT);
 		CAMThread::Close();
 	}
@@ -226,6 +234,7 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
             DbgLog((LOG_ERROR, 1, TEXT("Thread expected init command")));
             Reply((DWORD) E_UNEXPECTED);
         }
+		Sleep(10);
 
     } while(com != CMD_INIT);
 
@@ -297,6 +306,7 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
                 Reply((DWORD) E_NOTIMPL);
                 break;
         }
+		Sleep(10);
 
     } while(cmd != CMD_EXIT);
 
@@ -321,7 +331,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 	BoostThread Boost;
     do
     {
-        while(!CheckRequest(&com))
+        while(!CheckRequest(&com) && TRUE)
         {
 			if (!m_WriteThreadActive)
 				UpdateThread::StartThread();
@@ -422,11 +432,11 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 						count = 0; //skip the pid update if seeking
 				}
 			}
-/*
+
 			if(m_State != State_Stopped && !m_pPidParser->get_ProgPinMode())
 			{
 				CComPtr<IBaseFilter>pMpegSections;
-				if (SUCCEEDED(m_pDemux->GetParserFilter(pMpegSections)))
+				if (m_pMpeg2DataParser && SUCCEEDED(m_pDemux->GetParserFilter(pMpegSections)))
 				{
 					m_pMpeg2DataParser->SetFilter(pMpegSections);
 					m_pMpeg2DataParser->SetDVBTChannels(m_pDVBTChannels);
@@ -434,7 +444,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 				}
 			}
 
-*/			
+			
 			//randomly park the file pointer to help minimise HDD clogging
 //			if (rtCurrentTime&1)
 				m_pFileDuration->SetFilePointer(0, FILE_END);
@@ -446,11 +456,9 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 			if (netArray.Count() && CUnknown::m_cRef == 0)
 				netArray.Clear();
 
-			{
-//				BrakeThread Brake;
-				Sleep(100);
-			}
+			Sleep(100);
         }
+
 
         // For all commands sent to us there must be a Reply call!
         if(com == CMD_RUN || com == CMD_PAUSE)
@@ -463,6 +471,9 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
             Reply((DWORD) E_UNEXPECTED);
             DbgLog((LOG_ERROR, 1, TEXT("Unexpected command!!!")));
         }
+
+		Sleep(10);
+
     } while(com != CMD_STOP);
 
 	if (m_WriteThreadActive)
@@ -470,7 +481,10 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 		UpdateThread::StopThread(100);
 		m_WriteThreadActive = FALSE;
 	}
-	m_pMpeg2DataParser->ReleaseFilter();
+
+	if (m_pMpeg2DataParser)
+		m_pMpeg2DataParser->ReleaseFilter();
+
 	m_bThreadRunning = FALSE;
 
     return S_FALSE;
@@ -977,7 +991,8 @@ HRESULT CTSFileSourceFilter::OnConnect()
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(10);};
+		int count = 200;
+		while (m_bThreadRunning && count--){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
@@ -1482,7 +1497,8 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(10);};
+		int count = 200;
+		while (m_bThreadRunning && count--){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
@@ -1671,6 +1687,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 */
 	while (fileSize < MIN_FILE_SIZE)
 	{
+		Sleep(10);
 //		m_pFileReader->setFilePointer(0, FILE_BEGIN);
 //		m_pPidParser->ParsePinMode();
 		m_pPidParser->ParseFromFile(0);
@@ -1881,16 +1898,10 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 //	BrakeThread Brake;
 	if (pPidParser->RefreshPids() == S_OK)
 	{
-		int count = 0;
-		while(m_pDemux->m_bConnectBusyFlag && count < 200)
-		{
-			{
-	//			BrakeThread Brake;
-				Sleep(10);
-			}
-	//		Sleep(100);
-			count++;
-		}
+		int count = 200;
+		while(m_pDemux->m_bConnectBusyFlag && count--)
+			Sleep(10);
+
 		m_pDemux->m_bConnectBusyFlag = TRUE;
 
 	//	__int64 intBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPin->m_IntStartTimePCR - m_pPin->m_IntBaseTimePCR));
@@ -1905,12 +1916,9 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 			int count = 0;
 			while (m_pPidParser->m_ParsingLock)
 			{
-				{
-//					BrakeThread Brake;
-					Sleep(10);
-				}
-//				Sleep(10);
+				Sleep(10);
 				count++;
+
 				if (count > 100)
 				{
 					delete  pPidParser;
@@ -2474,7 +2482,8 @@ HRESULT CTSFileSourceFilter::set_PgmNumb(WORD PgmNumb)
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(10);};
+		int count = 200;
+		while (m_bThreadRunning && count--){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
@@ -2533,7 +2542,8 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(10);};
+		int count = 200;
+		while (m_bThreadRunning && count--){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
@@ -2594,7 +2604,8 @@ STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 	if (m_bThreadRunning && CAMThread::ThreadExists()) {
 
 		CAMThread::CallWorker(CMD_STOP);
-		while (m_bThreadRunning){Sleep(10);};
+		int count = 200;
+		while (m_bThreadRunning && count--){Sleep(10);};
 		wasThreadRunning = TRUE;
 	}
 
