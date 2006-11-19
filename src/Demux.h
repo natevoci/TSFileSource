@@ -89,7 +89,7 @@ public:
 	static  HRESULT GetNextFilter(IBaseFilter *pFilter, PIN_DIRECTION Dir, IBaseFilter **ppNext);
 	static  void AddFilterUnique(CFilterList &FilterList, IBaseFilter *pNew);
 	static  HRESULT GetReferenceClock(IBaseFilter *pFilter, IReferenceClock **ppClock);
-	HRESULT CheckDemuxPids(void);
+	HRESULT CheckDemuxPids(PidParser *pPidParser);
 	HRESULT	Sleeps(ULONG Duration, long TimeOut[]);
 	HRESULT	IsStopped();
 	HRESULT	IsPlaying();

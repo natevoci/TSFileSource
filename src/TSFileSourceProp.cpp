@@ -85,7 +85,7 @@ DWORD CTSFileSourceProp::ThreadProc(void)
             DbgLog((LOG_ERROR, 1, TEXT("Thread expected init command")));
             Reply((DWORD) E_UNEXPECTED);
         }
-
+		Sleep(10);
     } while(com != CMD_INIT);
 
     DbgLog((LOG_TRACE, 1, TEXT("Worker thread initializing")));
@@ -136,6 +136,7 @@ DWORD CTSFileSourceProp::ThreadProc(void)
                 Reply((DWORD) E_NOTIMPL);
                 break;
         }
+		Sleep(10);
 
     } while(cmd != CMD_EXIT);
 
@@ -166,7 +167,7 @@ HRESULT CTSFileSourceProp::DoProcessingLoop(void)
 			else
 				count++;
 
-			Sleep(50);
+			Sleep(100);
         }
 
         // For all commands sent to us there must be a Reply call!
@@ -180,7 +181,8 @@ HRESULT CTSFileSourceProp::DoProcessingLoop(void)
             Reply((DWORD) E_UNEXPECTED);
             DbgLog((LOG_ERROR, 1, TEXT("Unexpected command!!!")));
         }
-    } while(com != CMD_STOP);
+ 		Sleep(10);
+   } while(com != CMD_STOP);
 
 	m_bThreadRunning = FALSE;
     return S_FALSE;

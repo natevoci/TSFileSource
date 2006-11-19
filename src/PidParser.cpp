@@ -48,6 +48,7 @@ PidParser::PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader)
 	m_NetworkID = 0; //NID store
 	ZeroMemory(m_NetworkName, 128);
 	m_ONetworkID = 0; //ONID store
+	m_PATVersion = 0; //PAT Version 
 	m_TStreamID = 0; //TSID store
 	m_ProgramSID = 0; //SID store for prog search
 	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
@@ -92,9 +93,6 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 		return VFW_E_INVALIDMEDIATYPE;
 	}
 
-	__int64 fileStart, filelength;
-	pFileReader->GetFileSize(&fileStart, &filelength);
-
 	//Check if we are locked out
 	int count = 0;
 	while (m_ParsingLock)
@@ -111,15 +109,37 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 	//Lock the parser
 	m_ParsingLock = TRUE;
 
-	// Access the sample's data buffer
-	ULONG a = 0;
-	ULONG ulDataLength = min((ULONG)filelength, MIN_FILE_SIZE*2);
-	ULONG ulDataRead = 0;
-	PBYTE pData = new BYTE[ulDataLength];
-	pFileReader->setFilePointer(0, FILE_BEGIN);
-	pFileReader->Read(pData, ulDataLength, &ulDataRead);
-	ulDataLength = ulDataRead;
+	m_ATSCFlag = false;
+	m_NitPid = 0x00;
+	m_NetworkID = 0; //NID store
+	ZeroMemory(m_NetworkName, 128);
+	m_ONetworkID = 0; //ONID store
+	m_TStreamID = 0; //TSID store
+	m_PATVersion = 0; //PAT Version 
+	m_ProgramSID = 0; //SID store for prog search
+	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
+	m_AsyncMode = FALSE; //Set for control by filter
 
+	// Access the sample's data buffer
+	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
+	__int64 fileStart, filelength;
+	ULONG ulDataRead = 0;
+	pFileReader->GetFileSize(&fileStart, &filelength);
+	ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
+	if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+	{
+		fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
+		m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
+		if (filelength < MIN_FILE_SIZE*2)
+			pFileReader->setFilePointer(0, FILE_BEGIN);
+		else
+			pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
+
+		pFileReader->Read(pData, ulDataLength, &ulDataRead);
+	}
+
+
+	ULONG a = 0;
 	if (ulDataLength > 2048*4)
 	{
 		m_PacketSize = 0x800;
@@ -163,6 +183,96 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 		}
 	}
 
+	a = 0;
+	if (ulDataLength > 0)
+	{
+		//Clear all Pid arrays
+		pidArray.Clear();
+		BOOL patfound = false;
+		//skip if we are in program mode
+		if (!m_ProgPinMode)
+		{
+			a = ulDataLength - m_PacketSize;
+			hr = S_OK;
+			while (hr == S_OK)
+			{
+				//search at the head of the file
+				hr = FindSyncByte(this, pData, ulDataLength, &a, -1);
+				if (hr == S_OK)
+				{
+					//parse next packet for the PAT
+					if (ParsePAT(pData, ulDataLength, a) == S_OK)
+					{
+						break;
+					}
+					a -= m_PacketSize;
+				}
+			};
+		}
+	}
+
+			//Loop through Programs found
+			int i = 0;
+			while (i < pidArray.Count())
+			{
+				//filepos = 0;
+				pids.Clear();
+				hr = S_OK;
+
+				int curr_pmt = pidArray[i].pmt;
+				int pmtfound = 0;
+				int curr_sid = pidArray[i].sid;
+
+				a = ulDataLength - m_PacketSize;
+				while (pids.pmt != curr_pmt && hr == S_OK)
+				{
+					//search at the head of the file
+					hr = FindSyncByte(this, pData, ulDataLength, &a, -1);
+					if (hr != S_OK)
+						break;
+					//parse next packet for the PMT
+					pids.Clear();
+					if (ParsePMT(pData, ulDataLength, a) == S_OK)
+					{
+						//Check PMT & SID matches program
+						if (pids.pmt == curr_pmt && pids.sid == curr_sid && pmtfound > 0)
+						{
+							//Search for valid A/V pids
+							if (IsValidPMT(pData, ulDataLength) == S_OK)
+							{
+								//Set pcr & Store pids from PMT
+								SetPidArray(i);
+								i++;
+								break;
+							}
+							pids.pmt = 0;
+							pids.sid = 0;
+							break;
+						}
+
+						if (pids.pmt == curr_pmt && pids.sid == curr_sid)
+						{
+							pmtfound++;
+							pids.pmt = 0;
+							pids.sid = 0;
+						}
+					}
+					a -= m_PacketSize;
+				};
+
+				if (pids.pmt != curr_pmt || pids.sid != curr_sid || hr != S_OK) //Make sure we have a correct packet
+					pidArray.RemoveAt(i);
+			}
+
+
+	//Set the Program Number to beginning & load back pids
+	m_pgmnumb = 0;
+	if (pidArray.Count()) {
+
+		pids.Clear();
+		pids.CopyFrom(&pidArray[m_pgmnumb]);
+	}
+
 	//UnLock the parser
 	m_ParsingLock = FALSE;
 	delete[] pData;
@@ -175,11 +285,12 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 {
 	HRESULT hr = S_OK;
 
-	if (m_pFileReader->IsFileInvalid() && !m_pSampleBuffer->Count())
+	if (m_pFileReader->IsFileInvalid())// && !m_pSampleBuffer->Count())
 	{
 		return NOERROR;
 	}
 
+//	CAutoLock parserlock(&m_ParserLock);
 
 	//Store file pointer so we can reset it before leaving this method
 	FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
@@ -220,6 +331,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	ZeroMemory(m_NetworkName, 128);
 	m_ONetworkID = 0; //ONID store
 	m_TStreamID = 0; //TSID store
+	m_PATVersion = 0; //PAT Version 
 	m_ProgramSID = 0; //SID store for prog search
 	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
 	m_AsyncMode = FALSE; //Set for control by filter
@@ -324,6 +436,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 						{
 							//Set to exit after next pat & Erase first occuracnce
 							pidArray.Clear();
+							m_PATVersion = 0; //PAT Version 
 							m_TStreamID = 0; //TSID store
 							patfound = true;
 						}
@@ -763,7 +876,7 @@ HRESULT PidParser::RefreshPids()
 //	CAutoLock parserlock(&m_ParserLock);
 	__int64 fileStart, fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
-	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getBufferPointer());
+	__int64 filestartpointer = min((__int64)(fileSize - (__int64)4000000), m_pFileReader->getBufferPointer());
 //	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getFilePointer());
 	filestartpointer = max(get_StartOffset(), filestartpointer);
 
@@ -778,7 +891,8 @@ HRESULT PidParser::RefreshPids()
 		{
 			Sleep(10); //Sleep(100);
 			m_pFileReader->GetFileSize(&fileStart, &fileSize);
-			while (!m_pSampleBuffer->Count() && (fileSize < fileSizeSave + MIN_FILE_SIZE) && (count < 20))
+//			while (!m_pSampleBuffer->Count() && (fileSize < fileSizeSave + MIN_FILE_SIZE) && (count < 20))
+			while (fileSize < (fileSizeSave + MIN_FILE_SIZE) && count < 20)
 			{
 				Sleep(10); //Sleep(100);
 				count++;
@@ -796,7 +910,7 @@ HRESULT PidParser::RefreshPids()
 	else
 	{
 		ParseFromFile(filestartpointer);
-		if (!m_NitPid || (m_ONetworkID > 0 && m_NetworkID > 0 && m_NetworkID > 0) || m_ProgPinMode) //cold start
+		if (!m_NitPid || (m_ONetworkID > 0 && m_NetworkID > 0) || m_ProgPinMode) //cold start
 			return S_OK;
 	}
 	return S_FALSE;
@@ -953,6 +1067,10 @@ HRESULT PidParser::ParsePAT(PBYTE pData, ULONG lDataLength, long pos)
 
 	int sectionLen = (WORD)(((0x0F & pSection[pos + 6]) << 8) | (0xFF & pSection[pos + 7]));
 	m_TStreamID = ((0xFF & pSection[pos + 8]) << 8) | (0xFF & pSection[pos + 9]); //Get TSID Pid
+	m_PATVersion = (((0xFF & pSection[pos+7 + sectionLen - 4])<<24) |
+		((0xFF & pSection[pos+7 + sectionLen - 3])<<16) |
+		((0xFF & pSection[pos+7 + sectionLen - 2])<<8) |
+		(0xFF & pSection[pos+7 + sectionLen - 1])); //Get Version
 
 	for (long b = pos + 7 + 5 ; b < pos + sectionLen + 7 - 4 ; b = b + 4) //less 4 crc bytes
 	{
@@ -996,7 +1114,7 @@ PBYTE PidParser::ParseExtendedPacket(int tableID, PBYTE pData, ULONG ulDataLengt
 		return NULL;
 
 	int pos_save = pos;
-	WORD pmt = (WORD)(0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2]);
+	WORD pid = (WORD)(0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2]);
 
 	if ((0x30&pData[pos+3]) == 0x30)	//adaptation field + payload
 //	if ((0xf0&pData[pos+3]) == 0x30 && pData[pos+5] == 0)
@@ -1022,7 +1140,7 @@ PBYTE PidParser::ParseExtendedPacket(int tableID, PBYTE pData, ULONG ulDataLengt
 		{
 			//parse next packet for the section
 			if ((0x40&pData[pos+1])==0x00 && (0x10&pData[pos+3])==0x10 &&
-				pmt == (WORD)(((0x1F&pData[pos+1])<<8)|(0xFF&pData[pos+2])))
+				pid == (WORD)(((0x1F&pData[pos+1])<<8)|(0xFF&pData[pos+2])))
 			{
 				memcpy(pSectionData, pData+pos+4, 184); //save first section data packet
 				pSectionData +=184;

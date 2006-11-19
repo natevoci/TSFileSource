@@ -370,7 +370,7 @@ HRESULT CTSParserSourceFilter::DoProcessingLoop(void)
 					if (hr == S_OK)
 					{
 						if (!m_bColdStart)
-							if (m_pDemux->CheckDemuxPids() == S_FALSE)
+							if (m_pDemux->CheckDemuxPids(m_pPidParser) == S_FALSE)
 							{
 								m_pDemux->AOnConnect();
 							}
@@ -2043,6 +2043,7 @@ HRESULT CTSParserSourceFilter::UpdatePidParser(FileReader *pFileReader)
 			//Lock the parser
 			m_pPidParser->m_ParsingLock = TRUE;
 
+			m_pPidParser->m_PATVersion = pPidParser->m_PATVersion;
 			m_pPidParser->m_TStreamID = pPidParser->m_TStreamID;
 			m_pPidParser->m_NetworkID = pPidParser->m_NetworkID;
 			m_pPidParser->m_ONetworkID = pPidParser->m_ONetworkID;
@@ -2084,7 +2085,7 @@ HRESULT CTSParserSourceFilter::UpdatePidParser(FileReader *pFileReader)
 		m_pStreamParser->ParsePidArray();
 		m_pDemux->m_bConnectBusyFlag = FALSE;
 
-		if (m_pDemux->CheckDemuxPids() == S_FALSE)
+		if (m_pDemux->CheckDemuxPids(m_pPidParser) == S_FALSE)
 		{
 
 //			m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - intBaseTimePCR));

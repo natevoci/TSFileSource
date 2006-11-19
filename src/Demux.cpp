@@ -2463,76 +2463,76 @@ HRESULT Demux::ClearDemuxPin(IPin* pIPin)
 	return S_OK;
 }
 
-HRESULT Demux::CheckDemuxPids(void)
+HRESULT Demux::CheckDemuxPids(PidParser *pPidParser)
 {
 	HRESULT hr = S_OK;
 
-	if ((m_SelTelexPid != m_pPidParser->pids.txt) && m_bCreateTxtPinOnDemux)
+	if ((m_SelTelexPid != pPidParser->pids.txt) && m_bCreateTxtPinOnDemux)
 		return S_FALSE;
 
-	if ((m_SelSubtitlePid != m_pPidParser->pids.sub) && m_bCreateSubPinOnDemux)
+	if ((m_SelSubtitlePid != pPidParser->pids.sub) && m_bCreateSubPinOnDemux)
 		return S_FALSE;
 
 
-	if (m_pPidParser->pids.aud | m_pPidParser->pids.ac3 | m_pPidParser->pids.aac | m_pPidParser->pids.dts)
+	if (pPidParser->pids.aud | pPidParser->pids.ac3 | pPidParser->pids.aac | pPidParser->pids.dts)
 		if (((m_SelAudioPid != m_pPidParser->pids.aud)
-				&& (m_SelAudioPid != m_pPidParser->pids.aud2)
-				&& (m_SelAudioPid != m_pPidParser->pids.ac3)
-				&& (m_SelAudioPid != m_pPidParser->pids.ac3_2)
-				&& (m_SelAudioPid != m_pPidParser->pids.aac)
-				&& (m_SelAudioPid != m_pPidParser->pids.aac2)
-				&& (m_SelAudioPid != m_pPidParser->pids.dts)
-				&& (m_SelAudioPid != m_pPidParser->pids.dts2))
+				&& (m_SelAudioPid != pPidParser->pids.aud2)
+				&& (m_SelAudioPid != pPidParser->pids.ac3)
+				&& (m_SelAudioPid != pPidParser->pids.ac3_2)
+				&& (m_SelAudioPid != pPidParser->pids.aac)
+				&& (m_SelAudioPid != pPidParser->pids.aac2)
+				&& (m_SelAudioPid != pPidParser->pids.dts)
+				&& (m_SelAudioPid != pPidParser->pids.dts2))
 				|| !m_SelAudioPid)
 			return S_FALSE;
 
 	if (m_SelAudioPid &&
-		((m_SelAudioPid == m_pPidParser->pids.aud2)||
-		 (m_SelAudioPid == m_pPidParser->pids.aud)))
+		((m_SelAudioPid == pPidParser->pids.aud2)||
+		 (m_SelAudioPid == pPidParser->pids.aud)))
 		 if ((m_SelAudioType.majortype != MEDIATYPE_Audio)||
 			((m_SelAudioType.subtype != MEDIASUBTYPE_MPEG2_AUDIO)&&
 			(m_SelAudioType.subtype != MEDIASUBTYPE_MPEG1Payload)))
 			return S_FALSE;
 
 	if (m_SelAudioPid &&
-		((m_SelAudioPid == m_pPidParser->pids.ac3_2)||
-		 (m_SelAudioPid == m_pPidParser->pids.ac3)))
+		((m_SelAudioPid == pPidParser->pids.ac3_2)||
+		 (m_SelAudioPid == pPidParser->pids.ac3)))
 		 if ((m_SelAudioType.majortype != MEDIATYPE_Audio)||
 			 (m_SelAudioType.subtype != MEDIASUBTYPE_DOLBY_AC3))
 			return S_FALSE;
 
 	if (m_SelAudioPid &&
-		((m_SelAudioPid == m_pPidParser->pids.aac2)||
-		 (m_SelAudioPid == m_pPidParser->pids.aac)))
+		((m_SelAudioPid == pPidParser->pids.aac2)||
+		 (m_SelAudioPid == pPidParser->pids.aac)))
 		 if ((m_SelAudioType.majortype != MEDIATYPE_Audio)||
 			 (m_SelAudioType.subtype != MEDIASUBTYPE_AAC))
 			return S_FALSE;
 
 	if (m_SelAudioPid &&
-		((m_SelAudioPid == m_pPidParser->pids.dts2)||
-		 (m_SelAudioPid == m_pPidParser->pids.dts)))
+		((m_SelAudioPid == pPidParser->pids.dts2)||
+		 (m_SelAudioPid == pPidParser->pids.dts)))
 		 if ((m_SelAudioType.majortype != MEDIATYPE_Audio)||
 			 (m_SelAudioType.subtype != MEDIASUBTYPE_DTS))
 			return S_FALSE;
 		 
-	if (m_pPidParser->pids.vid | m_pPidParser->pids.h264 | m_pPidParser->pids.mpeg4)
-		if (((m_SelVideoPid != m_pPidParser->pids.vid)
-				&& (m_SelVideoPid != m_pPidParser->pids.h264)
-				&& (m_SelVideoPid != m_pPidParser->pids.mpeg4))
+	if (pPidParser->pids.vid | pPidParser->pids.h264 | pPidParser->pids.mpeg4)
+		if (((m_SelVideoPid != pPidParser->pids.vid)
+				&& (m_SelVideoPid != pPidParser->pids.h264)
+				&& (m_SelVideoPid != pPidParser->pids.mpeg4))
 				|| !m_SelVideoPid)
 			return S_FALSE;
 
-	if (m_SelAudioPid && m_SelAudioPid == m_pPidParser->pids.vid)
+	if (m_SelAudioPid && m_SelAudioPid == pPidParser->pids.vid)
 		 if ((m_SelAudioType.majortype != KSDATAFORMAT_TYPE_VIDEO)||
 			 (m_SelAudioType.subtype != MEDIASUBTYPE_MPEG2_VIDEO))
 			return S_FALSE;
 
-	if (m_SelAudioPid && m_SelAudioPid == m_pPidParser->pids.h264)
+	if (m_SelAudioPid && m_SelAudioPid == pPidParser->pids.h264)
 		 if ((m_SelAudioType.majortype != MEDIATYPE_Video)||
 			 (m_SelAudioType.subtype != H264_SubType))
 			return S_FALSE;
 
-	if (m_SelAudioPid && m_SelAudioPid == m_pPidParser->pids.mpeg4)
+	if (m_SelAudioPid && m_SelAudioPid == pPidParser->pids.mpeg4)
 		 if ((m_SelAudioType.majortype != MEDIATYPE_Video)||
 			 (m_SelAudioType.subtype != FOURCCMap(MAKEFOURCC('A','V','C','1'))))
 			return S_FALSE;

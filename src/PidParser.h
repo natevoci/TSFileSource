@@ -100,6 +100,7 @@ public:
 	int m_NitPid;
 	int m_NetworkID;
 	int m_ONetworkID;
+	int m_PATVersion; 
 	int m_TStreamID;
 	int m_ProgramSID;
 	BOOL m_ProgPinMode;

@@ -366,6 +366,7 @@ HRESULT CTSParserSourcePin::CompleteConnect(IPin *pReceivePin)
 			m_pTSParserSourceFilter->m_pPidParser->pids.CopyTo(m_pPids); 
 			m_bASyncModeSave = m_pTSParserSourceFilter->m_pPidParser->get_AsyncMode();
 			m_PacketSave = m_pTSParserSourceFilter->m_pPidParser->get_PacketSize();
+			m_PATVerSave = m_pTSParserSourceFilter->m_pPidParser->m_PATVersion;
 			m_TSIDSave = m_pTSParserSourceFilter->m_pPidParser->m_TStreamID;
 			m_PinTypeSave  = m_pTSParserSourceFilter->m_pPidParser->get_ProgPinMode();
 			m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock = FALSE;
@@ -440,6 +441,7 @@ HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 		m_pTSParserSourceFilter->m_pPidParser->pids.CopyTo(m_pPids); 
 		m_bASyncModeSave = m_pTSParserSourceFilter->m_pPidParser->get_AsyncMode();
 		m_PacketSave = m_pTSParserSourceFilter->m_pPidParser->get_PacketSize();
+		m_PATVerSave = m_pTSParserSourceFilter->m_pPidParser->m_PATVersion;
 		m_TSIDSave = m_pTSParserSourceFilter->m_pPidParser->m_TStreamID;
 		m_PinTypeSave  = m_pTSParserSourceFilter->m_pPidParser->get_ProgPinMode();
 		m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock = FALSE;
@@ -927,6 +929,7 @@ HRESULT CTSParserSourcePin::OnThreadStartPlay( )
 		m_pTSParserSourceFilter->m_pPidParser->pids.CopyTo(m_pPids); 
 		m_bASyncModeSave = m_pTSParserSourceFilter->m_pPidParser->get_AsyncMode();
 		m_PacketSave = m_pTSParserSourceFilter->m_pPidParser->get_PacketSize();
+		m_PATVerSave = m_pTSParserSourceFilter->m_pPidParser->m_PATVersion;
 		m_TSIDSave = m_pTSParserSourceFilter->m_pPidParser->m_TStreamID;
 		m_PinTypeSave  = m_pTSParserSourceFilter->m_pPidParser->get_ProgPinMode();
 		m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock = FALSE;
@@ -951,6 +954,7 @@ HRESULT CTSParserSourcePin::Run(REFERENCE_TIME tStart)
 		m_pTSParserSourceFilter->m_pPidParser->pids.CopyTo(m_pPids); 
 		m_bASyncModeSave = m_pTSParserSourceFilter->m_pPidParser->get_AsyncMode();
 		m_PacketSave = m_pTSParserSourceFilter->m_pPidParser->get_PacketSize();
+		m_PATVerSave = m_pTSParserSourceFilter->m_pPidParser->m_PATVersion;
 		m_TSIDSave = m_pTSParserSourceFilter->m_pPidParser->m_TStreamID;
 		m_PinTypeSave  = m_pTSParserSourceFilter->m_pPidParser->get_ProgPinMode();
 		m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock = FALSE;
@@ -1175,6 +1179,7 @@ HRESULT CTSParserSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 					m_pTSParserSourceFilter->m_pPidParser->pids.CopyTo(m_pPids); 
 					m_bASyncModeSave = m_pTSParserSourceFilter->m_pPidParser->get_AsyncMode();
 					m_PacketSave = m_pTSParserSourceFilter->m_pPidParser->get_PacketSize();
+					m_PATVerSave = m_pTSParserSourceFilter->m_pPidParser->m_PATVersion;
 					m_TSIDSave = m_pTSParserSourceFilter->m_pPidParser->m_TStreamID;
 					m_PinTypeSave  = m_pTSParserSourceFilter->m_pPidParser->get_ProgPinMode();
 					m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock = FALSE;

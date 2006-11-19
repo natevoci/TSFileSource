@@ -160,6 +160,7 @@ protected:
 
 	BOOL m_bASyncModeSave;
 	int m_PacketSave;
+	int m_PATVerSave;
 	int m_TSIDSave;
 	int m_PinTypeSave;
 	BOOL m_bGetAvailableMode;

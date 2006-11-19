@@ -423,7 +423,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 					if (hr == S_OK)
 					{
 						if (!m_bColdStart)
-							if (m_pDemux->CheckDemuxPids() == S_FALSE)
+							if (m_pDemux->CheckDemuxPids(m_pPidParser) == S_FALSE)
 							{
 								m_pDemux->AOnConnect();
 							}
@@ -1891,7 +1891,50 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 	m_pPin->GetPositions(&start, &stop);
 
 	PidParser *pPidParser = new PidParser(m_pSampleBuffer, pFileReader);
-	
+
+	if (m_pPidParser->pidArray.Count())
+	{
+		int ver;
+		pPidParser->ParsePinMode();
+		ver = pPidParser->m_PATVersion;
+		if (pPidParser->pidArray.Count() || ver != m_pPidParser->m_PATVersion)
+		{
+			int sid = m_pPidParser->pids.sid;
+			int sidsave = m_pPidParser->m_ProgramSID;
+
+			int count = 200;
+			while(m_pDemux->m_bConnectBusyFlag && count--)
+				Sleep(10);
+
+			m_pDemux->m_bConnectBusyFlag = TRUE;
+
+			if (pPidParser->m_TStreamID) 
+			{
+				if (sid)
+					pPidParser->set_SIDPid(sid); //Setup for search
+				else
+					pPidParser->set_SIDPid(pPidParser->pids.sid); //Setup for search
+
+				pPidParser->set_ProgramSID(); //set to same sid as before
+
+				if (sidsave)
+					pPidParser->m_ProgramSID = sidsave; // restore old sid reg setting.
+				else
+					pPidParser->m_ProgramSID = pPidParser->pids.sid; // restore old sid reg setting.
+			}
+							
+			m_pDemux->m_bConnectBusyFlag = FALSE;
+
+			if (m_pDemux->CheckDemuxPids(pPidParser) == S_OK)
+			{
+				delete pPidParser;
+				return S_OK;
+			}
+		}
+//		delete pPidParser;
+//		pPidParser = new PidParser(m_pSampleBuffer, pFileReader);
+	}
+
 	int sid = m_pPidParser->pids.sid;
 	int sidsave = m_pPidParser->m_ProgramSID;
 
@@ -1929,6 +1972,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 			//Lock the parser
 			m_pPidParser->m_ParsingLock = TRUE;
 
+			m_pPidParser->m_PATVersion = pPidParser->m_PATVersion;
 			m_pPidParser->m_TStreamID = pPidParser->m_TStreamID;
 			m_pPidParser->m_NetworkID = pPidParser->m_NetworkID;
 			m_pPidParser->m_ONetworkID = pPidParser->m_ONetworkID;
@@ -1970,7 +2014,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 		m_pStreamParser->ParsePidArray();
 		m_pDemux->m_bConnectBusyFlag = FALSE;
 
-		if (m_pDemux->CheckDemuxPids() == S_FALSE)
+		if (m_pDemux->CheckDemuxPids(m_pPidParser) == S_FALSE)
 		{
 
 //			m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - intBaseTimePCR));
@@ -1995,7 +2039,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 	}
 */
 			m_pDemux->AOnConnect();
-		m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
+			m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
 //		set_PgmNumb(m_pPidParser->get_ProgramNumber());
 //m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 /*
@@ -2010,24 +2054,24 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 //		CAutoLock cObjectLock(m_pLock);
 		m_pDemux->DoPause();
 	}
-
-	{
-//		CAutoLock cObjectLock(m_pLock);
-		IMediaSeeking *pMediaSeeking;
-		if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
-		{
-			CAutoLock cObjectLock(m_pLock);
-			start += RT_SECOND;
-//			m_pPin->m_DemuxLock = TRUE;
-			hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
-//			m_pPin->m_DemuxLock = FALSE;
-			pMediaSeeking->Release();
-		}
-	}
+*/
+			WORD bDelay = 0;
+			m_pFileReader->get_DelayMode(&bDelay);
+			if (!bDelay)
+			{
+				IMediaSeeking *pMediaSeeking;
+				if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
+				{
+//					CAutoLock cObjectLock(m_pLock);
+//					start += RT_SECOND;
+					hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+					pMediaSeeking->Release();
+				}
+			}
 //TCHAR sz[128];
 //sprintf(sz, "%u", 0);
 //MessageBox(NULL, sz,"test", NULL);
-*/
+
 		}
 		else
 			m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
