@@ -76,38 +76,73 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 {
 	HRESULT hr = S_OK;
 
-	if (m_pFileReader->IsFileInvalid())
+	// Access the sample's data buffer
+	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
+	__int64 fileStart, filelength;
+	ULONG ulDataRead = 0;
+	ULONG ulDataLength = MIN_FILE_SIZE*2;
+	if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
 	{
-		return NOERROR;
-	}
-
-	//Store file pointer so we can reset it before leaving this method
-	FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
-	LPOLESTR fileName;
-	m_pFileReader->GetFileName(&fileName);
-	pFileReader->SetFileName(fileName);
-
-	hr = pFileReader->OpenFile();
-	if (FAILED(hr)){
-		delete pFileReader;
-		return VFW_E_INVALIDMEDIATYPE;
-	}
-
-	//Check if we are locked out
-	int count = 0;
-	while (m_ParsingLock)
-	{
-		Sleep(10);
-		count++;
-		if (count > 100)
+		if (m_pFileReader->IsFileInvalid())
 		{
-			pFileReader->CloseFile();
+			delete[] pData;
+			return S_FALSE;
+		}
+
+		//Store file pointer so we can reset it before leaving this method
+		FileReader *pFileReader = m_pFileReader->CreateFileReader(); //new FileReader();
+		LPOLESTR fileName;
+		m_pFileReader->GetFileName(&fileName);
+		pFileReader->SetFileName(fileName);
+
+		hr = pFileReader->OpenFile();
+		if (FAILED(hr)){
+			delete[] pData;
 			delete pFileReader;
+			return VFW_E_INVALIDMEDIATYPE;
+		}
+/*
+		//Check if we are locked out
+		int count = 0;
+		while (m_ParsingLock)
+		{
+			Sleep(10);
+			count++;
+			if (count > 100)
+			{
+				delete[] pData;
+				pFileReader->CloseFile();
+				delete pFileReader;
+				return S_FALSE;
+			}
+		}
+		//Lock the parser
+		m_ParsingLock = TRUE;
+*/
+		pFileReader->GetFileSize(&fileStart, &filelength);
+		ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
+		fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
+		m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
+		if (filelength < MIN_FILE_SIZE*2)
+			pFileReader->setFilePointer(0, FILE_BEGIN);
+		else
+			pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
+
+		pFileReader->Read(pData, ulDataLength, &ulDataRead);
+		pFileReader->CloseFile();
+		delete pFileReader;
+
+		if (ulDataRead < 1)
+		{
+			//UnLock the parser and return false
+			m_ParsingLock = FALSE;
+			delete[] pData;
 			return S_FALSE;
 		}
 	}
-	//Lock the parser
-	m_ParsingLock = TRUE;
+
+	BoostThread Boost;
+	ulDataLength = ulDataRead;
 
 	m_ATSCFlag = false;
 	m_NitPid = 0x00;
@@ -119,25 +154,6 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 	m_ProgramSID = 0; //SID store for prog search
 	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
 	m_AsyncMode = FALSE; //Set for control by filter
-
-	// Access the sample's data buffer
-	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
-	__int64 fileStart, filelength;
-	ULONG ulDataRead = 0;
-	pFileReader->GetFileSize(&fileStart, &filelength);
-	ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
-	if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
-	{
-		fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
-		m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
-		if (filelength < MIN_FILE_SIZE*2)
-			pFileReader->setFilePointer(0, FILE_BEGIN);
-		else
-			pFileReader->setFilePointer(m_FileStartPointer, FILE_BEGIN);
-
-		pFileReader->Read(pData, ulDataLength, &ulDataRead);
-	}
-
 
 	ULONG a = 0;
 	if (ulDataLength > 2048*4)
@@ -208,8 +224,6 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 					a -= m_PacketSize;
 				}
 			};
-		}
-	}
 
 			//Loop through Programs found
 			int i = 0;
@@ -265,20 +279,23 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 			}
 
 
-	//Set the Program Number to beginning & load back pids
-	m_pgmnumb = 0;
-	if (pidArray.Count()) {
+			//Set the Program Number to beginning & load back pids
+			m_pgmnumb = 0;
+			if (pidArray.Count()) {
 
-		pids.Clear();
-		pids.CopyFrom(&pidArray[m_pgmnumb]);
+				pids.Clear();
+				pids.CopyFrom(&pidArray[m_pgmnumb]);
+			}
+		}
 	}
+
 
 	//UnLock the parser
 	m_ParsingLock = FALSE;
 	delete[] pData;
-	pFileReader->CloseFile();
-	delete pFileReader;
-	return hr;
+//	pFileReader->CloseFile();
+//	delete pFileReader;
+	return S_OK;
 }
 
 HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)

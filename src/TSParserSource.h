@@ -47,8 +47,6 @@ class CTSParserSourceFilter;
 #include "TunerEvent.h"
 #include "PidInfo.h"
 #include "PidParser.h"
-//#include "FileReader.h"
-//#include "MultiFileReader.h"
 #include "MemReader.h"
 #include "MultiMemReader.h"
 #include "Demux.h"
@@ -76,7 +74,7 @@ class CTSParserSourceFilter : public CSource,
 							public IAMFilterMiscFlags,
 							protected CAMThread,
 							public IAsyncReader,
-							public ISpecifyPropertyPages, public IBDA_DeviceControl, public IBDA_Topology
+							public ISpecifyPropertyPages, public IBDA_DeviceControl, public IBDA_Topology, public UpdateThread
 {
 	friend class CTSParserSourcePin;
 	friend class CTSParserInputPin;
@@ -289,12 +287,14 @@ protected:
     DWORD m_dwGraphRegister;		//registration number for the RunningObjectTable
 
 	FileReader *m_pFileDuration;
-	REFERENCE_TIME m_rtLastCurrentTime;
+//	REFERENCE_TIME m_rtLastCurrentTime;
 	BOOL m_bThreadRunning;
 	BOOL m_bReload;
 	__int64 m_llLastMultiFileStart;
 	__int64 m_llLastMultiFileLength;
     enum Command {CMD_INIT, CMD_PAUSE, CMD_RUN, CMD_STOP, CMD_EXIT};
+	void UpdateThreadProc(void);
+	BOOL m_WriteThreadActive;
     DWORD ThreadProc();
 	HRESULT DoProcessingLoop(void);
 	BOOL ThreadRunning(void);
@@ -302,6 +302,7 @@ protected:
     BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
 
 	ParserFunctions parserFunctions;
+	DVBTChannels *m_pDVBTChannels;
 
 
 //*****************************************************************************************

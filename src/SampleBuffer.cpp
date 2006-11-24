@@ -84,6 +84,8 @@ HRESULT CSampleBuffer::LoadMediaSample(IMediaSample *pSample)
 		return hr;
 	}
 
+//	BoostThread Boost;
+
 //::OutputDebugString(TEXT("CSampleBuffer::LoadMediaSample().\n"));
 	LONG lDataLength = pSample->GetActualDataLength();
 	CBufferInfo *bufferInfo = new CBufferInfo();
@@ -116,8 +118,10 @@ HRESULT CSampleBuffer::ReadSampleBuffer(PBYTE pbData, ULONG lDataLength, ULONG *
 
 	CAutoLock BufferLock(&m_BufferLock);
 	ULONG bytesAvailable = Count();
-	if (!bytesAvailable)
+	if (bytesAvailable < lDataLength)
 		return E_FAIL;
+
+//	BoostThread Boost;
 
 	*dwReadBytes = 0;
 	int i = 0;

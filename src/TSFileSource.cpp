@@ -195,6 +195,7 @@ void CTSFileSourceFilter::UpdateThreadProc(void)
 			{
 				//check pids every 5sec or quicker if no pids parsed
 				if (count & 1 || !m_pPidParser->pidArray.Count())
+//				if (!m_pPidParser->pidArray.Count())
 				{
 					UpdatePidParser(m_pFileReader);
 				}
@@ -328,14 +329,14 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 
 	int count = 1;
 
+	if (!m_WriteThreadActive)
+		UpdateThread::StartThread();
+
 	BoostThread Boost;
     do
     {
         while(!CheckRequest(&com) && TRUE)
         {
-			if (!m_WriteThreadActive)
-				UpdateThread::StartThread();
-
 			HRESULT hr = S_OK;// if an error occurs.
 
 			REFERENCE_TIME rtCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
@@ -1877,7 +1878,7 @@ HRESULT CTSFileSourceFilter::Refresh()
 {
 	CAutoLock lock(&m_Lock);
 
-	 if (m_pFileReader)
+	if (m_pFileReader)
 		return UpdatePidParser(m_pFileReader);
 
 	return E_FAIL;
@@ -1902,12 +1903,6 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 			int sid = m_pPidParser->pids.sid;
 			int sidsave = m_pPidParser->m_ProgramSID;
 
-			int count = 200;
-			while(m_pDemux->m_bConnectBusyFlag && count--)
-				Sleep(10);
-
-			m_pDemux->m_bConnectBusyFlag = TRUE;
-
 			if (pPidParser->m_TStreamID) 
 			{
 				if (sid)
@@ -1923,22 +1918,17 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 					pPidParser->m_ProgramSID = pPidParser->pids.sid; // restore old sid reg setting.
 			}
 							
-			m_pDemux->m_bConnectBusyFlag = FALSE;
-
 			if (m_pDemux->CheckDemuxPids(pPidParser) == S_OK)
 			{
 				delete pPidParser;
 				return S_OK;
 			}
 		}
-//		delete pPidParser;
-//		pPidParser = new PidParser(m_pSampleBuffer, pFileReader);
 	}
 
 	int sid = m_pPidParser->pids.sid;
 	int sidsave = m_pPidParser->m_ProgramSID;
 
-//	BrakeThread Brake;
 	if (pPidParser->RefreshPids() == S_OK)
 	{
 		int count = 200;
@@ -2016,45 +2006,13 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 
 		if (m_pDemux->CheckDemuxPids(m_pPidParser) == S_FALSE)
 		{
-
-//			m_pPin->m_IntBaseTimePCR = (__int64)min(m_pPidParser->pids.end, (__int64)(m_pPidParser->pids.start - intBaseTimePCR));
 			m_pPin->m_IntBaseTimePCR = parserFunctions.SubtractPCR(m_pPidParser->pids.start, intBaseTimePCR);
 			m_pPin->m_IntBaseTimePCR = (__int64)max(0, (__int64)(m_pPin->m_IntBaseTimePCR));
 			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 
-/*
-	BOOL bState_Running = FALSE;
-	BOOL bState_Paused = FALSE;
-
-	if (m_State == State_Running)
-		bState_Running = TRUE;
-	else if (m_State == State_Paused)
-		bState_Paused = TRUE;
-
-	if (bState_Paused || bState_Running)
-	{
-//		CAutoLock lock(&m_Lock);
-		m_pDemux->DoStop();
-	}
-*/
 			m_pDemux->AOnConnect();
 			m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
-//		set_PgmNumb(m_pPidParser->get_ProgramNumber());
-//m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
-/*
-	if (bState_Paused || bState_Running)
-	{
-////		CAutoLock cObjectLock(m_pLock);
-		m_pDemux->DoStart();
-	}
-				
-	if (bState_Paused)
-	{
-//		CAutoLock cObjectLock(m_pLock);
-		m_pDemux->DoPause();
-	}
-*/
 			WORD bDelay = 0;
 			m_pFileReader->get_DelayMode(&bDelay);
 			if (!bDelay)
@@ -2062,16 +2020,10 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 				IMediaSeeking *pMediaSeeking;
 				if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
 				{
-//					CAutoLock cObjectLock(m_pLock);
-//					start += RT_SECOND;
 					hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 					pMediaSeeking->Release();
 				}
 			}
-//TCHAR sz[128];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz,"test", NULL);
-
 		}
 		else
 			m_pStreamParser->SetStreamActive(m_pPidParser->get_ProgramNumber());
