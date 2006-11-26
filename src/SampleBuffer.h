@@ -49,7 +49,17 @@ public:
 
 	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
 	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
+	BOOL CheckUpdateParser(int ver);
+	HRESULT ParsePAT(PBYTE pData, ULONG lDataLength, long pos);
+	PBYTE ParseExtendedPacket(int tableID, PBYTE pData, ULONG ulDataLength, ULONG pos);
+	HRESULT ParsePMT(PBYTE pData, ULONG ulDataLength, long pos);
+	HRESULT FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int step);
 	void PrintLongLong(LPCTSTR lstring, __int64 value);
+
+	int m_TStreamID;
+	int m_PATVersion;
+	int m_NitPid;
+	BOOL m_ProgPinMode;
 
 protected:
 	std::vector<CBufferInfo *> m_Array;
@@ -59,6 +69,8 @@ protected:
 	long m_lSampleBufferItemSize;
 	int debugcount;
 	long m_lbuflen;
+
+	int m_PacketSize;
 };
 
 #endif

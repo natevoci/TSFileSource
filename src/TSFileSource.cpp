@@ -194,7 +194,7 @@ void CTSFileSourceFilter::UpdateThreadProc(void)
 			if(m_State != State_Stopped	&& TRUE)
 			{
 				//check pids every 5sec or quicker if no pids parsed
-				if (count & 1 || !m_pPidParser->pidArray.Count())
+				if (((count & 1) & m_bColdStart) || !m_pPidParser->pidArray.Count())
 //				if (!m_pPidParser->pidArray.Count())
 				{
 					UpdatePidParser(m_pFileReader);
@@ -214,6 +214,12 @@ void CTSFileSourceFilter::UpdateThreadProc(void)
 				count = 0;
 
 			rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
+		}
+		
+		if (!m_bColdStart && m_pSampleBuffer->CheckUpdateParser(m_pPidParser->m_PATVersion))
+		{
+			UpdatePidParser(m_pFileReader);
+			Sleep (1000);
 		}
 
 		Sleep(100);
@@ -1893,7 +1899,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 
 	PidParser *pPidParser = new PidParser(m_pSampleBuffer, pFileReader);
 
-	if (m_pPidParser->pidArray.Count())
+	if (FALSE && m_pPidParser->pidArray.Count())
 	{
 		int ver;
 		pPidParser->ParsePinMode();

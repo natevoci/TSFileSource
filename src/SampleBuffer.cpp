@@ -34,6 +34,11 @@ CSampleBuffer::CSampleBuffer()
 	debugcount = 0;
 	m_lItemOffset = 0;
 	m_lSampleBufferItemSize = 5000000;
+	m_TStreamID = 0;
+	m_PATVersion = 0;
+	m_NitPid = 0;
+	m_PacketSize = 188;
+	m_ProgPinMode = FALSE;
 }
 
 CSampleBuffer::~CSampleBuffer()
@@ -84,10 +89,25 @@ HRESULT CSampleBuffer::LoadMediaSample(IMediaSample *pSample)
 		return hr;
 	}
 
-//	BoostThread Boost;
-
 //::OutputDebugString(TEXT("CSampleBuffer::LoadMediaSample().\n"));
 	LONG lDataLength = pSample->GetActualDataLength();
+
+	ULONG pos = 0;
+	hr = S_OK;
+	while (hr == S_OK)
+	{
+		//search at the head of the file
+		hr = FindSyncByte(pData, lDataLength-m_PacketSize, &pos, 1);
+		if (hr == S_OK)
+		{
+			//parse next packet for the PAT
+			if (ParsePAT(pData, lDataLength-m_PacketSize, pos) == S_OK)
+				return S_OK;
+		}
+		pos += m_PacketSize;
+	};
+	return S_OK;
+
 	CBufferInfo *bufferInfo = new CBufferInfo();
 	bufferInfo->sample = new BYTE[lDataLength];
 	if (!bufferInfo->sample)
@@ -308,6 +328,335 @@ HRESULT CSampleBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffs
 
 	return S_OK;
 }
+
+BOOL CSampleBuffer::CheckUpdateParser(int ver)
+{
+	if (m_PATVersion && ver && m_PATVersion != ver)
+		return TRUE;
+
+	return FALSE;
+}
+
+HRESULT CSampleBuffer::ParsePAT(PBYTE pData, ULONG lDataLength, long pos)
+{
+	HRESULT hr = S_FALSE;
+
+	if ((WORD)(((0x1F & pData[pos+1])<<8) | (0xFF & pData[pos+2])) != 0) //must be pid 0 for PAT
+		return S_FALSE;
+
+	PBYTE pSection = ParseExtendedPacket(0, pData, lDataLength, pos);
+	if (pSection == NULL)
+		return S_FALSE;
+
+	pos = 0;
+
+	if ((0x20&pSection[pos+3]) == 0x20)
+//	if ((0xf0&pSection[pos+3]) == 0x30 && pSection[pos+5] == 0)
+		pos += pSection[pos+4] + 1;
+
+	int sectionLen = (WORD)(((0x0F & pSection[pos + 6]) << 8) | (0xFF & pSection[pos + 7]));
+	m_TStreamID = ((0xFF & pSection[pos + 8]) << 8) | (0xFF & pSection[pos + 9]); //Get TSID Pid
+	m_PATVersion = (((0xFF & pSection[pos+7 + sectionLen - 4])<<24) |
+		((0xFF & pSection[pos+7 + sectionLen - 3])<<16) |
+		((0xFF & pSection[pos+7 + sectionLen - 2])<<8) |
+		(0xFF & pSection[pos+7 + sectionLen - 1])); //Get Version
+
+	for (long b = pos + 7 + 5 ; b < pos + sectionLen + 7 - 4 ; b = b + 4) //less 4 crc bytes
+	{
+		//Get Program value and skip if nit pid
+		if ((((0xFF & pSection[b + 1]) << 8) | (0xFF & pSection[b + 2])) == 0)
+		{
+			m_NitPid = (WORD)(0x1F & pSection[b + 3]) << 8 | (0xFF & pSection[b + 4]);
+		}
+//		else if (((0xe0 & pData[b + 3]) == 0xe0) && ((pData[b + 3]) != 0xff))
+		else
+		{
+/*			PidInfo *newPidInfo = new PidInfo();
+
+			newPidInfo->sid =
+				(WORD)(0xFF & pSection[b + 1]) << 8 | (0xFF & pSection[b + 2]);
+
+			newPidInfo->pmt =
+				(WORD)(0x1F & pSection[b + 3]) << 8 | (0xFF & pSection[b + 4]);
+
+			pidArray.Add(newPidInfo);*/
+		}
+	}
+/*
+	//If no Program PMT Info as with an ATSC
+	if (pidArray.Count() != 0)
+	{
+		//Set flag to enable searching for NID
+		m_ATSCFlag = false;
+		return S_OK;
+	}
+	//Set flag to disable searching for NID
+	m_ATSCFlag = true;
+*/
+	return hr;
+}
+
+PBYTE CSampleBuffer::ParseExtendedPacket(int tableID, PBYTE pData, ULONG ulDataLength, ULONG pos)
+{
+	HRESULT hr = S_OK;
+
+	if ((0x40&pData[pos+1])!=0x40 || (0x10&pData[pos+3])!=0x10)
+		return NULL;
+
+	int pos_save = pos;
+	WORD pid = (WORD)(0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2]);
+
+	if ((0x30&pData[pos+3]) == 0x30)	//adaptation field + payload
+//	if ((0xf0&pData[pos+3]) == 0x30 && pData[pos+5] == 0)
+			pos += pData[pos+4] + 1;
+
+	if (pData[pos+4] != 0x0 || pData[pos+5] != tableID || (0xf0&pData[pos+6])!=0xb0)
+		return NULL;
+
+	int sectionLen	= min(4096, (WORD)((0x0F & pData[pos+6])<<8 | (0xFF & pData[pos+7])));
+	sectionLen -= m_PacketSize - ((pos+7)-pos_save);
+
+	PBYTE pSectionData = new BYTE[4096];
+	PBYTE pSectionDataSave = pSectionData;
+	memcpy(pSectionData, pData+pos, 188); //save first pmt data packet
+	pSectionData += m_PacketSize;
+	pos +=m_PacketSize;
+
+	while (hr == S_OK && sectionLen > 0)
+	{
+		//search at the head of the file
+		hr = FindSyncByte(pData, ulDataLength, &pos, 1);
+		if (hr == S_OK)
+		{
+			//parse next packet for the section
+			if ((0x40&pData[pos+1])==0x00 && (0x10&pData[pos+3])==0x10 &&
+				pid == (WORD)(((0x1F&pData[pos+1])<<8)|(0xFF&pData[pos+2])))
+			{
+				memcpy(pSectionData, pData+pos+4, 184); //save first section data packet
+				pSectionData +=184;
+				pos +=184;
+				sectionLen -= 184;
+			}
+			
+		}
+		pos += m_PacketSize;
+	}
+
+	if (sectionLen > 0)
+	{
+		delete[] pSectionDataSave;
+		return NULL;
+	}
+
+	return pSectionDataSave;
+}
+
+HRESULT CSampleBuffer::ParsePMT(PBYTE pData, ULONG ulDataLength, long pos)
+{
+/*	WORD pid;
+	WORD channeloffset;
+	WORD EsDescLen;
+	WORD StreamType;
+	WORD privatepid = 0;
+	WORD sectionLen = 0;
+
+	PBYTE pSection = ParseExtendedPacket(2, pData, ulDataLength, pos);
+	if (pSection == NULL)
+		return S_FALSE;
+
+	pos = 0;
+
+	if ((0x20&pSection[pos+3]) == 0x20)
+//	if ((0xf0&pSection[pos+3]) == 0x30 && pSection[pos+5] == 0)
+		pos += pSection[pos+4] + 1;
+
+	pids.pmt =	(WORD)(0x1F & pSection[pos+1])<<8 | (0xFF & pSection[pos+2]);
+	pids.pcr      = (WORD)(0x1F & pSection[pos+13])<<8 | (0xFF & pSection[pos+14]);
+	pids.sid      = (WORD)(0xFF & pSection[pos+8 ])<<8 | (0xFF & pSection[pos+9 ]);
+	pids.chnumb    = pids.sid; //We do this to make up a channel number incase we don't parse the correct one later
+	sectionLen = (WORD)((0x0F & pSection[pos+6])<<8 | (0xFF & pSection[pos+7]));
+
+	channeloffset = (WORD)(0x0F & pSection[pos+15])<<8 | (0xFF & pSection[pos+16]);
+
+	for (long b=17+channeloffset+pos; b<pos+sectionLen; b=b+5)
+	{
+//		if ( (0xe0&pData[b+1]) == 0xe0 )
+		{
+			pid = (WORD)(0x1F & pSection[b+1])<<8 | (0xFF & pSection[b+2]);
+			EsDescLen = (WORD)(0x0F&pSection[b+3]<<8 | 0xFF&pSection[b+4]);
+
+			StreamType = (WORD)(0xFF&pSection[b]);
+
+			if (StreamType == 0x02)
+			{
+				pids.vid = pid;
+			}
+
+			if (StreamType == 0x1b)
+			{
+				pids.h264 = pid;
+			}
+
+			if (StreamType == 0x10)
+			{
+				pids.mpeg4 = pid;
+			}
+
+			if ((StreamType == 0x03) || (StreamType == 0x04))
+			{
+				if (pids.aud != 0)
+					pids.aud2 = pid;
+				else
+					pids.aud = pid;
+			}
+
+			if (StreamType == 0x06)
+			{
+				if (CheckEsDescriptorForDTS(pSection, ulDataLength, b + 5, b + 5 + EsDescLen))
+				{
+					if (pids.dts == 0)
+						pids.dts = pid;
+					else
+						pids.dts2 = pid;// If already have DTS then get next.
+				}
+				else if (CheckEsDescriptorForSubtitle(pSection, ulDataLength, b + 5, b + 5 + EsDescLen))
+					pids.sub = pid;
+				else if (CheckEsDescriptorForAC3(pSection, ulDataLength, b + 5, b + 5 + EsDescLen))
+				{
+					if (pids.ac3 == 0)
+						pids.ac3 = pid;
+					else
+						pids.ac3_2 = pid;// If already have AC3 then get next.
+				}
+				else if (CheckEsDescriptorForTeletext(pSection, ulDataLength, b + 5, b + 5 + EsDescLen))
+					pids.txt = pid;
+				else
+				{
+					//This could be a bid dodgy. What if there is an ac3 or txt in a future loop?
+					if (pids.ac3 == 0 && pids.txt != 0)
+					{
+						pids.ac3 = pid;
+					}
+					else if (pids.ac3 != 0 && pids.txt == 0)
+					{
+						pids.txt = pid;
+					}
+				}
+			}
+
+			if (StreamType == 0x81 || StreamType == 0x83 || StreamType == 0x85 || StreamType == 0x8a)
+			{
+				if (pids.ac3 == 0)
+					pids.ac3 = pid;
+				else
+					pids.ac3_2 = pid;// If already have AC3 then get next.
+			}
+//				if (StreamType == 0x0b)
+//					if (pids.txt == 0)
+//						pids.txt = pid;
+
+			if (StreamType == 0x0b) //Subtitle
+				if (pids.sub == 0)
+					pids.sub = pid;
+
+			if (StreamType == 0x0f) // AAC
+				if (pids.aac == 0)
+					pids.aac = pid;
+				else
+					pids.aac2 = pid;
+*/
+/*
+			if (StreamType >= 0x88 && StreamType <= 0x8a) // DTS
+				if (pids.dts == 0)
+					pids.dts = pid;
+				else
+					pids.dts2 = pid;
+*//*
+			b+=EsDescLen;
+		}
+	}
+	delete[] pSection;
+	*/
+	return S_OK;
+}
+
+HRESULT CSampleBuffer::FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int step)
+{
+	//look for Program Pin Mode
+	if (m_ProgPinMode)
+	{
+		//Look for Mpeg Program Pack headers
+		while ((*a >= 0) && (*a < ulDataLength))
+		{
+			if ((ULONG)((0xFF&pbData[*a])<<24
+					| (0xFF&pbData[*a+1])<<16
+					| (0xFF&pbData[*a+2])<<8
+					| (0xFF&pbData[*a+3])) == 0x1BA)
+			{
+				if (*a+m_PacketSize < ulDataLength)
+				{
+					if ((ULONG)((0xFF&pbData[*a + m_PacketSize])<<24
+						| (0xFF&pbData[*a+1 + m_PacketSize])<<16
+						| (0xFF&pbData[*a+2 + m_PacketSize])<<8
+						| (0xFF&pbData[*a+3 + m_PacketSize])) == 0x1BA)
+						return S_OK;
+				}
+				else
+				{
+					if (step > 0)
+						return E_FAIL;
+
+					if (*a-m_PacketSize > 0)
+					{
+						if ((ULONG)((0xFF&pbData[*a - m_PacketSize])<<24
+						| (0xFF&pbData[*a+1 - m_PacketSize])<<16
+						| (0xFF&pbData[*a+2 - m_PacketSize])<<8
+						| (0xFF&pbData[*a+3 - m_PacketSize])) == 0x1BA)
+							return S_OK;
+					}
+				}
+			}
+			*a += step;
+		}
+		return E_FAIL;
+	}
+
+	//Set for Transport Pin Mode
+	while ((*a >= 0) && (*a < ulDataLength))
+	{
+		if (pbData[*a] == 0x47 && (pbData[*a+1]&0x80) == 0)
+		{
+			if (*a+m_PacketSize < ulDataLength)
+			{
+				if (pbData[*a+m_PacketSize] == 0x47 && (pbData[*a+1+m_PacketSize]&0x80) == 0)
+					return S_OK;
+			}
+			else
+			{
+				if (step > 0)
+					return E_FAIL;
+
+				if (*a-m_PacketSize > 0)
+				{
+					if (pbData[*a-m_PacketSize] == 0x47 && (pbData[*a+1-m_PacketSize]&0x80) == 0)
+						return S_OK;
+				}
+			}
+		}
+		*a += step;
+	}
+	return E_FAIL;
+}
+
+
+
+
+
+
+
+
+
+
 
 void CSampleBuffer::PrintLongLong(LPCTSTR lstring, __int64 value)
 {

@@ -2494,7 +2494,7 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 					m_fileLenOffset = m_fileLenOffset/2;
 					endFilePos = m_fileLenOffset;
 					m_fileEndOffset = m_fileLenOffset;
-					m_fileStartOffset = get_StartOffset();// skip faulty header 
+					m_fileStartOffset += m_fileLenOffset/2; //max (m_fileStartOffset, get_StartOffset());// skip faulty header 
 					continue;
 				}
 				else
@@ -2585,7 +2585,7 @@ HRESULT PidParser::GetPCRduration(PBYTE pData,
 
 		hr = pFileReader->setFilePointer(-(__int64)(m_fileEndOffset + (__int64)lDataLength), FILE_END);
 		DWORD dwErr = GetLastError();
-		if (hr == (DWORD)0xFFFFFFFF && dwErr)
+		if ((DWORD)hr == (DWORD)0xFFFFFFFF && dwErr)
 		{
 			m_fileLenOffset = (__int64)(m_fileLenOffset / 2); //Set file length offset for next search  
 			return S_OK; // File length matchs PCR time
