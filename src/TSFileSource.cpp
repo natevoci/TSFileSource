@@ -218,7 +218,56 @@ void CTSFileSourceFilter::UpdateThreadProc(void)
 		
 		if (!m_bColdStart && m_pSampleBuffer->CheckUpdateParser(m_pPidParser->m_PATVersion))
 		{
-			UpdatePidParser(m_pFileReader);
+			BOOL isMulticasting = FALSE;
+			for (int pos = 0; pos < netArray.Count(); pos++)
+			{
+				if (netArray[pos].playing == TRUE)
+				{
+					NetInfo *netAddr = new NetInfo();
+					netAddr->rotEnable = m_bRotEnable;
+					netAddr->bParserSink = m_bSharedMode;
+					wcscpy(netAddr->fileName, netArray[pos].fileName);
+					wcscpy(netAddr->pathName, netArray[pos].pathName);
+					wcscpy(netAddr->strIP, netArray[pos].strIP);
+					wcscpy(netAddr->strNic, netArray[pos].strNic);
+					wcscpy(netAddr->strPort, netArray[pos].strPort);
+					netAddr->userIP = netArray[pos].userIP;
+					netAddr->userNic = netArray[pos].userNic;
+					netAddr->userPort = netArray[pos].userPort;
+
+					//
+					// Create the Network Filtergraph 
+					//
+					hr = CNetRender::CreateNetworkGraph(netAddr);
+					if(FAILED(hr)  || (hr > 31))
+					{
+						delete netAddr;
+		//				MessageBoxW(NULL, netAddr->fileName, L"Graph Builder Failed", NULL);
+						break;
+					}
+
+					LPOLESTR wFileName = new WCHAR[1+wcslen(netAddr->fileName)];
+					wcscpy(wFileName, netAddr->fileName);
+					if SUCCEEDED(load(wFileName, NULL))
+					{
+						CNetRender::DeleteNetworkGraph(&netArray[pos]);
+						netArray.RemoveAt(pos);
+						//Add the new filtergraph settings to the local array
+						netArray.Add(netAddr);
+					}
+
+					if (wFileName)
+						delete[] wFileName;
+
+					isMulticasting = TRUE;
+
+					break;
+				}
+			};
+
+			if (!isMulticasting)
+				UpdatePidParser(m_pFileReader);
+
 			Sleep (1000);
 		}
 
@@ -2026,6 +2075,7 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 				IMediaSeeking *pMediaSeeking;
 				if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
 				{
+					start += RT_SECOND;
 					hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 					pMediaSeeking->Release();
 				}
