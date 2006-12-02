@@ -30,8 +30,9 @@
 #include <math.h>
 #include "global.h"
 
-CTSBuffer::CTSBuffer(CTSFileSourceClock *pClock)
+CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 {
+	m_pPidParser = 	pPidParser;
 	m_pFileReader = NULL;
 	m_pClock = pClock;
 	m_lItemOffset = 0;
@@ -162,6 +163,24 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 		m_Array.push_back(newItem);
 		bytesAvailable += m_lTSBufferItemSize;
 		m_pFileReader->setBufferPointer();
+
+		m_pPidParser->pidArray.Clear();
+		ULONG pos = 0;
+		hr = S_OK;
+		while (hr == S_OK)
+		{
+			//search at the head of the file
+			hr = m_pPidParser->FindSyncByte(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, &pos, 1);
+			if (hr == S_OK)
+			{
+				//parse next packet for the PAT
+				if (m_pPidParser->ParsePAT(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, pos) == S_OK)
+				{
+					return S_OK;
+				}
+			}
+			pos += m_pPidParser->m_PacketSize;
+		};
 	}
 	return S_OK;
 }
@@ -238,3 +257,12 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 
 	return S_OK;
 }
+
+BOOL CTSBuffer::CheckUpdateParser(int ver)
+{
+	if (m_pPidParser->m_PATVersion && ver && m_pPidParser->m_PATVersion != ver)
+		return TRUE;
+
+	return FALSE;
+}
+

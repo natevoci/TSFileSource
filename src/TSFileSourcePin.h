@@ -45,7 +45,8 @@ typedef CGenericList<IBaseFilter> CFilterList;
  *
  **********************************************/
 class CTSFileSourcePin : public CSourceStream,
-						 public CSourceSeeking					 
+						 public CSourceSeeking,
+						 public PidParser
 {
 public:
 
@@ -64,7 +65,7 @@ public:
 	HRESULT CheckConnect(IPin *pReceivePin);
 	HRESULT CompleteConnect(IPin *pReceivePin);
 	HRESULT BreakConnect();
-//	HRESULT StartTSBufferThread();
+	BOOL checkUpdateParser(int ver);
 	HRESULT FillBuffer(IMediaSample *pSample);
 	HRESULT OnThreadStartPlay();
 	HRESULT Run(REFERENCE_TIME tStart);

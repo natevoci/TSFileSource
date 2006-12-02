@@ -43,6 +43,7 @@
 CTSParserSourcePin::CTSParserSourcePin(LPUNKNOWN pUnk, CTSParserSourceFilter *pFilter, HRESULT *phr) :
 	CSourceStream(NAME("MPEG2 Source Output"), phr, pFilter, L"Out"),
 	CSourceSeeking(NAME("MPEG2 Source Output"), pUnk, phr, &m_SeekLock),
+	PidParser(pFilter->m_pSampleBuffer, pFilter->m_pFileReader),
 	m_pTSParserSourceFilter(pFilter),
 	m_bInjectMode(FALSE),
 	m_bRateControl(FALSE)
@@ -86,7 +87,7 @@ CTSParserSourcePin::CTSParserSourcePin(LPUNKNOWN pUnk, CTSParserSourceFilter *pF
 		m_BitRateStore[i] = 0;
 	}
 
-	m_pTSBuffer = new CTSBuffer(m_pTSParserSourceFilter->m_pClock);
+	m_pTSBuffer = new CTSBuffer(this, m_pTSParserSourceFilter->m_pClock);
 	m_pPids = new PidInfo();
 	debugcount = 0;
 
@@ -424,6 +425,11 @@ HRESULT CTSParserSourcePin::BreakConnect()
 	return hr;
 }
 
+BOOL CTSParserSourcePin::checkUpdateParser(int ver)
+{
+	return m_pTSBuffer->CheckUpdateParser(ver);
+}
+
 HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 {
 	CheckPointer(pSample, E_POINTER);
@@ -523,7 +529,7 @@ return hr;
 		//Read from buffer
 		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
-m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
+//////////////m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 
 		m_IntLastStreamTime = REFERENCE_TIME(cTime);
 		m_llPrevPCR = REFERENCE_TIME(cTime);
@@ -633,7 +639,7 @@ m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 	{
 		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength - m_PacketSave*3);
-m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
+//////////////m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 
 		ULONG pos = 0; 
 		REFERENCE_TIME pcrPos = -1;
@@ -690,7 +696,7 @@ m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 		//Normal Read from buffer
 		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
-m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
+//////////////////m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 	}
 
 	m_lPrevPCRByteOffset -= lDataLength;

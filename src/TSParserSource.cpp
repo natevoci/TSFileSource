@@ -238,7 +238,7 @@ void CTSParserSourceFilter::UpdateThreadProc(void)
 			rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 		}
 		
-		if (!m_bColdStart && m_pSampleBuffer->CheckUpdateParser(m_pPidParser->m_PATVersion))
+		if (!m_bColdStart && m_pPin->checkUpdateParser(m_pPidParser->m_PATVersion))
 		{
 			UpdatePidParser(m_pFileReader);
 			Sleep (1000);

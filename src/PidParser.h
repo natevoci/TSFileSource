@@ -52,10 +52,18 @@ public:
 	HRESULT CheckForPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
 	HRESULT CheckForOPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
 	HRESULT FindSyncByte(PidParser *pPidParser, PBYTE pbData, ULONG ulDataLength, ULONG* a, int step);
+	HRESULT ParsePAT(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, long pos);
+	PBYTE ParseExtendedPacket(PidParser *pPidParser, int tableID, PBYTE pData, ULONG ulDataLength, ULONG pos);
+	HRESULT ParsePMT(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, long pos);
 
 private:
 	CCritSec  m_ParserLock;
 	CCritSec  m_ConvertLock;
+
+	BOOL CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+	BOOL CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+	BOOL CheckEsDescriptorForDTS(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+	BOOL CheckEsDescriptorForSubtitle(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
 };
 
 class PidParser :public ParserFunctions
@@ -114,9 +122,9 @@ public:
 
 protected:
 
-	HRESULT ParsePAT(PBYTE pData, ULONG ulDataLength, long pos);
-	HRESULT ParsePMT(PBYTE pData, ULONG ulDataLength, long pos);
-	PBYTE ParseExtendedPacket(int tableID, PBYTE pData, ULONG ulDataLength, ULONG pos);
+//	HRESULT ParsePAT(PBYTE pData, ULONG ulDataLength, long pos);
+//	HRESULT ParsePMT(PBYTE pData, ULONG ulDataLength, long pos);
+//	PBYTE ParseExtendedPacket(int tableID, PBYTE pData, ULONG ulDataLength, ULONG pos);
 	HRESULT IsValidPMT(PBYTE pData, ULONG ulDataLength);
 	HRESULT ACheckVAPids(PBYTE pData, ULONG ulDataLength);
 	HRESULT CheckVAStreams(PBYTE pData, ULONG ulDataLength);
@@ -142,10 +150,10 @@ protected:
 	void SetPidArray(int n);
 	void AddTsPid(PidInfo *pidInfo, WORD pid);
 
-	BOOL CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
-	BOOL CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
-	BOOL CheckEsDescriptorForDTS(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
-	BOOL CheckEsDescriptorForSubtitle(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+//	BOOL CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+//	BOOL CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+//	BOOL CheckEsDescriptorForDTS(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+//	BOOL CheckEsDescriptorForSubtitle(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
 	bool CheckForEPG(PBYTE pData, int pos, bool *extpacket, int *sectlen, int *sidcount, int *event);
 	bool CheckForNID(PBYTE pData, int pos, bool *extPacket, int *sectlen);
 	bool CheckForONID(PBYTE pData, int pos, bool *extpacket, int *sectlen);

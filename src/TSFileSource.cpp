@@ -216,7 +216,7 @@ void CTSFileSourceFilter::UpdateThreadProc(void)
 			rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 		}
 		
-		if (!m_bColdStart && m_pSampleBuffer->CheckUpdateParser(m_pPidParser->m_PATVersion))
+		if (!m_bColdStart && m_pPin->checkUpdateParser(m_pPidParser->m_PATVersion))
 		{
 			BOOL isMulticasting = FALSE;
 			for (int pos = 0; pos < netArray.Count(); pos++)
@@ -254,12 +254,13 @@ void CTSFileSourceFilter::UpdateThreadProc(void)
 						netArray.RemoveAt(pos);
 						//Add the new filtergraph settings to the local array
 						netArray.Add(netAddr);
+						isMulticasting = TRUE;
 					}
+					else
+						delete netAddr;
 
 					if (wFileName)
 						delete[] wFileName;
-
-					isMulticasting = TRUE;
 
 					break;
 				}
