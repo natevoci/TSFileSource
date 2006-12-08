@@ -37,6 +37,7 @@ CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 	m_pClock = pClock;
 	m_lItemOffset = 0;
 	m_lTSBufferItemSize = 65536/4;//188000;
+	m_PATVersion = 0;
 
 	debugcount = 0;
 }
@@ -66,6 +67,8 @@ void CTSBuffer::Clear()
 	m_Array.clear();
 
 	m_lItemOffset = 0;
+	m_pPidParser->m_PATVersion = 0;
+	m_PATVersion = 0;
 }
 
 long CTSBuffer::Count()
@@ -160,9 +163,6 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			}
 
 		}
-		m_Array.push_back(newItem);
-		bytesAvailable += m_lTSBufferItemSize;
-		m_pFileReader->setBufferPointer();
 
 		m_pPidParser->pidArray.Clear();
 		ULONG pos = 0;
@@ -176,11 +176,30 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 				//parse next packet for the PAT
 				if (m_pPidParser->ParsePAT(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, pos) == S_OK)
 				{
-					return S_OK;
+					if (m_PATVersion && m_pPidParser->m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
+					{
+						m_pFileReader->setBufferPointer();
+						Clear();
+//						delete[] newItem;
+//						return S_OK; //S_FALSE;
+					}
+					break;
 				}
 			}
 			pos += m_pPidParser->m_PacketSize;
 		};
+
+//		if (m_PATVersion && m_pPidParser->m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
+//		{
+//			Clear();
+//			delete[] newItem;
+//			return S_OK;//S_FALSE;
+//		}
+
+		m_Array.push_back(newItem);
+		bytesAvailable += m_lTSBufferItemSize;
+		m_pFileReader->setBufferPointer();
+
 	}
 	return S_OK;
 }
@@ -261,7 +280,13 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 BOOL CTSBuffer::CheckUpdateParser(int ver)
 {
 	if (m_pPidParser->m_PATVersion && ver && m_pPidParser->m_PATVersion != ver)
+	{
 		return TRUE;
+	}
+
+	// Save the vers of current stream
+	if (ver)
+		m_PATVersion = ver;
 
 	return FALSE;
 }

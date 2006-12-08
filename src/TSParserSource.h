@@ -56,7 +56,6 @@ class CTSParserSourceFilter;
 #include "NetInfo.h"
 #include "DVBMpeg2DataParser.h"
 #include <comdef.h>
-#include "SampleBuffer.h"
 #include "BDAiface.h"
 #include "SharedMemory.h"
 
@@ -266,7 +265,6 @@ protected:
 
 
 	SharedMemory* m_pSharedMemory;
-	CSampleBuffer *m_pSampleBuffer;
 	DVBMpeg2DataParser *m_pMpeg2DataParser;
 	CTSParserSourcePin *m_pPin;          // A simple rendered output pin
 	CTSParserInputPin *m_pInpPin;         // A simple rendered Input pin

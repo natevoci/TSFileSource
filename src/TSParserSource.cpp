@@ -72,7 +72,6 @@ CTSParserSourceFilter::CTSParserSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pPidParser(NULL),
 	m_pFileDuration(NULL),
 	m_pFileReader(NULL),
-	m_pSampleBuffer(NULL),
 	m_pSharedMemory(NULL),
 	m_pClock(NULL)
 {
@@ -87,10 +86,9 @@ CTSParserSourceFilter::CTSParserSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	}
 
 	m_pSharedMemory = new SharedMemory(64000000);
-	m_pSampleBuffer = new CSampleBuffer();
 	m_pFileReader = new MemReader(m_pSharedMemory);
 	m_pFileDuration = new MemReader(m_pSharedMemory);//Get Live File Duration Thread
-	m_pPidParser = new PidParser(m_pSampleBuffer, m_pFileReader);
+	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
@@ -193,8 +191,6 @@ CTSParserSourceFilter::~CTSParserSourceFilter()
 	if (m_pSharedMemory) delete m_pSharedMemory;
 	if (m_pFileReader) delete	m_pFileReader;
 	if (m_pFileDuration) delete  m_pFileDuration;
-	if (m_pSampleBuffer) delete  m_pSampleBuffer;
-//	netArray.Clear();
 }
 
 void CTSParserSourceFilter::UpdateThreadProc(void)
@@ -1395,7 +1391,7 @@ HRESULT CTSParserSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *
 	//m_pFileReader->SetDebugOutput(TRUE);
 	//m_pFileDuration->SetDebugOutput(TRUE);
 
-	m_pPidParser = new PidParser(m_pSampleBuffer, m_pFileReader);
+	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
@@ -1763,7 +1759,7 @@ STDMETHODIMP CTSParserSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA
 	//m_pFileReader->SetDebugOutput(TRUE);
 	//m_pFileDuration->SetDebugOutput(TRUE);
 
-	m_pPidParser = new PidParser(m_pSampleBuffer,m_pFileReader);
+	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
 
@@ -2066,7 +2062,7 @@ HRESULT CTSParserSourceFilter::UpdatePidParser(FileReader *pFileReader)
 	REFERENCE_TIME start, stop;
 	m_pPin->GetPositions(&start, &stop);
 
-	PidParser *pPidParser = new PidParser(m_pSampleBuffer, pFileReader);
+	PidParser *pPidParser = new PidParser(pFileReader);
 	
 	if (m_pPidParser->pidArray.Count())
 	{
@@ -2195,7 +2191,8 @@ HRESULT CTSParserSourceFilter::UpdatePidParser(FileReader *pFileReader)
 				IMediaSeeking *pMediaSeeking;
 				if(GetFilterGraph() && SUCCEEDED(GetFilterGraph()->QueryInterface(IID_IMediaSeeking, (void **) &pMediaSeeking)))
 				{
-					hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+					start += RT_SECOND;
+					hr = pMediaSeeking->SetPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_AbsolutePositioning);
 					pMediaSeeking->Release();
 				}
 			}

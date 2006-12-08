@@ -38,9 +38,8 @@
 //////////////////////////////////////////////////////////////////////
 
 
-PidParser::PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader)
+PidParser::PidParser(FileReader *pFileReader)
 {
-	m_pSampleBuffer = pSampleBuffer;
 	m_pFileReader = pFileReader;
 	m_PacketSize = 188; //Start with Transport packet size 
 	m_ATSCFlag = false;
@@ -81,7 +80,7 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 	__int64 fileStart, filelength;
 	ULONG ulDataRead = 0;
 	ULONG ulDataLength = MIN_FILE_SIZE*2;
-//	if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+
 	{
 		if (m_pFileReader->IsFileInvalid())
 		{
@@ -302,7 +301,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 {
 	HRESULT hr = S_OK;
 
-	if (m_pFileReader->IsFileInvalid())// && !m_pSampleBuffer->Count())
+	if (m_pFileReader->IsFileInvalid())
 	{
 		return NOERROR;
 	}
@@ -358,7 +357,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	ULONG ulDataRead = 0;
 	pFileReader->GetFileSize(&fileStart, &filelength);
 	ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
-//	if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+
 	{
 		fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
 		m_FileStartPointer = max(get_StartOffset(), fileStartPointer);
@@ -885,7 +884,7 @@ Sleep(10);
 
 HRESULT PidParser::RefreshPids()
 {
-	if (m_pFileReader->IsFileInvalid() && !m_pSampleBuffer->Count())
+	if (m_pFileReader->IsFileInvalid())
 	{
 		return NOERROR;
 	}
@@ -908,7 +907,6 @@ HRESULT PidParser::RefreshPids()
 		{
 			Sleep(10); //Sleep(100);
 			m_pFileReader->GetFileSize(&fileStart, &fileSize);
-//			while (!m_pSampleBuffer->Count() && (fileSize < fileSizeSave + MIN_FILE_SIZE) && (count < 20))
 			while (fileSize < (fileSizeSave + MIN_FILE_SIZE) && count < 20)
 			{
 				Sleep(10); //Sleep(100);
@@ -1757,7 +1755,7 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 		ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
 		PBYTE pData = new BYTE[ulDataLength];
 		ULONG ulDataRead = 0;
-//		if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+
 		{
 			if (filelength < MIN_FILE_SIZE*2)
 				pFileReader->setFilePointer(0, FILE_BEGIN);
@@ -1784,8 +1782,7 @@ HRESULT PidParser::CheckNIDInFile(FileReader *pFileReader)
 					if (pos >= MIN_FILE_SIZE)
 					{
 						ULONG ulBytesRead = 0;
-//						if FAILED(hr = m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
-							hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
+						hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
 
 						iterations++;
 						pos = 0;
@@ -1910,7 +1907,7 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 		ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
 		PBYTE pData = new BYTE[ulDataLength];
 		ULONG ulDataRead = 0;
-//		if FAILED(m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
+
 		{
 			if (filelength < MIN_FILE_SIZE*2)
 				pFileReader->setFilePointer(0, FILE_BEGIN);
@@ -1941,9 +1938,7 @@ HRESULT PidParser::CheckONIDInFile(FileReader *pFileReader)
 					if (pos >= MIN_FILE_SIZE)
 					{
 						ULONG ulBytesRead = 0;
-//						if FAILED(hr = m_pSampleBuffer->ReadSampleBuffer(pData, ulDataLength, &ulDataRead))
-							hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
-
+						hr = pFileReader->Read(pData, MIN_FILE_SIZE, &ulBytesRead);
 						iterations++;
 						pos = 0;
 						if (hr == S_OK)

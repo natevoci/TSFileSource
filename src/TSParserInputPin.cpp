@@ -668,7 +668,6 @@ STDMETHODIMP CTSParserInputPin::Receive(IMediaSample *pSample)
     CheckPointer(pSample,E_POINTER);
 
     CAutoLock lock(&m_ReceiveLock);
-//return m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
     PBYTE pbData;
 
     REFERENCE_TIME tStart, tStop;

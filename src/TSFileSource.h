@@ -55,7 +55,6 @@ class CTSFileSourceFilter;
 #include "NetInfo.h"
 #include "DVBMpeg2DataParser.h"
 #include <comdef.h>
-#include "SampleBuffer.h"
 
 
 /**********************************************
@@ -254,7 +253,6 @@ protected:
 
 
 	SharedMemory* m_pSharedMemory;
-	CSampleBuffer *m_pSampleBuffer;
 	DVBMpeg2DataParser *m_pMpeg2DataParser;
 	CTSFileSourcePin *m_pPin;          // A simple rendered output pin
 	CTSFileSourceClock *m_pClock;

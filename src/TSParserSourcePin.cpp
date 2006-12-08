@@ -43,7 +43,7 @@
 CTSParserSourcePin::CTSParserSourcePin(LPUNKNOWN pUnk, CTSParserSourceFilter *pFilter, HRESULT *phr) :
 	CSourceStream(NAME("MPEG2 Source Output"), phr, pFilter, L"Out"),
 	CSourceSeeking(NAME("MPEG2 Source Output"), pUnk, phr, &m_SeekLock),
-	PidParser(pFilter->m_pSampleBuffer, pFilter->m_pFileReader),
+	PidParser(pFilter->m_pFileReader),
 	m_pTSParserSourceFilter(pFilter),
 	m_bInjectMode(FALSE),
 	m_bRateControl(FALSE)
@@ -393,7 +393,6 @@ HRESULT CTSParserSourcePin::BreakConnect()
 	{
 		CAutoLock fillLock(&m_FillLock);
 		m_pTSBuffer->Clear();
-		m_pTSParserSourceFilter->m_pSampleBuffer->Clear();
 	}
 	m_bSeeking = FALSE;
 	m_rtLastSeekStart = 0;
@@ -467,20 +466,7 @@ HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 		return hr;
 	}
 	lDataLength = pSample->GetActualDataLength();
-/*
-int count = 0;
-while FAILED(hr = m_pTSParserSourceFilter->m_pSampleBuffer->DequeFromBuffer(pData, lDataLength))
-{
-	Sleep(10);
-	if (count > 200)
-	{
-		hr = S_FALSE;
-		break;
-	}
-	count++;
-};
-return hr;
-*/
+
 	m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 	hr = m_pTSBuffer->Require(lDataLength);
 	if (FAILED(hr))
@@ -529,7 +515,6 @@ return hr;
 		//Read from buffer
 		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
-//////////////m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 
 		m_IntLastStreamTime = REFERENCE_TIME(cTime);
 		m_llPrevPCR = REFERENCE_TIME(cTime);
@@ -639,7 +624,6 @@ return hr;
 	{
 		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength - m_PacketSave*3);
-//////////////m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 
 		ULONG pos = 0; 
 		REFERENCE_TIME pcrPos = -1;
@@ -696,7 +680,6 @@ return hr;
 		//Normal Read from buffer
 		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
-//////////////////m_pTSParserSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 	}
 
 	m_lPrevPCRByteOffset -= lDataLength;
@@ -918,7 +901,6 @@ HRESULT CTSParserSourcePin::OnThreadStartPlay( )
 	{
 		CAutoLock fillLock(&m_FillLock);
 		m_pTSBuffer->Clear();
-		m_pTSParserSourceFilter->m_pSampleBuffer->Clear();
 	}
 	m_DataRate = m_pTSParserSourceFilter->m_pPidParser->pids.bitrate;
 	debugcount = 0;
@@ -1168,56 +1150,49 @@ HRESULT CTSParserSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 
 		if (!(CurrentFlags & AM_SEEKING_NoFlush) && (CurrentFlags & AM_SEEKING_PositioningBitsMask))
 		{
-//			if (CAMThread::ThreadExists())
-//			{	
-				m_bSeeking = TRUE;
+			m_bSeeking = TRUE;
 
-				if(m_pTSParserSourceFilter->is_Active() && !m_DemuxLock)
-					SetDemuxClock(NULL);
+			if(m_pTSParserSourceFilter->is_Active() && !m_DemuxLock)
+				SetDemuxClock(NULL);
 
-//::OutputDebugString(TEXT("setPositions prelock\n"));
-//				CAutoLock fillLock(&m_FillLock);
-//::OutputDebugString(TEXT("setPositions postlck\n"));
-				//Test if parser Locked
-				if (!m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock){
-					//fix our pid values for this run
-					m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock = TRUE;
-					m_pTSParserSourceFilter->m_pPidParser->pids.CopyTo(m_pPids); 
-					m_bASyncModeSave = m_pTSParserSourceFilter->m_pPidParser->get_AsyncMode();
-					m_PacketSave = m_pTSParserSourceFilter->m_pPidParser->get_PacketSize();
-					m_PATVerSave = m_pTSParserSourceFilter->m_pPidParser->m_PATVersion;
-					m_TSIDSave = m_pTSParserSourceFilter->m_pPidParser->m_TStreamID;
-					m_PinTypeSave  = m_pTSParserSourceFilter->m_pPidParser->get_ProgPinMode();
-					m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock = FALSE;
-				}
-				m_LastMultiFileStart = 0;
-				m_LastMultiFileEnd = 0;
+			//Test if parser Locked
+			if (!m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock){
+				//fix our pid values for this run
+				m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock = TRUE;
+				m_pTSParserSourceFilter->m_pPidParser->pids.CopyTo(m_pPids); 
+				m_bASyncModeSave = m_pTSParserSourceFilter->m_pPidParser->get_AsyncMode();
+				m_PacketSave = m_pTSParserSourceFilter->m_pPidParser->get_PacketSize();
+				m_PATVerSave = m_pTSParserSourceFilter->m_pPidParser->m_PATVersion;
+				m_TSIDSave = m_pTSParserSourceFilter->m_pPidParser->m_TStreamID;
+				m_PinTypeSave  = m_pTSParserSourceFilter->m_pPidParser->get_ProgPinMode();
+				m_pTSParserSourceFilter->m_pPidParser->m_ParsingLock = FALSE;
+			}
+			m_LastMultiFileStart = 0;
+			m_LastMultiFileEnd = 0;
 
+			if (m_pTSParserSourceFilter->IsActive())
 				DeliverBeginFlush();
-//::OutputDebugString(TEXT("setPositions preStop\n"));
-				CSourceStream::Stop();
-//::OutputDebugString(TEXT("setPositions postStop\n"));
-				m_DataRate = m_pTSParserSourceFilter->m_pPidParser->pids.bitrate;
-				m_llPrevPCR = -1;
+//			CSourceStream::Stop();
+			m_DataRate = m_pTSParserSourceFilter->m_pPidParser->pids.bitrate;
+			m_llPrevPCR = -1;
 
-				m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
-				m_pTSBuffer->Clear();
-				m_pTSParserSourceFilter->m_pSampleBuffer->Clear();
-				SetAccuratePos(rtCurrent);
-				if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
-				{
-					CAutoLock lock(&m_SeekLock);
-					m_rtStart = rtCurrent;
-				}
-				m_rtLastSeekStart = rtCurrent;
-				DeliverEndFlush();
-				CSourceStream::Run();
-				if (CurrentFlags & AM_SEEKING_ReturnTime)
-					*pCurrent  = rtCurrent;
-
+			m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+			m_pTSBuffer->Clear();
+			SetAccuratePos(rtCurrent);
+			if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
+			{
 				CAutoLock lock(&m_SeekLock);
-				return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
-//			}
+				m_rtStart = rtCurrent;
+			}
+			m_rtLastSeekStart = rtCurrent;
+			if (m_pTSParserSourceFilter->IsActive())
+				DeliverEndFlush();
+//			CSourceStream::Run();
+			if (CurrentFlags & AM_SEEKING_ReturnTime)
+				*pCurrent  = rtCurrent;
+
+			CAutoLock lock(&m_SeekLock);
+			return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
 		}
 		if (CurrentFlags & AM_SEEKING_ReturnTime)
 			*pCurrent  = rtCurrent;
@@ -1318,7 +1293,6 @@ void CTSParserSourcePin::ClearBuffer(void)
 	CAutoLock fillLock(&m_FillLock);
 	m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 	m_pTSBuffer->Clear();
-	m_pTSParserSourceFilter->m_pSampleBuffer->Clear();
 }
 
 void CTSParserSourcePin::UpdateFromSeek(BOOL updateStartPosition)
@@ -1336,7 +1310,6 @@ void CTSParserSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 		{
 			m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 			m_pTSBuffer->Clear();
-			m_pTSParserSourceFilter->m_pSampleBuffer->Clear();
 			SetAccuratePos(m_rtStart);
 			//m_pTSParserSourceFilter->FileSeek(m_rtStart);
 			m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);

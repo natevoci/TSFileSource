@@ -33,7 +33,6 @@
 
 #include "PidInfo.h"
 #include "FileReader.h"
-#include "SampleBuffer.h"
 
 class ParserFunctions
 {
@@ -70,7 +69,7 @@ class PidParser :public ParserFunctions
 {
 
 public:
-	PidParser(CSampleBuffer *pSampleBuffer, FileReader *pFileReader);
+	PidParser(FileReader *pFileReader);
 	virtual ~PidParser();
 
 
@@ -173,7 +172,6 @@ protected:
 	__int64 m_FileStartPointer;
 
 	FileReader *m_pFileReader;
-	CSampleBuffer *m_pSampleBuffer;
 	CCritSec m_ParserLock;
 };
 

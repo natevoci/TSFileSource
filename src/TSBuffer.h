@@ -58,6 +58,7 @@ protected:
 
 	long m_lTSBufferItemSize;
 	int debugcount;
+	int m_PATVersion;
 };
 
 #endif

@@ -43,7 +43,7 @@
 CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter, HRESULT *phr) :
 	CSourceStream(NAME("MPEG2 Source Output"), phr, pFilter, L"Out"),
 	CSourceSeeking(NAME("MPEG2 Source Output"), pUnk, phr, &m_SeekLock),
-	PidParser(pFilter->m_pSampleBuffer, pFilter->m_pFileReader),
+	PidParser(pFilter->m_pFileReader),
 	m_pTSFileSourceFilter(pFilter),
 	m_bInjectMode(FALSE),
 	m_bRateControl(FALSE)
@@ -398,7 +398,6 @@ HRESULT CTSFileSourcePin::BreakConnect()
 	{
 		CAutoLock fillLock(&m_FillLock);
 		m_pTSBuffer->Clear();
-		m_pTSFileSourceFilter->m_pSampleBuffer->Clear();
 	}
 	m_bSeeking = FALSE;
 	m_rtLastSeekStart = 0;
@@ -526,7 +525,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 		//Read from buffer
 		m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
-///////////////m_pTSFileSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 
 		m_IntLastStreamTime = REFERENCE_TIME(cTime);
 		m_llPrevPCR = REFERENCE_TIME(cTime);
@@ -640,7 +638,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	{
 		m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength - m_PacketSave*3);
-//////////////		m_pTSFileSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 
 		ULONG pos = 0; 
 		REFERENCE_TIME pcrPos = -1;
@@ -706,7 +703,6 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 	{//Read from buffer
 		m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
-//////////////////		m_pTSFileSourceFilter->m_pSampleBuffer->LoadMediaSample(pSample);
 	}
 
 	m_lPrevPCRByteOffset -= lDataLength;
@@ -927,7 +923,6 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 	{
 		CAutoLock fillLock(&m_FillLock);
 		m_pTSBuffer->Clear();
-		m_pTSFileSourceFilter->m_pSampleBuffer->Clear();
 	}
 	m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 	debugcount = 0;
@@ -1204,17 +1199,16 @@ seekFunctions.PrintTime(TEXT("setPositions/PositioningBitsMask"), (__int64) *pCu
 				m_LastMultiFileEnd = 0;
 
 ::OutputDebugString(TEXT("setPositions pre DeliverBeginFlush()\n"));
-				DeliverBeginFlush();
+				if (m_pTSFileSourceFilter->IsActive())
+					DeliverBeginFlush();
 ::OutputDebugString(TEXT("setPositions preStop\n"));
-				CSourceStream::Stop();
+//				CSourceStream::Stop();
 ::OutputDebugString(TEXT("setPositions postStop\n"));
 				m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 				m_llPrevPCR = -1;
 
 				m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 				m_pTSBuffer->Clear();
-::OutputDebugString(TEXT("setPositions pre SampleBuffer->Clear()\n"));
-				m_pTSFileSourceFilter->m_pSampleBuffer->Clear();
 ::OutputDebugString(TEXT("setPositions pre SetAccuratePos(rtCurrent)\n"));
 				SetAccuratePos(rtCurrent);
 				if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
@@ -1226,10 +1220,11 @@ seekFunctions.PrintTime(TEXT("setPositions/PositioningBitsMask"), (__int64) *pCu
 				m_rtLastSeekStart = rtCurrent;
 ::OutputDebugString(TEXT("setPositions pre DeliverEndFlush\n"));
 				m_bSeeking = FALSE;
-				DeliverEndFlush();
+				if (m_pTSFileSourceFilter->IsActive())
+					DeliverEndFlush();
 ::OutputDebugString(TEXT("setPositions pre CSourceStream::Run()\n"));
 
-				CSourceStream::Run();
+//				CSourceStream::Run();
 				if (CurrentFlags & AM_SEEKING_ReturnTime)
 					*pCurrent  = rtCurrent;
 
@@ -1338,7 +1333,6 @@ void CTSFileSourcePin::ClearBuffer(void)
 	CAutoLock fillLock(&m_FillLock);
 	m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 	m_pTSBuffer->Clear();
-	m_pTSFileSourceFilter->m_pSampleBuffer->Clear();
 }
 
 void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
@@ -1356,7 +1350,6 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 		{
 			m_pTSBuffer->SetFileReader(m_pTSFileSourceFilter->m_pFileReader);
 			m_pTSBuffer->Clear();
-			m_pTSFileSourceFilter->m_pSampleBuffer->Clear();
 			SetAccuratePos(m_rtStart);
 			//m_pTSFileSourceFilter->FileSeek(m_rtStart);
 			m_rtLastSeekStart = REFERENCE_TIME(m_rtStart);
