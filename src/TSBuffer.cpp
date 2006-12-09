@@ -178,10 +178,10 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 				{
 					if (m_PATVersion && m_pPidParser->m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
 					{
-						m_pFileReader->setBufferPointer();
+						delete[] newItem;
+						newItem = NULL;
 						Clear();
-//						delete[] newItem;
-//						return S_OK; //S_FALSE;
+						bytesAvailable = Count();
 					}
 					break;
 				}
@@ -189,15 +189,12 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			pos += m_pPidParser->m_PacketSize;
 		};
 
-//		if (m_PATVersion && m_pPidParser->m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
-//		{
-//			Clear();
-//			delete[] newItem;
-//			return S_OK;//S_FALSE;
-//		}
+		if (newItem)
+		{
+			m_Array.push_back(newItem);
+			bytesAvailable += m_lTSBufferItemSize;
+		}
 
-		m_Array.push_back(newItem);
-		bytesAvailable += m_lTSBufferItemSize;
 		m_pFileReader->setBufferPointer();
 
 	}

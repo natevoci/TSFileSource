@@ -2783,7 +2783,6 @@ HRESULT Demux::ChangeDemuxPin(IBaseFilter* pDemux, LPWSTR* pPinName, BOOL* pConn
 						if (SUCCEEDED(pIPin->ConnectedTo(&pInpPin))){
 
 							IPin* pInpPin2 = NULL;
-							*pConnect = TRUE;
 							PIN_INFO pinInfo;
 							pInpPin->QueryPinInfo(&pinInfo);
 
