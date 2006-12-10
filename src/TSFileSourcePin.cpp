@@ -1202,7 +1202,7 @@ seekFunctions.PrintTime(TEXT("setPositions/PositioningBitsMask"), (__int64) *pCu
 				if (m_pTSFileSourceFilter->IsActive())
 					DeliverBeginFlush();
 ::OutputDebugString(TEXT("setPositions preStop\n"));
-//				CSourceStream::Stop();
+				CSourceStream::Stop();
 ::OutputDebugString(TEXT("setPositions postStop\n"));
 				m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 				m_llPrevPCR = -1;
@@ -1224,13 +1224,13 @@ seekFunctions.PrintTime(TEXT("setPositions/PositioningBitsMask"), (__int64) *pCu
 					DeliverEndFlush();
 ::OutputDebugString(TEXT("setPositions pre CSourceStream::Run()\n"));
 
-//				CSourceStream::Run();
+				CSourceStream::Run();
 				if (CurrentFlags & AM_SEEKING_ReturnTime)
 					*pCurrent  = rtCurrent;
 
 /////////////////////////m_pTSFileSourceFilter->RefreshPids();
 ::OutputDebugString(TEXT("setPositions CSourceSeeking::SetPositions() pre seeklock\n"));
-				CAutoLock lock(&m_SeekLock);
+//				CAutoLock lock(&m_SeekLock);
 				return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
 //			}
 		}
@@ -1453,6 +1453,7 @@ seekFunctions.PrintTime(TEXT("our pcr Delta SeekTime"), (__int64)pcrDeltaSeekTim
 	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
 	//Set Pointer to end of file to get end pcr
 	m_pTSFileSourceFilter->m_pFileReader->setFilePointer((__int64) - ((__int64)lDataLength), FILE_END);
+seekFunctions.PrintTime(TEXT("Reading the end of the file for the end pcr"), (__int64)pcrDeltaSeekTime, 90, &debugcount);
 	hr = m_pTSFileSourceFilter->m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
 //	if (ulBytesRead != lDataLength)
 	if (FAILED(hr))
@@ -1466,6 +1467,7 @@ seekFunctions.PrintTime(TEXT("File Read Call failed"), (__int64)ulBytesRead, 90,
 	ULONG posSavefirst = m_pTSFileSourceFilter->m_pPidParser->get_PacketSize();
 	__int64 pcrFirstEndPos = 0;
 	hr = S_OK;
+seekFunctions.PrintTime(TEXT("Finding the end pcr"), (__int64)pcrDeltaSeekTime, 90, &debugcount);
 	hr = seekFunctions.FindNextPCR(m_pTSFileSourceFilter->m_pPidParser, pData, ulBytesRead, &m_pTSFileSourceFilter->m_pPidParser->pids, &pcrFirstEndPos, &posSavefirst, 1); //Get the PCR
 seekFunctions.PrintTime(TEXT("our pcr first end time for the pcr rate calculation"), (__int64)pcrFirstEndPos, 90, &debugcount);
 

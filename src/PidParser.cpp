@@ -892,8 +892,8 @@ HRESULT PidParser::RefreshPids()
 //	CAutoLock parserlock(&m_ParserLock);
 	__int64 fileStart, fileSize = 0;
 	m_pFileReader->GetFileSize(&fileStart, &fileSize);
-	__int64 filestartpointer = min((__int64)(fileSize - (__int64)4000000), m_pFileReader->getBufferPointer());
-//	__int64 filestartpointer = min((__int64)(fileSize - (__int64)5000000), m_pFileReader->getFilePointer());
+//	__int64 filestartpointer = min((__int64)(fileSize - (__int64)4000000), m_pFileReader->getBufferPointer());
+	__int64 filestartpointer = min((__int64)(fileSize - (__int64)4000000), m_pFileReader->getFilePointer());
 	filestartpointer = max(get_StartOffset(), filestartpointer);
 
 	WORD readonly = 0;;
@@ -1539,8 +1539,8 @@ HRESULT PidParser::CheckEPGFromFile()
 		__int64 fileStart, fileSize;
 		pFileReader->GetFileSize(&fileStart, &fileSize);
 
-		__int64 fileStartPointer = m_pFileReader->getBufferPointer();
-//		__int64 fileStartPointer = m_pFileReader->getFilePointer();
+//		__int64 fileStartPointer = m_pFileReader->getBufferPointer();
+		__int64 fileStartPointer = m_pFileReader->getFilePointer();
 
 		iterations = (int)((fileSize - fileStartPointer) / MIN_FILE_SIZE); 
 		if (iterations >= 64)

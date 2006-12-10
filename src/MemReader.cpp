@@ -206,6 +206,7 @@ HRESULT MemReader::CloseFile()
 
 	m_hInfoFile = INVALID_HANDLE_VALUE; // Invalidate the file
 
+	m_llBufferPointer = 0;	
 	return NOERROR;
 
 } // CloseFile

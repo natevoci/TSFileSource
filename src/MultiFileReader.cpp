@@ -105,6 +105,7 @@ HRESULT MultiFileReader::CloseFile()
 	hr = m_TSBufferFile.CloseFile();
 	hr = m_TSFile.CloseFile();
 	m_TSFileId = 0;
+	m_llBufferPointer = 0;	
 	return hr;
 }
 
@@ -563,8 +564,5 @@ __int64 MultiFileReader::getBufferPointer()
 
 void MultiFileReader::setBufferPointer()
 {
-	__int64 fileStart, fileEnd, fileLength;
-	GetFileSize(&fileStart, &fileLength);
-	fileEnd = fileLength + fileStart;
-	m_llBufferPointer = (__int64)(GetFilePointer() - fileStart);	
+	m_llBufferPointer = getFilePointer();	
 }
