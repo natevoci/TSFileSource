@@ -173,7 +173,7 @@ BEGIN
     PUSHBUTTON      "&Change",IDC_RATECHG,259,151,36,13,WS_GROUP
     CTEXT           "TSFileSource Version 2.2.0.9\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,22,265,241,26
-    CTEXT           "Beta 15",IDC_STATIC,267,265,28,8
+    CTEXT           "Beta 16",IDC_STATIC,267,265,28,8
     CONTROL         "Packet Inject Enable",IDC_INJECTMODE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,210,139,85,10
     LTEXT           "Clock Speed",IDC_STATIC,202,149,23,18
@@ -226,7 +226,7 @@ BEGIN
     LTEXT           "Total Files In Use",IDC_STATIC,189,32,68,10
     CTEXT           "TSFileSink of TSFileSource Version 2.2.0.8\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,26,175,237,26
-    CTEXT           "Beta 15",IDC_STATIC,267,174,28,8
+    CTEXT           "Beta 16",IDC_STATIC,267,174,28,8
 END
 
 IDD_PARSERPROPPAGE DIALOGEX 0, 0, 304, 308
@@ -339,7 +339,7 @@ BEGIN
     PUSHBUTTON      "&Change",IDC_RATECHG,261,153,36,13,WS_GROUP
     CTEXT           "TSParserSource Version 2.2.0.9\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,27,270,235,25,0,WS_EX_TRANSPARENT
-    CTEXT           "Beta 15",IDC_STATIC,263,269,28,8
+    CTEXT           "Beta 16",IDC_STATIC,263,269,28,8
     CONTROL         "Packet Injection",IDC_INJECTMODE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,212,141,85,10
     CONTROL         "Use Shared Mem",IDC_SHAREDMODE,"Button",BS_AUTOCHECKBOX | 
@@ -391,7 +391,7 @@ BEGIN
     LTEXT           "Total Files In Use",IDC_STATIC,189,32,68,10
     CTEXT           "TSParserSink of TSFileSource Version 2.2.0.8\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",
                     IDC_STATIC,23,175,235,26
-    CTEXT           "Beta 15",IDC_STATIC,260,174,28,8
+    CTEXT           "Beta 16",IDC_STATIC,260,174,28,8
 END
 
 

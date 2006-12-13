@@ -1172,7 +1172,7 @@ HRESULT CTSParserSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 
 			if (m_pTSParserSourceFilter->IsActive())
 				DeliverBeginFlush();
-//			CSourceStream::Stop();
+			CSourceStream::Stop();
 			m_DataRate = m_pTSParserSourceFilter->m_pPidParser->pids.bitrate;
 			m_llPrevPCR = -1;
 
@@ -1187,11 +1187,11 @@ HRESULT CTSParserSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			m_rtLastSeekStart = rtCurrent;
 			if (m_pTSParserSourceFilter->IsActive())
 				DeliverEndFlush();
-//			CSourceStream::Run();
+			CSourceStream::Run();
 			if (CurrentFlags & AM_SEEKING_ReturnTime)
 				*pCurrent  = rtCurrent;
 
-			CAutoLock lock(&m_SeekLock);
+//			CAutoLock lock(&m_SeekLock);
 			return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
 		}
 		if (CurrentFlags & AM_SEEKING_ReturnTime)

@@ -267,7 +267,7 @@ void CTSFileSourceFilter::UpdateThreadProc(void)
 			if (!isMulticasting)
 				UpdatePidParser(m_pFileReader);
 
-			Sleep (1000);
+//			Sleep (1000);
 		}
 
 		Sleep(100);
