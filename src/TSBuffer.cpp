@@ -176,12 +176,17 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 				//parse next packet for the PAT
 				if (m_pPidParser->ParsePAT(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, pos) == S_OK)
 				{
-					if (m_PATVersion && m_pPidParser->m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
+//					if (m_PATVersion && m_pPidParser->m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
+					if (m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
 					{
-						delete[] newItem;
-						newItem = NULL;
-						Clear();
-						bytesAvailable = Count();
+						m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
+//						delete[] newItem;
+//						newItem = NULL;
+//						Clear();
+//						bytesAvailable = Count();
+//			m_Array.push_back(newItem);
+//			bytesAvailable += m_lTSBufferItemSize;
+//						return S_OK;
 					}
 					break;
 				}
