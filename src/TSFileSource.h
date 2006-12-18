@@ -74,6 +74,7 @@ class CTSFileSourceFilter : public ISpecifyPropertyPages,
 							public CSource, public UpdateThread
 {
 	friend class CTSFileSourcePin;
+	friend class TunerEvent;
 public:
 	DECLARE_IUNKNOWN
 	static CUnknown * WINAPI CreateInstance(LPUNKNOWN punk, HRESULT *phr);

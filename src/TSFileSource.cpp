@@ -98,7 +98,9 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
-	m_pTunerEvent = new TunerEvent(m_pDemux, GetOwner());
+	m_pTunerEvent = NULL;
+	m_pTunerEvent = new TunerEvent(this);
+		set_TunerEvent();
 	m_pRegStore = new CRegStore("SOFTWARE\\TSFileSource");
 	m_pSettingsStore = new CSettingsStore();
 
@@ -159,9 +161,14 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
         m_dwGraphRegister = 0;
     }
 
-	m_pTunerEvent->UnRegisterForTunerEvents();
-	m_pTunerEvent->Release();
-	if (m_pDemux) delete	m_pDemux;
+	if (m_pTunerEvent)
+	{
+		m_pTunerEvent->UnRegisterForTunerEvents();
+		m_pTunerEvent->Release();
+		m_pTunerEvent = NULL;
+	}
+
+	if (m_pDemux) delete m_pDemux;
 	if (m_pRegStore) delete m_pRegStore;
 	if (m_pSettingsStore) delete  m_pSettingsStore;
 	if (m_pPidParser) delete  m_pPidParser;
@@ -915,7 +922,7 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 		}
 
-		set_TunerEvent();
+//		set_TunerEvent();
 
 		if (!m_bThreadRunning && CAMThread::ThreadExists())
 			CAMThread::CallWorker(CMD_RUN);
@@ -980,7 +987,7 @@ HRESULT CTSFileSourceFilter::Pause()
 			}
 		}
 
-		set_TunerEvent();
+//		set_TunerEvent();
 
 		if (!m_bThreadRunning && CAMThread::ThreadExists())
 			CAMThread::CallWorker(CMD_PAUSE);
@@ -1001,7 +1008,9 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 //	HRESULT hr = CSource::Stop();
 	HRESULT hr = CBaseFilter::Stop();
 
-	m_pTunerEvent->UnRegisterForTunerEvents();
+	if (m_pTunerEvent)
+		m_pTunerEvent->UnRegisterForTunerEvents();
+
 	m_pFileReader->CloseFile();
 	m_pFileDuration->CloseFile();
 
@@ -2824,9 +2833,12 @@ STDMETHODIMP CTSFileSourceFilter::SetNPSlave(WORD NPSlave)
 
 HRESULT CTSFileSourceFilter::set_TunerEvent(void)
 {
-	if (GetFilterGraph() && SUCCEEDED(m_pTunerEvent->HookupGraphEventService(GetFilterGraph())))
+	if (m_pTunerEvent)
 	{
-		m_pTunerEvent->RegisterForTunerEvents();
+		if (GetFilterGraph() && SUCCEEDED(m_pTunerEvent->HookupGraphEventService(GetFilterGraph())))
+		{
+			m_pTunerEvent->RegisterForTunerEvents();
+		}
 	}
 	return NOERROR;
 }

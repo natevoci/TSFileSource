@@ -38,6 +38,7 @@ CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 	m_lItemOffset = 0;
 	m_lTSBufferItemSize = 65536/4;//188000;
 	m_PATVersion = 0;
+	m_ParserLock = FALSE;
 
 	debugcount = 0;
 }
@@ -167,6 +168,7 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 		m_pPidParser->pidArray.Clear();
 		ULONG pos = 0;
 		hr = S_OK;
+		m_ParserLock = TRUE;
 		while (hr == S_OK)
 		{
 			//search at the head of the file
@@ -179,7 +181,7 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 //					if (m_PATVersion && m_pPidParser->m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
 					if (m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
 					{
-						m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
+//						m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
 //						delete[] newItem;
 //						newItem = NULL;
 //						Clear();
@@ -194,6 +196,7 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			pos += m_pPidParser->m_PacketSize;
 		};
 
+		m_ParserLock = FALSE;
 		if (newItem)
 		{
 			m_Array.push_back(newItem);
@@ -281,15 +284,17 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 
 BOOL CTSBuffer::CheckUpdateParser(int ver)
 {
-	if (m_pPidParser->m_PATVersion && ver && m_pPidParser->m_PATVersion != ver)
+	if (!m_ParserLock)
 	{
-		return TRUE;
+		if (m_pPidParser->m_PATVersion && ver && m_pPidParser->m_PATVersion != ver)
+		{
+			return TRUE;
+		}
+
+		// Save the vers of current stream
+		if (ver && m_PATVersion != ver)
+			m_PATVersion = ver;
 	}
-
-	// Save the vers of current stream
-	if (ver)
-		m_PATVersion = ver;
-
 	return FALSE;
 }
 

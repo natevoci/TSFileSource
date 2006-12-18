@@ -33,7 +33,8 @@
 #include "KSMEDIA.H"
 #include "bdamedia.h"
 
-#include "Demux.h"
+#include "TSFileSource.h"
+//#include "Demux.h"
 
 /**********************************************
  *
@@ -47,17 +48,18 @@ class TunerEvent : public IBroadcastEvent
 protected:
     long m_nRefCount; // Holds the reference count.
 
-	IUnknown *m_pTSFileSourceFilter;
-	Demux *m_pDemux;
-
+	CTSFileSourceFilter *m_pTSFileSourceFilter;
+	
 public: //private
+
+	TunerEvent(CTSFileSourceFilter *pFilter);
+	virtual ~TunerEvent();
 
 	STDMETHODIMP_(ULONG) AddRef();
 	STDMETHODIMP_(ULONG) Release();
 	STDMETHODIMP QueryInterface(REFIID riid, void **ppvObject);
 	STDMETHOD(Fire)(GUID eventID);
 	void SetEventFlag(bool flag);
-	TunerEvent(Demux *pDemux, IUnknown *pUnk);
 
     HRESULT HookupGraphEventService(IFilterGraph *pGraph);
     HRESULT RegisterForTunerEvents();

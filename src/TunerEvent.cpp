@@ -25,13 +25,16 @@
 
 #include <streams.h>
 #include "TunerEvent.h"
-#include "ITSFileSource.h"
+//#include "ITSFileSource.h"
 
-TunerEvent::TunerEvent(Demux *pDemux, IUnknown *pUnk) : m_dwBroadcastEventCookie(0), m_nRefCount(1)
+TunerEvent::TunerEvent(CTSFileSourceFilter *pFilter) : m_dwBroadcastEventCookie(0), m_nRefCount(1)
 {
-	m_pTSFileSourceFilter = pUnk;
-	m_pDemux = pDemux;
+	m_pTSFileSourceFilter = pFilter;
 	m_spBroadcastEvent = NULL;
+}
+
+TunerEvent::~TunerEvent()
+{
 }
 
 // IUnknown methods
@@ -50,6 +53,7 @@ STDMETHODIMP TunerEvent::QueryInterface(REFIID riid, void **ppvObject)
 		*ppvObject = static_cast<IBroadcastEvent*>(this);
 	else 
 		return E_NOINTERFACE;
+
 	AddRef();
 	return S_OK;
 }
@@ -138,11 +142,17 @@ HRESULT TunerEvent::RegisterForTunerEvents()
 // Unregister for events.
 HRESULT TunerEvent::UnRegisterForTunerEvents()
 {
+    if (!m_spBroadcastEvent)
+    {
+        return S_OK; // Forgot to call HookupGraphEventService.
+    }
+
     HRESULT hr = S_OK;
     if(!m_dwBroadcastEventCookie)
     {
         return S_OK; // Not registered for events; nothing to do.
     }
+
     CComQIPtr<IConnectionPoint> spConnectionPoint(m_spBroadcastEvent);
     if(!spConnectionPoint)
     {
@@ -176,23 +186,26 @@ HRESULT TunerEvent::DoChannelChange()
 {
 	HRESULT hr = S_FALSE;
 
-	ITSFileSource   *pProgram;    // Pointer to the filter's custom interface.
-	hr = m_pTSFileSourceFilter->QueryInterface(IID_ITSFileSource, (void**)(&pProgram));
-	if(SUCCEEDED(hr))
+//	ITSFileSource   *pProgram;    // Pointer to the filter's custom interface.
+//	hr = m_pTSFileSourceFilter->QueryInterface(IID_ITSFileSource, (void**)(&pProgram));
+//	if(SUCCEEDED(hr))
+	if(m_pTSFileSourceFilter && m_pTSFileSourceFilter->m_pDemux)
 	{
-		m_bNPControlSave = m_pDemux->get_NPControl(); //Save NP Control mode
-		m_pDemux->set_NPControl(false); //Turn off NP Control else we will loop
+		m_bNPControlSave = m_pTSFileSourceFilter->m_pDemux->get_NPControl(); //Save NP Control mode
+		m_pTSFileSourceFilter->m_pDemux->set_NPControl(false); //Turn off NP Control else we will loop
 
-		m_bNPSlaveSave = m_pDemux->get_NPSlave(); //Save NP Slave mode
-		m_pDemux->set_NPSlave(true); //Turn on NP Slave mode to change SID to set Demux control
+		m_bNPSlaveSave = m_pTSFileSourceFilter->m_pDemux->get_NPSlave(); //Save NP Slave mode
+		m_pTSFileSourceFilter->m_pDemux->set_NPSlave(true); //Turn on NP Slave mode to change SID to set Demux control
 
 		USHORT pgmNumb;
-		pProgram->GetPgmNumb(&pgmNumb);
-		pProgram->SetPgmNumb(pgmNumb);
-		m_pDemux->set_NPControl(m_bNPControlSave); //Restore NP Control mode
-		m_pDemux->set_NPSlave(m_bNPSlaveSave); //Restore NP Control mode
+		m_pTSFileSourceFilter->GetPgmNumb(&pgmNumb);
+		m_pTSFileSourceFilter->SetPgmNumb(pgmNumb);
+//		pProgram->GetPgmNumb(&pgmNumb);
+//		pProgram->SetPgmNumb(pgmNumb);
+		m_pTSFileSourceFilter->m_pDemux->set_NPControl(m_bNPControlSave); //Restore NP Control mode
+		m_pTSFileSourceFilter->m_pDemux->set_NPSlave(m_bNPSlaveSave); //Restore NP Control mode
 
-		pProgram->Release();
+//		pProgram->Release();
 	}
 	return hr;
 }

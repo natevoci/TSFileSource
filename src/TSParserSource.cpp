@@ -117,7 +117,8 @@ CTSParserSourceFilter::CTSParserSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
-	m_pTunerEvent = new TunerEvent(m_pDemux, GetOwner());
+//	m_pTunerEvent = NULL;
+	m_pTunerEvent = new TunerEvent((CTSFileSourceFilter*)this);
 	m_pRegStore = new CRegStore("SOFTWARE\\TSParserSource");
 	m_pSettingsStore = new CSettingsStore();
 
@@ -178,8 +179,12 @@ CTSParserSourceFilter::~CTSParserSourceFilter()
         m_dwGraphRegister = 0;
     }
 
-	m_pTunerEvent->UnRegisterForTunerEvents();
-	m_pTunerEvent->Release();
+	if (m_pTunerEvent)
+	{
+		m_pTunerEvent->UnRegisterForTunerEvents();
+		m_pTunerEvent->Release();
+	}
+
 	if (m_pClock) delete  m_pClock;
 	if (m_pDemux) delete	m_pDemux;
 	if (m_pRegStore) delete m_pRegStore;
@@ -1170,7 +1175,9 @@ STDMETHODIMP CTSParserSourceFilter::Stop()
 //	HRESULT hr = CSource::Stop();
 	HRESULT hr = CBaseFilter::Stop();
 
-	m_pTunerEvent->UnRegisterForTunerEvents();
+	if (m_pTunerEvent)
+		m_pTunerEvent->UnRegisterForTunerEvents();
+
 	m_pFileReader->CloseFile();
 	m_pFileDuration->CloseFile();
 
@@ -2988,10 +2995,12 @@ STDMETHODIMP CTSParserSourceFilter::SetNPSlave(WORD NPSlave)
 
 HRESULT CTSParserSourceFilter::set_TunerEvent(void)
 {
-	if (GetFilterGraph() && SUCCEEDED(m_pTunerEvent->HookupGraphEventService(GetFilterGraph())))
-	{
-		m_pTunerEvent->RegisterForTunerEvents();
-	}
+	if (m_pTunerEvent)
+		if (GetFilterGraph() && SUCCEEDED(m_pTunerEvent->HookupGraphEventService(GetFilterGraph())))
+		{
+			m_pTunerEvent->RegisterForTunerEvents();
+		}
+
 	return NOERROR;
 }
 

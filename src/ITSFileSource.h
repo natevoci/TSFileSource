@@ -27,6 +27,8 @@
 *  bear and nate can be reached on the forums at
 *    http://forums.dvbowners.com/
 */
+#ifndef ITSFILESOURCE_H
+#define ITSFILESOURCE_H
 
 
 // {559E6E81-FAC4-4EBC-9530-662DAA27EDC2}
@@ -148,4 +150,4 @@ DECLARE_INTERFACE_(ITSFileSource, IUnknown) //compatable to 2.0.1.7 official rel
 
 
 };
-
+#endif
