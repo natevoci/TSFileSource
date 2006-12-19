@@ -98,9 +98,8 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
-	m_pTunerEvent = NULL;
 	m_pTunerEvent = new TunerEvent(this);
-		set_TunerEvent();
+
 	m_pRegStore = new CRegStore("SOFTWARE\\TSFileSource");
 	m_pSettingsStore = new CSettingsStore();
 
@@ -922,7 +921,9 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 		}
 
-//		set_TunerEvent();
+		// Check if Enabled
+		if (m_pDemux->get_NPControl() || m_pDemux->get_NPSlave())
+			set_TunerEvent();
 
 		if (!m_bThreadRunning && CAMThread::ThreadExists())
 			CAMThread::CallWorker(CMD_RUN);
@@ -987,7 +988,9 @@ HRESULT CTSFileSourceFilter::Pause()
 			}
 		}
 
-//		set_TunerEvent();
+		// Check if Enabled
+		if (m_pDemux->get_NPControl() || m_pDemux->get_NPSlave())
+			set_TunerEvent();
 
 		if (!m_bThreadRunning && CAMThread::ThreadExists())
 			CAMThread::CallWorker(CMD_PAUSE);

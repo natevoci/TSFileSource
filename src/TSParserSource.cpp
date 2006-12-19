@@ -117,7 +117,6 @@ CTSParserSourceFilter::CTSParserSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 		return;
 	}
 
-//	m_pTunerEvent = NULL;
 	m_pTunerEvent = new TunerEvent((CTSFileSourceFilter*)this);
 	m_pRegStore = new CRegStore("SOFTWARE\\TSParserSource");
 	m_pSettingsStore = new CSettingsStore();
@@ -1085,7 +1084,9 @@ STDMETHODIMP CTSParserSourceFilter::Run(REFERENCE_TIME tStart)
 			m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 		}
 
-		set_TunerEvent();
+		// Check if Enabled
+		if (m_pDemux->get_NPControl() || m_pDemux->get_NPSlave())
+			set_TunerEvent();
 
 		if (!m_bThreadRunning && CAMThread::ThreadExists())
 			CAMThread::CallWorker(CMD_RUN);
@@ -1153,7 +1154,9 @@ HRESULT CTSParserSourceFilter::Pause()
 			}
 		}
 
-		set_TunerEvent();
+		// Check if Enabled
+		if (m_pDemux->get_NPControl() || m_pDemux->get_NPSlave())
+			set_TunerEvent();
 
 		if (!m_bThreadRunning && CAMThread::ThreadExists())
 			CAMThread::CallWorker(CMD_PAUSE);
