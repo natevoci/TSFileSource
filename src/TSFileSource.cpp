@@ -135,7 +135,7 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 		CAMThread::CallWorker(CMD_EXIT);
 		CAMThread::Close();
 	}
-
+/*
 	//Clear the filter list;
 	POSITION pos = m_FilterRefList.GetHeadPosition();
 	while (pos){
@@ -146,7 +146,7 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 		m_FilterRefList.Remove(pos);
 		pos = m_FilterRefList.GetHeadPosition();
 	}
-
+*/
 	if (m_pMpeg2DataParser)
 	{
 		m_pMpeg2DataParser->ReleaseFilter();
