@@ -1228,7 +1228,6 @@ seekFunctions.PrintTime(TEXT("setPositions/PositioningBitsMask"), (__int64) *pCu
 				if (CurrentFlags & AM_SEEKING_ReturnTime)
 					*pCurrent  = rtCurrent;
 
-/////////////////////////m_pTSFileSourceFilter->RefreshPids();
 ::OutputDebugString(TEXT("setPositions CSourceSeeking::SetPositions() pre seeklock\n"));
 //				CAutoLock lock(&m_SeekLock);
 				return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
@@ -1242,6 +1241,42 @@ seekFunctions.PrintTime(TEXT("setPositions/PositioningBitsMask"), (__int64) *pCu
 	return CSourceSeeking::SetPositions(pCurrent, CurrentFlags, pStop, StopFlags);
 }
 
+STDMETHODIMP CTSFileSourcePin::GetDuration(LONGLONG *pDuration)
+{
+	CAutoLock seekLock(&m_SeekLock);
+	CheckPointer(pDuration,E_POINTER);
+
+	if(!m_pTSFileSourceFilter->m_pFileReader)
+	{
+		if (m_rtDuration)
+		{
+			if (m_bGetAvailableMode)
+				*pDuration = max(0,(__int64)(positionFunctions.SubConvertPCRtoRT(m_IntEndTimePCR, m_IntBaseTimePCR)));
+			else
+				*pDuration = max(0,(__int64)(positionFunctions.SubConvertPCRtoRT(m_IntEndTimePCR, m_IntStartTimePCR)));
+
+			return S_OK;
+		}
+		else
+			return CSourceSeeking::GetDuration(pDuration);
+	}
+
+	//Get the FileReader Type
+	WORD bMultiMode;
+	m_pTSFileSourceFilter->m_pFileReader->get_ReaderMode(&bMultiMode);
+
+	//Do MultiFile timeshifting mode
+	if(bMultiMode)
+	{
+		if (m_bGetAvailableMode)
+			*pDuration = max(0,(__int64)(positionFunctions.SubConvertPCRtoRT(m_IntEndTimePCR, m_IntBaseTimePCR)));
+		else
+			*pDuration = max(0,(__int64)(positionFunctions.SubConvertPCRtoRT(m_IntEndTimePCR, m_IntStartTimePCR)));
+
+		return S_OK;
+	}
+	return CSourceSeeking::GetDuration(pDuration);
+}
 
 STDMETHODIMP CTSFileSourcePin::GetAvailable(LONGLONG *pEarliest, LONGLONG *pLatest)
 {

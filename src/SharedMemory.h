@@ -78,6 +78,8 @@ public:
 	virtual ~SharedMemory();
 
 	HRESULT Destroy();
+	void SetBuffOvld(BOOL bBuffOvld);
+	BOOL GetBuffOvld();
 	void SetShareSize(__int64 maxFileSize);
 	BOOL GetShareMode();
 	void SetShareMode(BOOL bShareMode);
@@ -168,6 +170,7 @@ protected:
 
 	BOOL m_bSharedMemory;
 	__int64 m_maxFileSize;
+	BOOL m_bBuffOvld;
 };
 
 #endif

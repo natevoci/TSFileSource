@@ -340,13 +340,52 @@ HRESULT MultiFileWriter::ReuseTSFile()
 		return hr;
 	}
 
-	// Check if file is being read by something.
-	if (IsFileLocked(pFilename) != TRUE)
+	int count = 50;
+	while (count > 0)
 	{
-		TCHAR sz[MAX_PATH];
-		sprintf(sz, "%S", pFilename);
-		DeleteFile(sz);
-	}
+		// Check if file is being read by something.
+		if (IsFileLocked(pFilename) != TRUE)
+		{
+			TCHAR sz[MAX_PATH];
+			sprintf(sz, "%S", pFilename);
+			if (!DeleteFile(sz))
+				continue;
+
+			// Check if we are above the minimun buffer size
+			if ((long)m_tsFileNames.size() > m_minTSFiles)
+			{
+				// Check if the next file is being read by something.
+				pFilename = m_tsFileNames.at(1);
+				if (IsFileLocked(pFilename) != TRUE)
+				{
+					//If the next file is free then drop the first excess file and set the next to be re-used 
+					sprintf(sz, "%S", pFilename);
+					if (DeleteFile(sz))
+					{
+						// if deleted ok then then delete the first on the list and move to the next filename
+						pFilename = m_tsFileNames.at(0);
+						sprintf(sz, "%S", pFilename);
+						delete[] pFilename;
+						m_tsFileNames.erase(m_tsFileNames.begin());
+						m_filesRemoved++;
+					}
+
+					// if move to the next filename
+					pFilename = m_tsFileNames.at(0);
+					if FAILED(hr = m_pCurrentTSFile->SetFileName(pFilename))
+					{
+						::OutputDebugString(TEXT("Failed to set filename to reuse old file\n"));
+						return hr;
+					}
+				}
+				else //restore file name if were only able to re-use the first file in the list
+					pFilename = m_tsFileNames.at(0);
+			}
+			break;
+		}
+		Sleep(10);
+		count--;
+	};
 
 	if FAILED(hr = m_pCurrentTSFile->OpenFile())
 	{

@@ -39,7 +39,7 @@ CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 	m_lTSBufferItemSize = 65536/4;//188000;
 	m_PATVersion = 0;
 	m_ParserLock = FALSE;
-
+	m_loopCount = 20;
 	debugcount = 0;
 }
 
@@ -70,6 +70,7 @@ void CTSBuffer::Clear()
 	m_lItemOffset = 0;
 	m_pPidParser->m_PATVersion = 0;
 	m_PATVersion = 0;
+	m_loopCount = 2;
 }
 
 long CTSBuffer::Count()
@@ -115,24 +116,27 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			m_pFileReader->get_ReadOnly(&wReadOnly);
 			if (wReadOnly && !bIgnoreDelay)
 			{
-				int count = 20; // 2 second max delay
-				while (ulBytesRead < (ULONG)m_lTSBufferItemSize && count) 
+				m_loopCount = max(2, m_loopCount);
+				m_loopCount = min(20, m_loopCount);
+//				int count = 220; // 2 second max delay
+				while (ulBytesRead < (ULONG)m_lTSBufferItemSize && m_loopCount) 
 				{
 //					::OutputDebugString(TEXT("TSBuffer::Require() Waiting for file to grow.\n"));
 
 					WORD bDelay = 0;
 					m_pFileReader->get_DelayMode(&bDelay);
-					count--;
+					m_loopCount--;
 
 					if (bDelay > 0)
 					{
 						Sleep(2000);
-						count = 0;
+						m_loopCount = 0;
 					}
 					else
 					{
-						if (!count)
+						if (!m_loopCount)
 						{
+							m_loopCount = 20;
 							delete[] newItem;
 							return hr;
 						}
@@ -142,14 +146,16 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 					ULONG ulNextBytesRead = 0;				
 					m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
 					HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulNextBytesRead);
-					if (FAILED(hr) && !count){
+					if (FAILED(hr) && !m_loopCount){
 
+						m_loopCount = 20;
 						delete[] newItem;
 						return hr;
 					}
 
-					if (((ulNextBytesRead == 0) | (ulNextBytesRead == ulBytesRead)) && !count){
+					if (((ulNextBytesRead == 0) | (ulNextBytesRead == ulBytesRead)) && !m_loopCount){
 
+						m_loopCount = 20;
 						delete[] newItem;
 						return E_FAIL;
 					}
@@ -162,9 +168,9 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 				delete[] newItem;
 				return E_FAIL;
 			}
-
 		}
 
+		m_loopCount = 20;
 		m_pPidParser->pidArray.Clear();
 		ULONG pos = 0;
 		hr = S_OK;

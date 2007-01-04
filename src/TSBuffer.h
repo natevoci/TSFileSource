@@ -47,6 +47,7 @@ public:
 	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
 	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
 	BOOL CheckUpdateParser(int ver);
+	int m_loopCount;
 
 protected:
 	FileReader *m_pFileReader;
@@ -60,6 +61,7 @@ protected:
 	int debugcount;
 	int m_PATVersion;
 	int m_ParserLock;
+
 };
 
 #endif

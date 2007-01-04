@@ -76,6 +76,7 @@ public:
 	STDMETHODIMP SetPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags);
 	STDMETHODIMP GetAvailable(LONGLONG *pEarliest, LONGLONG *pLatest);
+	STDMETHODIMP GetDuration(LONGLONG *pDuration);
 
 	// CSourcePosition
 	STDMETHODIMP get_CurrentPosition(REFTIME * pllTime);
