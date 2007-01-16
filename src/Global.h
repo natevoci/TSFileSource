@@ -39,7 +39,7 @@
 #endif
 
 #ifndef FILE_START_POS_TS
-#define FILE_START_POS_TS 500000 //Minimum file position to begin parsing for TS Mode
+#define FILE_START_POS_TS 499892 //Minimum file position to begin parsing for TS Mode
 #endif
 
 #ifndef RT_FILE_START_TS
@@ -55,7 +55,7 @@
 #endif
 
 #ifndef MIN_FILE_SIZE
-#define MIN_FILE_SIZE 2000000 //Minimum filesize to parse
+#define MIN_FILE_SIZE 1999944 //Minimum filesize to parse
 #endif
 
 #ifndef RT_05_SECOND

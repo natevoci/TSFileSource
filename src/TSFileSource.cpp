@@ -276,7 +276,7 @@ void CTSFileSourceFilter::UpdateThreadProc(void)
 //			Sleep (1000);
 		}
 
-		Sleep(100);
+//		Sleep(100);
 	}
 	m_WriteThreadActive = FALSE;
 }

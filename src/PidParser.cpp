@@ -356,7 +356,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	__int64 fileStart, filelength;
 	ULONG ulDataRead = 0;
 	pFileReader->GetFileSize(&fileStart, &filelength);
-	ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
+	ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE, filelength);
 
 	{
 		fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
@@ -625,7 +625,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				int curr_sid = pidArray[i].sid;
 
 				a = ulDataLength - m_PacketSize;
-				while (pids.pmt != curr_pmt && hr == S_OK)
+				while (hr == S_OK)
 				{
 					//search at the head of the file
 					hr = FindSyncByte(this, pData, ulDataLength, &a, -1);
@@ -635,8 +635,9 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 					pids.Clear();
 					if (ParsePMT(this, pData, ulDataLength, a) == S_OK)
 					{
-						//Check PMT & SID matches program
-						if (pids.pmt == curr_pmt && pids.sid == curr_sid && pmtfound > 0)
+						pmtfound++;
+						//Check PMT & SID matches program & only do second occurance
+						if ((pids.pmt == curr_pmt) && (pids.sid == curr_sid) && (pmtfound > 1))
 						{
 							//Search for valid A/V pids
 							if (IsValidPMT(pData, ulDataLength) == S_OK)
@@ -647,23 +648,24 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 								i++;
 								break;
 							}
-							pids.pmt = 0;
-							pids.sid = 0;
-							break;
-						}
 
-						if (pids.pmt == curr_pmt && pids.sid == curr_sid)
-						{
-							pmtfound++;
-							pids.pmt = 0;
-							pids.sid = 0;
+							// If we've found 5 invalid PMT's then we give up
+							if (pmtfound > 6)
+							{
+								pids.pmt = 0;
+								pids.sid = 0;
+								break;
+							}
 						}
 					}
 					a -= m_PacketSize;
 				};
 
-				if (pids.pmt != curr_pmt || pids.sid != curr_sid || hr != S_OK) //Make sure we have a correct packet
+				// We remove the program from the pidarray here because it's not in the TS
+				if ((pids.pmt != curr_pmt) || (pids.sid != curr_sid) || (hr != S_OK)) //Make sure we have a correct packet
 					pidArray.RemoveAt(i);
+				else
+					i++;
 			}
 		}
 
@@ -2108,6 +2110,10 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 
 	pFileReader->GetFileSize(&fileStart, &filelength);
 	filelength -= 100000;
+
+	//Align with sync byte (assuming first byte of the file is a sync byte)
+	filelength -= filelength % m_PacketSize;
+
 	__int64 endFilePos = filelength;
 	m_fileLenOffset = filelength;
 	m_fileStartOffset = get_StartOffset();// skip faulty header 
@@ -2180,7 +2186,12 @@ REFERENCE_TIME PidParser::GetFileDuration(PidInfo *pPids, FileReader *pFileReade
 			m_fileStartOffset = endFilePos;
 		}
 		else
+		{
 			m_fileStartOffset = m_fileStartOffset + 100000;
+
+			//Align with sync byte (assuming first byte of the file is a sync byte)
+			m_fileStartOffset -= m_fileStartOffset % m_PacketSize;
+		}
 
 		//If unable to find any pcr's so don't go again
 		if (pPids->start == 0 || pPids->end == 0){
@@ -2895,29 +2906,45 @@ HRESULT ParserFunctions::FindSyncByte(PidParser *pPidParser, PBYTE pbData, ULONG
 		return E_FAIL;
 	}
 
+	int offsetBy = 0;
 	//Set for Transport Pin Mode
 	while ((*a >= 0) && (*a < ulDataLength))
 	{
 		if (pbData[*a] == 0x47 && (pbData[*a+1]&0x80) == 0)
 		{
+			HRESULT hr = S_FALSE;
 			if (*a+pPidParser->m_PacketSize < ulDataLength)
 			{
 				if (pbData[*a+pPidParser->m_PacketSize] == 0x47 && (pbData[*a+1+pPidParser->m_PacketSize]&0x80) == 0)
-					return S_OK;
+					hr = S_OK;
 			}
 			else
 			{
 				if (step > 0)
 					return E_FAIL;
 
-				if (*a-pPidParser->m_PacketSize > 0)
+				else if (*a-pPidParser->m_PacketSize > 0)
 				{
 					if (pbData[*a-pPidParser->m_PacketSize] == 0x47 && (pbData[*a+1-pPidParser->m_PacketSize]&0x80) == 0)
-						return S_OK;
+						hr = S_OK;
 				}
+			}
+
+			if (hr != S_FALSE)
+			{
+#ifdef DEBUG
+				if (offsetBy > 0)
+				{
+					TCHAR szout[100];
+					wsprintf(szout, TEXT("FindSyncByte Offset By - %i\n"), offsetBy);
+					::OutputDebugString(szout);
+				}
+#endif
+				return hr;
 			}
 		}
 		*a += step;
+		offsetBy++;
 	}
 	return E_FAIL;
 }

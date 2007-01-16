@@ -83,11 +83,11 @@ public:
 	HRESULT ChangeStart();
 	HRESULT ChangeStop();
 	HRESULT ChangeRate();
-	void ClearBuffer(void);
 	void UpdateFromSeek(BOOL updateStartPosition = FALSE);
 
 	HRESULT setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags);
+	HRESULT SetAccuratePos2(REFERENCE_TIME seektime);
 	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
 	HRESULT UpdateDuration(FileReader *pFileReader);
 	void WaitPinLock(void);
@@ -167,6 +167,8 @@ protected:
 	int m_PinTypeSave;
 	BOOL m_bGetAvailableMode;
 	__int64 m_currPosition;
+
+	BYTE *m_pcrSeekData;
 
 	ParserFunctions parserFunctions;
 	ParserFunctions fillFunctions;
