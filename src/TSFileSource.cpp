@@ -38,6 +38,7 @@
 #include "TSFileSource.h"
 #include "TSFileSourceGuids.h"
 #include "TunerEvent.h"
+#include "LogProfiler.h"
 #include "global.h"
 
 
@@ -663,6 +664,8 @@ STDMETHODIMP CTSFileSourceFilter::GetLatency(REFERENCE_TIME *prtLatency)
 
 STDMETHODIMP  CTSFileSourceFilter::Count(DWORD *pcStreams) //IAMStreamSelect
 {
+	Profiler profile(L"CTSFileSourceFilter::Count");
+
 	if(!pcStreams)
 		return E_INVALIDARG;
 
@@ -690,6 +693,8 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 						IUnknown **ppObject,
 						IUnknown **ppUnk) //IAMStreamSelect
 {
+	Profiler profile(L"CTSFileSourceFilter::Info");
+
 	CAutoLock SelectLock(&m_SelectLock);
 
 	//Check if file has been parsed
@@ -753,6 +758,8 @@ STDMETHODIMP  CTSFileSourceFilter::Info(
 
 STDMETHODIMP  CTSFileSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStreamSelect
 {
+	Profiler profile(L"CTSFileSourceFilter::Enable");
+
 	CAutoLock SelectLock(&m_SelectLock);
 
 	//Test if ready
@@ -879,6 +886,8 @@ BOOL CTSFileSourceFilter::is_Active(void)
 
 STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 {
+	Profiler profile(L"CTSFileSourceFilter::Run");
+
 	CAutoLock cObjectLock(m_pLock);
 
 	if(!is_Active())
@@ -935,6 +944,8 @@ STDMETHODIMP CTSFileSourceFilter::Run(REFERENCE_TIME tStart)
 
 HRESULT CTSFileSourceFilter::Pause()
 {
+	Profiler profile(L"CTSFileSourceFilter::Pause");
+
 //::OutputDebugString(TEXT("Pause In \n"));
 	CAutoLock cObjectLock(m_pLock);
 
@@ -967,7 +978,7 @@ HRESULT CTSFileSourceFilter::Pause()
 		if (m_pPidParser->pids.pcr){ 
 //***********************************************************************************************
 			m_pPin->m_DemuxLock = TRUE;
-			m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
+			//m_pPin->setPositions(&start, AM_SEEKING_AbsolutePositioning , &stop, AM_SEEKING_NoPositioning);
 			m_pPin->m_DemuxLock = FALSE;
 //			m_pPin->m_IntBaseTimePCR = m_pPidParser->pids.start;
 			m_pPin->m_IntStartTimePCR = m_pPidParser->pids.start;
@@ -1003,6 +1014,8 @@ HRESULT CTSFileSourceFilter::Pause()
 
 STDMETHODIMP CTSFileSourceFilter::Stop()
 {
+	Profiler profile(L"CTSFileSourceFilter::Stop");
+
 	CAutoLock lock(&m_Lock);
 	CAutoLock cObjectLock(m_pLock);
 
@@ -1022,6 +1035,8 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 
 HRESULT CTSFileSourceFilter::FileSeek(REFERENCE_TIME seektime)
 {
+	Profiler profile(L"CTSFileSourceFilter::FileSeek");
+
 	if (m_pFileReader->IsFileInvalid())
 	{
 		return S_FALSE;
@@ -1088,12 +1103,16 @@ STDMETHODIMP CTSFileSourceFilter::GetPages(CAUUID *pPages)
 
 STDMETHODIMP CTSFileSourceFilter::Load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt)
 {
+	Profiler profile(L"CTSFileSourceFilter::Load");
+
 	CAutoLock SelectLock(&m_SelectLock);
 	return load(pszFileName, pmt);
 }
 
 HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt)
 {
+	Profiler profile(L"CTSFileSourceFilter::load");
+
 	// Is this a valid filename supplied
 	CheckPointer(pszFileName,E_POINTER);
 
@@ -1137,6 +1156,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	}
 
 	HRESULT hr;
+
+	profile.AddTimeStamp(L"Initial Setup");
 
 	//
 	// Check & create a NetSource Filtergraph and play the file 
@@ -1203,6 +1224,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			netArray[pos].playing = FALSE;
 	}
 
+	profile.AddTimeStamp(L"Network Setup");
+
 	//Jump to a different Load method if already been set.
 	if (m_bThreadRunning || is_Active() || m_pPin->CBasePin::IsConnected())
 	{
@@ -1210,8 +1233,11 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 		if(wFileName)
 			delete[] wFileName;
 
+		profile.AddTimeStamp(L"Reload");
+
 		return hr;
 	}
+
 
 	BoostThread Boost;
 
@@ -1264,11 +1290,15 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	//Get Audio 2 Mode Mode 
 	BOOL bAudio2Mode = m_pDemux->get_MPEG2Audio2Mode();
 
+	profile.AddTimeStamp(L"Load Settings");
+
 	delete m_pStreamParser;
 	delete m_pDemux;
 	delete m_pPidParser;
 	delete m_pFileReader;
 	delete m_pFileDuration;
+
+	profile.AddTimeStamp(L"Delete Old Objects");
 
 	long length = wcslen(wFileName);
 	if ((length < 9) || (_wcsicmp(wFileName+length-9, L".tsbuffer") != 0))
@@ -1287,6 +1317,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
+
+	profile.AddTimeStamp(L"Create New Objects");
 
 	// Load Registry Settings data
 	GetRegStore("default");
@@ -1320,6 +1352,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 		m_pDemux->set_NPSlave(bNPSlave);
 		m_pDemux->set_NPControl(bNPControl);
 		m_pDemux->set_MPEG2Audio2Mode(bAudio2Mode);
+
+		profile.AddTimeStamp(L"pmt");
 	}
 
 	hr = m_pFileReader->SetFileName(wFileName);
@@ -1349,11 +1383,17 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 		}
 	}
 
+	profile.AddTimeStamp(L"File Opened");
+
 	CAMThread::Create();			 //Create our GetDuration thread
 	if (CAMThread::ThreadExists())
 		CAMThread::CallWorker(CMD_INIT); //Initalize our GetDuration thread
 
+	profile.AddTimeStamp(L"GetDuration Thread Created");
+
 	set_ROTMode();
+
+	profile.AddTimeStamp(L"ROT mode set");
 
 	__int64 fileStart;
 	__int64	fileSize = 0;
@@ -1432,10 +1472,14 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 			NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);	
 		}
 
+		profile.AddTimeStamp(L"Cold Start");
+
 		return S_OK;
 	}
 
 	m_pFileReader->setFilePointer(m_pPidParser->get_StartOffset(), FILE_BEGIN);
+
+	profile.AddTimeStamp(L"Before RefreshPids");
 
 	RefreshPids();
 
@@ -1486,6 +1530,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 	m_pPin->m_IntCurrentTimePCR = m_pPidParser->pids.start;
 	m_pPin->m_IntEndTimePCR = m_pPidParser->pids.end;
 
+	profile.AddTimeStamp(L"Before Seek");
+
 	{
 //		CAutoLock cObjectLock(m_pLock);
 		IMediaSeeking *pMediaSeeking;
@@ -1504,6 +1550,8 @@ HRESULT CTSFileSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pm
 
 STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *pmt)
 {
+	Profiler profile(L"CTSFileSourceFilter::ReLoad");
+
 	HRESULT hr;
 
 	BoostThread Boost;
@@ -1919,6 +1967,7 @@ STDMETHODIMP CTSFileSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA_T
 
 HRESULT CTSFileSourceFilter::LoadPgmReg(void)
 {
+	Profiler profile(L"CTSFileSourceFilter::LoadPgmReg");
 
 	HRESULT hr = S_OK;
 
@@ -1942,6 +1991,8 @@ HRESULT CTSFileSourceFilter::LoadPgmReg(void)
 
 HRESULT CTSFileSourceFilter::Refresh()
 {
+	Profiler profile(L"CTSFileSourceFilter::Refresh");
+
 	CAutoLock lock(&m_Lock);
 
 	if (m_pFileReader)
@@ -1952,6 +2003,8 @@ HRESULT CTSFileSourceFilter::Refresh()
 
 HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 {
+	Profiler profile(L"CTSFileSourceFilter::UpdatePidParser");
+
 	HRESULT hr = S_FALSE;// if an error occurs.
 
 	REFERENCE_TIME start, stop;
@@ -2104,6 +2157,8 @@ HRESULT CTSFileSourceFilter::UpdatePidParser(FileReader *pFileReader)
 
 HRESULT CTSFileSourceFilter::RefreshPids()
 {
+	Profiler profile(L"CTSFileSourceFilter::RefreshPids");
+
 	HRESULT hr = m_pPidParser->ParseFromFile(m_pFileReader->getFilePointer());
 	m_pStreamParser->ParsePidArray();
 	return hr;
@@ -2111,6 +2166,8 @@ HRESULT CTSFileSourceFilter::RefreshPids()
 
 HRESULT CTSFileSourceFilter::RefreshDuration()
 {
+	Profiler profile(L"CTSFileSourceFilter::RefreshDuration");
+
 	return m_pPin->SetDuration(m_pPidParser->pids.dur);
 }
 
@@ -2523,6 +2580,8 @@ STDMETHODIMP CTSFileSourceFilter::SetPgmNumb(WORD PgmNumb)
 
 HRESULT CTSFileSourceFilter::set_PgmNumb(WORD PgmNumb)
 {
+	Profiler profile(L"CTSFileSourceFilter::set_PgmNumb");
+
 	//If only one program don't change it
 	if (m_pPidParser->pidArray.Count() < 1)
 		return NOERROR;
@@ -2585,6 +2644,8 @@ HRESULT CTSFileSourceFilter::set_PgmNumb(WORD PgmNumb)
 
 STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 {
+	Profiler profile(L"CTSFileSourceFilter::NextPgmNumb");
+
 	CAutoLock lock(&m_Lock);
 
 	//If only one program don't change it
@@ -2647,6 +2708,8 @@ STDMETHODIMP CTSFileSourceFilter::NextPgmNumb(void)
 
 STDMETHODIMP CTSFileSourceFilter::PrevPgmNumb(void)
 {
+	Profiler profile(L"CTSFileSourceFilter::PrevPgmNumb");
+
 	CAutoLock lock(&m_Lock);
 
 	//If only one program don't change it

@@ -56,8 +56,6 @@ public:
 	HRESULT ParsePMT(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, long pos);
 
 private:
-	CCritSec  m_ParserLock;
-	CCritSec  m_ConvertLock;
 
 	BOOL CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
 	BOOL CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);

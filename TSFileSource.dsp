@@ -448,6 +448,14 @@ SOURCE=.\src\LogMessageWriter.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\src\LogProfiler.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\LogProfiler.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\src\stdafx.cpp
 # End Source File
 # Begin Source File

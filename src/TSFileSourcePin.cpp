@@ -32,6 +32,7 @@
 #include "TSFileSource.h"
 #include "TSFileSourceGuids.h"
 #include "DvbFormats.h"
+#include "LogProfiler.h"
 #include <math.h>
 #include "global.h"
 
@@ -928,6 +929,8 @@ HRESULT CTSFileSourcePin::FillBuffer(IMediaSample *pSample)
 
 HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 {
+	Profiler profile(L"CTSFileSourcePin::OnThreadStartPlay");
+
 	m_currPosition = m_pTSFileSourceFilter->m_pFileReader->getFilePointer();
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 	m_llPrevPCR = -1;
@@ -967,6 +970,8 @@ HRESULT CTSFileSourcePin::OnThreadStartPlay( )
 
 HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 {
+	Profiler profile(L"CTSFileSourcePin::Run");
+
 	CAutoLock fillLock(&m_FillLock);
 	CAutoLock seekLock(&m_SeekLock);
 
@@ -1047,6 +1052,8 @@ STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
 
 STDMETHODIMP CTSFileSourcePin::GetPositions(LONGLONG *pCurrent, LONGLONG *pStop)
 {
+	Profiler profile(L"CTSFileSourcePin::GetPositions");
+
 //::OutputDebugString(TEXT("GetPositions In\n"));
 	if (pCurrent)
 	{
@@ -1126,6 +1133,8 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 			     , LONGLONG *pStop, DWORD StopFlags)
 {
 ::OutputDebugString(TEXT("SetPositions In\n"));
+	Profiler profile(L"CTSFileSourcePin::SetPositions");
+
 	if(!m_rtDuration)
 		return E_FAIL;
 
@@ -1191,7 +1200,7 @@ STDMETHODIMP CTSFileSourcePin::SetPositions(LONGLONG *pCurrent, DWORD CurrentFla
 HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags)
 {
-	__int64 startSeekTime = timeGetTime();
+	Profiler profile(L"CTSFileSourcePin::setPositions");
 
 	seekFunctions.PrintTime(TEXT("setPositions In"), (__int64) *pCurrent, 10000, &debugcount);
 
@@ -1232,7 +1241,10 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			m_bSeeking = TRUE;
 
 			if(m_pTSFileSourceFilter->is_Active() && !m_DemuxLock)
+			{
 				SetDemuxClock(NULL);
+				profile.AddTimeStamp(L"SetDemuxClock");
+			}
 
 			//Test if parser Locked
 			// What is happening here if m_ParsingLock is true??
@@ -1252,20 +1264,22 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			m_LastMultiFileEnd = 0;
 
 			if (m_pTSFileSourceFilter->IsActive())
+			{
 				DeliverBeginFlush();
+				profile.AddTimeStamp(L"DeliverBeginFlush");
+			}
 
 			CSourceStream::Stop();
+			profile.AddTimeStamp(L"CSourceStream::Stop");
 
 			m_DataRate = m_pTSFileSourceFilter->m_pPidParser->pids.bitrate;
 			m_llPrevPCR = -1;
 
 			//m_pTSBuffer->Clear();		// this is not needed because it's cleared in OnThreadStartPlay 
 
-			__int64 preSetAccuratePosSeekTime = timeGetTime();
-
 			SetAccuratePos2(rtCurrent);
 
-			__int64 postSetAccuratePosSeekTime = timeGetTime();
+			profile.AddTimeStamp(L"SetAccuratePos");
 
 			if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
 			{
@@ -1278,19 +1292,17 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			::OutputDebugString(TEXT("setPositions pre DeliverEndFlush\n"));
 			m_bSeeking = FALSE;
 			if (m_pTSFileSourceFilter->IsActive())
+			{
 				DeliverEndFlush();
+				profile.AddTimeStamp(L"DeliverEndFlush");
+			}
 
 			::OutputDebugString(TEXT("setPositions pre CSourceStream::Run()\n"));
 			CSourceStream::Run();
+			profile.AddTimeStamp(L"CSourceStream::Run");
+
 			if (CurrentFlags & AM_SEEKING_ReturnTime)
 				*pCurrent  = rtCurrent;
-
-
-			__int64 endSeekTime = timeGetTime();
-			seekFunctions.PrintLongLong(TEXT("PreSetAccuratePosSeekTime"), (__int64) (preSetAccuratePosSeekTime-startSeekTime), &debugcount);
-			seekFunctions.PrintLongLong(TEXT("PostSetAccuratePosSeekTime"), (__int64) (postSetAccuratePosSeekTime-preSetAccuratePosSeekTime), &debugcount);
-			seekFunctions.PrintLongLong(TEXT("EndSeekTime"), (__int64) (endSeekTime-postSetAccuratePosSeekTime), &debugcount);
-
 
 			return CSourceSeeking::SetPositions(&rtCurrent, CurrentFlags, pStop, StopFlags);
 		}
@@ -1427,6 +1439,8 @@ HRESULT CTSFileSourcePin::ChangeStop()
 
 HRESULT CTSFileSourcePin::ChangeRate()
 {
+	Profiler profile(L"CTSFileSourcePin::ChangeRate");
+
 	REFERENCE_TIME start, stop;
 	GetPositions(&start, &stop);
 	IMediaSeeking *pMediaSeeking;
@@ -1483,6 +1497,8 @@ void CTSFileSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 
 HRESULT CTSFileSourcePin::SetAccuratePos2(REFERENCE_TIME seektime)
 {
+	Profiler profile(L"CTSFileSourcePin::SetAccuratePos2");
+
 	seekFunctions.PrintTime(TEXT("seekin"), (__int64) seektime, 10000, &debugcount);
 	BoostThread Boost;
 
@@ -1663,6 +1679,8 @@ HRESULT CTSFileSourcePin::SetAccuratePos2(REFERENCE_TIME seektime)
 
 HRESULT CTSFileSourcePin::SetAccuratePos(REFERENCE_TIME seektime)
 {
+	Profiler profile(L"CTSFileSourcePin::SetAccuratePos");
+
 seekFunctions.PrintTime(TEXT("seekin"), (__int64) seektime, 10000, &debugcount);
 	BoostThread Boost;
 
@@ -1959,6 +1977,8 @@ seekFunctions.PrintTime(TEXT("SEEK ERROR AT END"), (__int64)pcrPos, 90, &debugco
 
 HRESULT CTSFileSourcePin::UpdateDuration(FileReader *pFileReader)
 {
+	Profiler profile(L"CTSFileSourcePin::UpdateDuration");
+
 	HRESULT hr = E_FAIL;
 
 //***********************************************************************************************
@@ -3119,3 +3139,4 @@ HRESULT CTSFileSourcePin::RenderOutputPin(IBaseFilter *pFilter)
 	}
 	return hr;
 }
+

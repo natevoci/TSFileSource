@@ -30,6 +30,7 @@
 
 #include <streams.h>
 #include "PidParser.h"
+#include "LogProfiler.h"
 #include "Global.h"
 #include <math.h>
 
@@ -299,6 +300,8 @@ HRESULT PidParser::ParsePinMode(__int64 fileStartPointer)
 
 HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 {
+	Profiler profile(L"ParseFromFile");
+
 	HRESULT hr = S_OK;
 
 	if (m_pFileReader->IsFileInvalid())
@@ -352,6 +355,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	m_ProgPinMode = FALSE; //Set to Transport Stream Mode
 	m_AsyncMode = FALSE; //Set for control by filter
 
+	profile.AddTimeStamp(L"Initial Setup");
+
 	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
 	__int64 fileStart, filelength;
 	ULONG ulDataRead = 0;
@@ -368,6 +373,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 
 		pFileReader->Read(pData, ulDataLength, &ulDataRead);
 	}
+
+	profile.AddTimeStamp(L"Read data from file");
 
 	if (ulDataRead < 1)
 	{
@@ -421,6 +428,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 			m_ProgPinMode = FALSE;
 		}
 	}
+
+	profile.AddTimeStamp(L"Detect media format");
 
 	a = 0;
 	if (ulDataLength > 0)
@@ -572,6 +581,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				}
 			};
 
+			profile.AddTimeStamp(L"PAT Search");
+
 			//if no PAT found Scan for PMTs
 			if (pidArray.Count() == 0)
 			{
@@ -610,6 +621,9 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 						a -= m_PacketSize;
 					}
 				}
+
+				profile.AddTimeStamp(L"PMT Search");
+
 			}
 
 			//Loop through Programs found
@@ -667,6 +681,9 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				else
 					i++;
 			}
+
+			profile.AddTimeStamp(L"Validate PMT's and Get Duration");
+
 		}
 
 		//Search for A/V pids if no NIT or valid PMT found.
@@ -816,6 +833,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 						AddPidArray();
 				}
 			}
+
+			profile.AddTimeStamp(L"Search for A/V pids");
 		}
 
 		//Scan for missing durations & Fix
@@ -831,6 +850,8 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 			}
 		}
 
+		profile.AddTimeStamp(L"Fixed Missing Durations");
+
 //Sleep(1000);
 		//Check for a ONID in file
 		if (m_NitPid && !m_ATSCFlag && !m_ProgPinMode)
@@ -839,6 +860,8 @@ Sleep(10);
 			if (CheckONIDInFile(pFileReader) == S_OK)
 			{
 			}
+
+			profile.AddTimeStamp(L"Check for ONID");
 		}
 
 		//Check for a NID in file
@@ -848,6 +871,8 @@ Sleep(10);
 			if(CheckNIDInFile(pFileReader) != S_OK)
 			{
 			}
+
+			profile.AddTimeStamp(L"Check for NID");
 		}
 
 		//Set the Program Number to beginning & load back pids
@@ -2645,20 +2670,16 @@ void ParserFunctions::PrintLongLong(LPCTSTR lstring, __int64 value, int *debugco
 
 __int64 ParserFunctions::ConvertPCRtoRT(__int64 pcrtime)
 {
-	CAutoLock lock(&m_ConvertLock);
 	return (__int64)(pcrtime / (__int64)9) * (__int64)1000;
 }
 
 __int64 ParserFunctions::SubConvertPCRtoRT(__int64 pcrTime, __int64 pcrSubTime)
 {
-	CAutoLock lock(&m_ConvertLock);
 	return (__int64)((SubtractPCR(pcrTime, pcrSubTime)/ (__int64)9) * (__int64)1000);
 }
 
 __int64 ParserFunctions::SubtractPCR(__int64 pcrTime, __int64 pcrSubTime)
 {
-	CAutoLock lock(&m_ConvertLock);
-
 	if (!pcrSubTime || !pcrTime)
 		return (__int64)(pcrTime - pcrSubTime);
 	else if (pcrTime < pcrSubTime)
@@ -2669,21 +2690,18 @@ __int64 ParserFunctions::SubtractPCR(__int64 pcrTime, __int64 pcrSubTime)
 
 HRESULT ParserFunctions::FindFirstPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos)
 {
-	CAutoLock lock(&m_ParserLock);
 	*pulPos = 0;
 	return FindNextPCR(pPidParser, pData, ulDataLength, pPids, pcrtime, pulPos, 1);
 }
 
 HRESULT ParserFunctions::FindLastPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos)
 {
-	CAutoLock lock(&m_ParserLock);
 	*pulPos = ulDataLength - pPidParser->m_PacketSize;
 	return FindNextPCR(pPidParser, pData, ulDataLength, pPids, pcrtime, pulPos, -1);
 }
 
 HRESULT ParserFunctions::FindNextPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step)
 {
-	CAutoLock lock(&m_ParserLock);
 	HRESULT hr = S_OK;
 
 	*pcrtime = 0;
@@ -2708,7 +2726,6 @@ HRESULT ParserFunctions::FindNextPCR(PidParser *pPidParser, PBYTE pData, ULONG u
 
 HRESULT ParserFunctions::CheckForPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime)
 {
-	CAutoLock lock(&m_ParserLock);
 	if (pPidParser->m_ProgPinMode)
 	{
 		// Get PTS
@@ -2797,7 +2814,6 @@ HRESULT ParserFunctions::CheckForPCR(PidParser *pPidParser, PBYTE pData, ULONG u
 
 HRESULT ParserFunctions::CheckForOPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime)
 {
-	CAutoLock lock(&m_ParserLock);
 	if (((WORD)((0x1F&pData[pos+1])<<8)|(0xFF&pData[pos+2])) == pPids->opcr
 		&& (pData[pos+1]&0xF0) == 0x40)
 	{
@@ -2841,7 +2857,6 @@ HRESULT ParserFunctions::CheckForOPCR(PidParser *pPidParser, PBYTE pData, ULONG 
 
 HRESULT ParserFunctions::FindNextOPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step)
 {
-	CAutoLock lock(&m_ParserLock);
 	HRESULT hr = S_OK;
 
 	*pcrtime = 0;
@@ -2866,7 +2881,6 @@ HRESULT ParserFunctions::FindNextOPCR(PidParser *pPidParser, PBYTE pData, ULONG 
 
 HRESULT ParserFunctions::FindSyncByte(PidParser *pPidParser, PBYTE pbData, ULONG ulDataLength, ULONG* a, int step)
 {
-	CAutoLock lock(&m_ParserLock);
 	//look for Program Pin Mode
 	if (pPidParser->m_ProgPinMode)
 	{
