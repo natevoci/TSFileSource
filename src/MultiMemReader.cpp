@@ -64,9 +64,9 @@ MultiMemReader::~MultiMemReader()
 */
 }
 
-FileReader* MultiMemReader::CreateFileReader()
+IFileReader* MultiMemReader::CreateFileReader()
 {
-	return (FileReader *)new MultiMemReader(m_pSharedMemory);
+	return new MultiMemReader(m_pSharedMemory);
 }
 
 HRESULT MultiMemReader::GetFileName(LPOLESTR *lpszFileName)

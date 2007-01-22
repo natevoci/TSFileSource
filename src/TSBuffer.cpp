@@ -29,33 +29,122 @@
 #include <crtdbg.h>
 #include <math.h>
 #include "global.h"
+#include "FileReader.h"
+#include "MultiFileReader.h"
 
-CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
+#define TSBUFFER_ITEM_SIZE 96256	// 96256 is the least common multiple of 188 and 2048
+
+CTSBuffer::CTSBuffer()
 {
-	m_pPidParser = 	pPidParser;
-	m_pFileReader = NULL;
-	m_pClock = pClock;
+	m_lFilePosition = 0;
 	m_lItemOffset = 0;
-	m_lTSBufferItemSize = 65536/4;//188000;
-	m_PATVersion = 0;
-	m_ParserLock = FALSE;
+	m_lTSBufferItemSize = TSBUFFER_ITEM_SIZE;
 	m_loopCount = 20;
 	debugcount = 0;
+
+	m_pFileReader = new FileReader();
+	m_pParser = new Mpeg2Parser();
 }
 
 CTSBuffer::~CTSBuffer()
 {
 	Clear();
+
+	m_pFileReader->CloseFile();
+	delete m_pFileReader;
+	delete m_pParser;
 }
 
-void CTSBuffer::SetFileReader(FileReader *pFileReader)
+//IFileReader Interface
+
+IFileReader* CTSBuffer::CreateFileReader()
 {
-	if (!pFileReader)
-		return;
-
-	CAutoLock BufferLock(&m_BufferLock);
-	m_pFileReader = pFileReader;
+	return NULL;
 }
+
+HRESULT CTSBuffer::GetFileName(LPOLESTR *lpszFileName)
+{
+	if (m_pFileReader)
+		return m_pFileReader->GetFileName(lpszFileName);
+	
+	*lpszFileName = NULL;
+	return S_OK;
+}
+HRESULT CTSBuffer::SetFileName(LPCOLESTR pszFileName)
+{
+	if (m_pFileReader)
+	{
+		m_pFileReader->CloseFile();
+		delete m_pFileReader;
+	}
+
+	long length = wcslen(pszFileName);
+	if ((length < 9) || (_wcsicmp(pszFileName+length-9, L".tsbuffer") != 0))
+	{
+		m_pFileReader = new FileReader();
+	}
+	else
+	{
+		m_pFileReader = new MultiFileReader();
+	}
+	return m_pFileReader->SetFileName(pszFileName);
+}
+
+HRESULT CTSBuffer::OpenFile()
+{
+	HRESULT hr = m_pFileReader->OpenFile();
+	if (SUCCEEDED(hr))
+		m_lFilePosition = 0;
+	return hr;
+}
+HRESULT CTSBuffer::CloseFile()
+{
+	return m_pFileReader->CloseFile();
+}
+
+HRESULT CTSBuffer::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
+{
+	return E_NOTIMPL;
+}
+HRESULT CTSBuffer::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod)
+{
+	return E_NOTIMPL;
+}
+HRESULT CTSBuffer::GetFileSize(__int64 *pStartPosition, __int64 *pLength)
+{
+	return E_NOTIMPL;
+}
+BOOL CTSBuffer::IsFileInvalid()
+{
+	return m_pFileReader->IsFileInvalid();
+}
+
+DWORD CTSBuffer::SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
+{
+	Clear();
+	HRESULT hr = m_pFileReader->SetFilePointer(llDistanceToMove, dwMoveMethod);
+	if (SUCCEEDED(hr))
+		m_lFilePosition = m_pFileReader->GetFilePointer();
+	return hr;
+}
+__int64 CTSBuffer::GetFilePointer()
+{
+	return m_lFilePosition;
+}
+
+HRESULT CTSBuffer::get_ReadOnly(WORD *ReadOnly)
+{
+	return m_pFileReader->get_ReadOnly(ReadOnly);
+}
+HRESULT CTSBuffer::get_DelayMode(WORD *DelayMode)
+{
+	return m_pFileReader->get_DelayMode(DelayMode);
+}
+HRESULT CTSBuffer::set_DelayMode(WORD DelayMode)
+{
+	return m_pFileReader->set_DelayMode(DelayMode);
+}
+
 
 void CTSBuffer::Clear()
 {
@@ -68,8 +157,6 @@ void CTSBuffer::Clear()
 	m_Array.clear();
 
 	m_lItemOffset = 0;
-	m_pPidParser->m_PATVersion = 0;
-	m_PATVersion = 0;
 	m_loopCount = 2;
 }
 
@@ -92,6 +179,10 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 	if (!m_pFileReader)
 		return E_POINTER;
 
+	if (m_pFileReader->IsFileInvalid())
+		return E_FAIL;
+
+	HRESULT hr = S_OK;
 	CAutoLock BufferLock(&m_BufferLock);
 	long bytesAvailable = Count();
 	if (nBytes <= bytesAvailable)
@@ -103,11 +194,11 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 		ULONG ulBytesRead = 0;
 
 		__int64 currPosition = m_pFileReader->GetFilePointer();
-		HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulBytesRead);
-		if (FAILED(hr)){
-
+		hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulBytesRead);
+		if (FAILED(hr))
+		{
 			delete[] newItem;
-			return hr;
+			break;
 		}
 
 		if (ulBytesRead < (ULONG)m_lTSBufferItemSize) 
@@ -170,49 +261,16 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			}
 		}
 
-		m_loopCount = 20;
-		m_pPidParser->pidArray.Clear();
-		ULONG pos = 0;
-		hr = S_OK;
-		m_ParserLock = TRUE;
-		while (hr == S_OK)
-		{
-			//search at the head of the file
-			hr = m_pPidParser->FindSyncByte(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, &pos, 1);
-			if (hr == S_OK)
-			{
-				//parse next packet for the PAT
-				if (m_pPidParser->ParsePAT(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, pos) == S_OK)
-				{
-//					if (m_PATVersion && m_pPidParser->m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
-					if (m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
-					{
-//						m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
-//						delete[] newItem;
-//						newItem = NULL;
-//						Clear();
-//						bytesAvailable = Count();
-//			m_Array.push_back(newItem);
-//			bytesAvailable += m_lTSBufferItemSize;
-//						return S_OK;
-					}
-					break;
-				}
-			}
-			pos += m_pPidParser->m_PacketSize;
-		};
-
-		m_ParserLock = FALSE;
 		if (newItem)
 		{
 			m_Array.push_back(newItem);
 			bytesAvailable += m_lTSBufferItemSize;
 		}
-
-		m_pFileReader->setBufferPointer();
-
 	}
-	return S_OK;
+
+	OnNewDataAvailable();
+
+	return hr;
 }
 
 HRESULT CTSBuffer::DequeFromBuffer(BYTE *pbData, long lDataLength)
@@ -225,7 +283,7 @@ HRESULT CTSBuffer::DequeFromBuffer(BYTE *pbData, long lDataLength)
 	long bytesWritten = 0;
 	while (bytesWritten < lDataLength)
 	{
-		if(!m_Array.size() || m_Array.size() <= 0)
+		if (m_Array.size() <= 0)
 			return E_FAIL;
 
 		BYTE *item = m_Array.at(0);
@@ -235,6 +293,7 @@ HRESULT CTSBuffer::DequeFromBuffer(BYTE *pbData, long lDataLength)
 
 		bytesWritten += copyLength;
 		m_lItemOffset += copyLength;
+		m_lFilePosition += copyLength;
 
 		if (m_lItemOffset >= m_lTSBufferItemSize)
 		{
@@ -252,7 +311,7 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 		return E_POINTER;
 
 	CAutoLock BufferLock(&m_BufferLock);
-	HRESULT hr = Require(lOffset + lDataLength);
+	HRESULT hr = Require(m_lItemOffset + lOffset + lDataLength);
 	if (FAILED(hr))
 		return hr;
 
@@ -288,19 +347,57 @@ HRESULT CTSBuffer::ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset)
 	return S_OK;
 }
 
-BOOL CTSBuffer::CheckUpdateParser(int ver)
-{
-	if (!m_ParserLock)
-	{
-		if (m_pPidParser->m_PATVersion && ver && m_pPidParser->m_PATVersion != ver)
-		{
-			return TRUE;
-		}
 
-		// Save the vers of current stream
-		if (ver && m_PATVersion != ver)
-			m_PATVersion = ver;
+void CTSBuffer::OnNewDataAvailable()
+{
+	HRESULT hr;
+
+	__int64 parserPosition = m_pParser->GetEndDataPosition();
+	long count = Count();
+
+	if ((parserPosition < m_lFilePosition) || (parserPosition >= (m_lFilePosition + count)))
+	{
+		parserPosition = m_lFilePosition;
 	}
-	return FALSE;
+
+	long lOffset = (parserPosition - m_lFilePosition);
+	long dataLength = count - lOffset;
+
+	BYTE *pData = NULL;
+	m_pParser->GetDataBuffer(parserPosition, dataLength, &pData);
+
+	hr = this->ReadFromBuffer(pData, dataLength, lOffset);
+	if (FAILED(hr))
+		return;
+
+	m_pParser->ParseData(dataLength);
+}
+
+HRESULT CTSBuffer::ParseData()
+{
+	HRESULT hr;
+	long dataLength = Count();
+
+	if (dataLength > 0)
+	{
+		// Parse any data already in the buffer
+		BYTE *pData;
+		m_pParser->GetDataBuffer(m_lFilePosition, dataLength, &pData);
+
+		hr = this->ReadFromBuffer(pData, dataLength, 0);
+		if (FAILED(hr))
+			return hr;
+
+		m_pParser->ParseData(dataLength);
+	}
+
+	long require = dataLength;
+	while (TRUE /* until we have filled all the required PSI information */)
+	{
+		require += TSBUFFER_ITEM_SIZE;
+		Require(require);
+	}
+
+	return S_OK;
 }
 

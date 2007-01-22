@@ -51,9 +51,9 @@ MemReader::~MemReader()
 		delete m_pFileName;
 }
 
-FileReader* MemReader::CreateFileReader()
+IFileReader* MemReader::CreateFileReader()
 {
-	return (FileReader*) new MemReader(m_pSharedMemory);
+	return new MemReader(m_pSharedMemory);
 }
 
 HRESULT MemReader::GetFileName(LPOLESTR *lpszFileName)

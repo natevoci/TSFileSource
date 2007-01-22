@@ -61,7 +61,6 @@ CTSParserSourceFilter::CTSParserSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_bSharedMode(FALSE),
 	m_pInpPin(NULL),
 	m_pPin(NULL),
-	m_pDVBTChannels(NULL),
 	m_WriteThreadActive(FALSE),
 	m_FilterRefList(NAME("MyFilterRefList")),
 	m_pSettingsStore(NULL),
@@ -91,15 +90,6 @@ CTSParserSourceFilter::CTSParserSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	m_pPidParser = new PidParser(m_pFileReader);
 	m_pDemux = new Demux(m_pPidParser, this, &m_FilterRefList);
 	m_pStreamParser = new StreamParser(m_pPidParser, m_pDemux, &netArray);
-
-	m_pMpeg2DataParser = NULL;
-//	m_pMpeg2DataParser = new DVBMpeg2DataParser();
-	m_pDVBTChannels = NULL;
-	if (m_pMpeg2DataParser)
-	{
-		m_pDVBTChannels = new DVBTChannels();
-		m_pMpeg2DataParser->SetDVBTChannels(m_pDVBTChannels);
-	}
 
 	m_pInpPin = new CTSParserInputPin(this, GetOwner(), &m_Lock, phr);
 	if (m_pInpPin == NULL)
@@ -163,13 +153,6 @@ CTSParserSourceFilter::~CTSParserSourceFilter()
 
 		m_FilterRefList.Remove(pos);
 		pos = m_FilterRefList.GetHeadPosition();
-	}
-
-	if (m_pMpeg2DataParser)
-	{
-		m_pMpeg2DataParser->ReleaseFilter();
-		delete m_pMpeg2DataParser;
-		m_pMpeg2DataParser = NULL;
 	}
 
     if (m_dwGraphRegister)
@@ -238,7 +221,7 @@ void CTSParserSourceFilter::UpdateThreadProc(void)
 			rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 		}
 		
-		if (!m_bColdStart && m_pPin->checkUpdateParser(m_pPidParser->m_PATVersion))
+		if (!m_bColdStart)// && m_pPin->checkUpdateParser(m_pPidParser->m_PATVersion))
 		{
 			BOOL isMulticasting = FALSE;
 			for (int pos = 0; pos < netArray.Count(); pos++)
@@ -476,19 +459,7 @@ HRESULT CTSParserSourceFilter::DoProcessingLoop(void)
 						count = 0;
 				}
 			}
-			
-			if(m_State != State_Stopped && !m_pPidParser->get_ProgPinMode())
-			{
-				CComPtr<IBaseFilter>pMpegSections;
-				if (m_pMpeg2DataParser && SUCCEEDED(m_pDemux->GetParserFilter(pMpegSections)))
-				{
-					m_pMpeg2DataParser->SetFilter(pMpegSections);
-					m_pMpeg2DataParser->SetDVBTChannels(m_pDVBTChannels);
-					m_pMpeg2DataParser->StartScan();
-				}
-			}
 
-			
 			//randomly park the file pointer to help minimise HDD clogging
 //			if (rtCurrentTime&1)
 				m_pFileDuration->SetFilePointer(0, FILE_END);
@@ -523,9 +494,6 @@ HRESULT CTSParserSourceFilter::DoProcessingLoop(void)
 		UpdateThread::StopThread(100);
 		m_WriteThreadActive = FALSE;
 	}
-
-	if (m_pMpeg2DataParser)
-		m_pMpeg2DataParser->ReleaseFilter();
 
 	m_bThreadRunning = FALSE;
 
@@ -1214,7 +1182,7 @@ HRESULT CTSParserSourceFilter::FileSeek(REFERENCE_TIME seektime)
 
 		nFileIndex = min(filelength, nFileIndex);
 		nFileIndex = max(m_pPidParser->get_StartOffset(), nFileIndex);
-		m_pFileReader->setFilePointer(nFileIndex, FILE_BEGIN);
+		m_pFileReader->SetFilePointer(nFileIndex, FILE_BEGIN);
 	}
 	return S_OK;
 }
@@ -1602,7 +1570,7 @@ HRESULT CTSParserSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *
 		return S_OK;
 	}
 
-	m_pFileReader->setFilePointer(m_pPidParser->get_StartOffset(), FILE_BEGIN);
+	m_pFileReader->SetFilePointer(m_pPidParser->get_StartOffset(), FILE_BEGIN);
 
 	RefreshPids();
 
@@ -1993,7 +1961,7 @@ STDMETHODIMP CTSParserSourceFilter::ReLoad(LPCOLESTR pszFileName, const AM_MEDIA
 		return S_OK;
 	};
 
-	m_pFileReader->setFilePointer(m_pPidParser->get_StartOffset(), FILE_BEGIN);
+	m_pFileReader->SetFilePointer(m_pPidParser->get_StartOffset(), FILE_BEGIN);
 
 	m_pPidParser->RefreshPids();
 	LoadPgmReg();
@@ -2269,7 +2237,7 @@ HRESULT CTSParserSourceFilter::UpdatePidParser(FileReader *pFileReader)
 
 HRESULT CTSParserSourceFilter::RefreshPids()
 {
-	HRESULT hr = m_pPidParser->ParseFromFile(m_pFileReader->getFilePointer());
+	HRESULT hr = m_pPidParser->ParseFromFile(m_pFileReader->GetFilePointer());
 	m_pStreamParser->ParsePidArray();
 	return hr;
 }

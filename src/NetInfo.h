@@ -27,7 +27,6 @@
 #ifndef NETINFO_H
 #define NETINFO_H
 
-#include <streams.h>
 #include <vector>
 #include <objbase.h>
 #include "NetRender.h"

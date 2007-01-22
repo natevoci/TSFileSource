@@ -28,7 +28,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "TSFileSourceProp.h"
 #include "resource.h"
 #include <string>

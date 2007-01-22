@@ -29,14 +29,41 @@
 
 #include "SharedMemory.h"
 
-class FileReader
+class IFileReader
+{
+public:
+	virtual IFileReader* CreateFileReader() = 0;
+
+	virtual HRESULT GetFileName(LPOLESTR *lpszFileName) = 0;
+	virtual HRESULT SetFileName(LPCOLESTR pszFileName) = 0;
+
+	virtual HRESULT OpenFile() = 0;
+	virtual HRESULT CloseFile() = 0;
+
+	virtual HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes) = 0;
+	virtual HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod) = 0;
+	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pLength) = 0;
+	virtual BOOL IsFileInvalid() = 0;
+
+	virtual DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod) = 0;
+	virtual __int64 GetFilePointer() = 0;
+
+
+	virtual HRESULT get_ReadOnly(WORD *ReadOnly) = 0;
+	virtual HRESULT get_DelayMode(WORD *DelayMode) = 0;
+	virtual HRESULT set_DelayMode(WORD DelayMode) = 0;
+
+};
+
+class FileReader : public IFileReader
 {
 public:
 
+	FileReader();
 	FileReader(SharedMemory* pSharedMemory);
 	virtual ~FileReader();
 
-	virtual FileReader* CreateFileReader();
+	virtual IFileReader* CreateFileReader();
 
 	// Open and write to the file
 	virtual HRESULT GetFileName(LPOLESTR *lpszFileName);
@@ -55,10 +82,10 @@ public:
 	virtual BOOL IsFileInvalid();
 	virtual DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
 	virtual __int64 GetFilePointer();
-	virtual DWORD setFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
-	virtual __int64 getFilePointer();
-	virtual __int64 getBufferPointer();
-	virtual void setBufferPointer();
+//	virtual DWORD setFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
+//	virtual __int64 getFilePointer();
+//	virtual __int64 getBufferPointer();
+//	virtual void setBufferPointer();
 
 	void SetDebugOutput(BOOL bDebugOutput);
 
@@ -72,7 +99,6 @@ protected:
 	__int64 m_fileSize;
 	__int64 m_infoFileSize;
 	__int64 m_fileStartPos;
-	__int64 m_llBufferPointer;	
 
 	BOOL     m_bDebugOutput;
 };

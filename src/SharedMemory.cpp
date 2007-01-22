@@ -59,7 +59,7 @@ SharedMemoryItem::~SharedMemoryItem()
 //////////////////////////////////////////////////////////////////////
 
 SharedMemory::SharedMemory(__int64 maxFileSize) :
-	m_bSharedMemory(TRUE),
+	m_bSharedMemory(FALSE),
 	m_maxFileSize(maxFileSize+sizeof(SharedMemParam)),
 	debugcount(0),
 	m_bBuffOvld(0)

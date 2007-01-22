@@ -28,6 +28,20 @@
 #include "FileReader.h"
 #include "global.h"
 
+FileReader::FileReader() :
+	m_hFile(INVALID_HANDLE_VALUE),
+	m_pFileName(0),
+	m_bReadOnly(FALSE),
+	m_fileSize(0),
+	m_infoFileSize(0),
+	m_fileStartPos(0),
+	m_hInfoFile(INVALID_HANDLE_VALUE),
+	m_bDelay(FALSE),
+	m_bDebugOutput(FALSE)
+{
+	m_pSharedMemory = new SharedMemory(64000);
+}
+
 FileReader::FileReader(SharedMemory* pSharedMemory) :
 	m_pSharedMemory(pSharedMemory), 
 	m_hFile(INVALID_HANDLE_VALUE),
@@ -38,9 +52,10 @@ FileReader::FileReader(SharedMemory* pSharedMemory) :
 	m_fileStartPos(0),
 	m_hInfoFile(INVALID_HANDLE_VALUE),
 	m_bDelay(FALSE),
-	m_llBufferPointer(0),	
 	m_bDebugOutput(FALSE)
 {
+	if (m_pSharedMemory == NULL)
+		m_pSharedMemory = new SharedMemory(64000);
 }
 
 FileReader::~FileReader()
@@ -50,7 +65,7 @@ FileReader::~FileReader()
 		delete m_pFileName;
 }
 
-FileReader* FileReader::CreateFileReader()
+IFileReader* FileReader::CreateFileReader()
 {
 	return new FileReader(m_pSharedMemory);
 }
@@ -174,7 +189,6 @@ HRESULT FileReader::OpenFile()
 			NULL);
 
 	SetFilePointer(0, FILE_BEGIN);
-	m_llBufferPointer = 0;	
 
 	return S_OK;
 
@@ -205,7 +219,6 @@ HRESULT FileReader::CloseFile()
 
 	m_hInfoFile = INVALID_HANDLE_VALUE; // Invalidate the file
 
-	m_llBufferPointer = 0;	
 	return NOERROR;
 
 } // CloseFile
@@ -538,7 +551,7 @@ void FileReader::SetDebugOutput(BOOL bDebugOutput)
 {
 	m_bDebugOutput = bDebugOutput;
 }
-
+/*
 DWORD FileReader::setFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod)
 {
 	//Get the file information
@@ -555,13 +568,4 @@ __int64 FileReader::getFilePointer()
 {
 	return GetFilePointer();
 }
-
-__int64 FileReader::getBufferPointer()
-{
-	return 	m_llBufferPointer;	
-}
-
-void FileReader::setBufferPointer()
-{
-	m_llBufferPointer = GetFilePointer();	
-}
+*/

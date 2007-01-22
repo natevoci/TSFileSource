@@ -44,10 +44,11 @@ class MultiFileReader : public FileReader
 {
 public:
 
-	MultiFileReader(SharedMemory* pSharedMemory = NULL);
+	MultiFileReader();
+	MultiFileReader(SharedMemory* pSharedMemory);
 	virtual ~MultiFileReader();
 
-	virtual FileReader* CreateFileReader();
+	virtual IFileReader* CreateFileReader();
 
 	virtual HRESULT GetFileName(LPOLESTR *lpszFileName);
 	virtual HRESULT SetFileName(LPCOLESTR pszFileName);

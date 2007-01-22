@@ -38,7 +38,7 @@ LogFileWriter::~LogFileWriter()
 		Close();
 }
 
-BOOL LogFileWriter::Open(LPCWSTR filename, BOOL append)
+BOOL LogFileWriter::Open(LPCWSTR filename, BOOL append, BOOL forceExists)
 {
 	USES_CONVERSION;
 
@@ -86,15 +86,21 @@ BOOL LogFileWriter::Open(LPCWSTR filename, BOOL append)
 		strCopy(pPartial, filename, pBackslash - filename);
 
 		HANDLE hDir;
-		hDir = CreateFile(W2T(pPartial), (DWORD) GENERIC_READ, (DWORD) (FILE_SHARE_READ|FILE_SHARE_DELETE), NULL, (DWORD) OPEN_EXISTING, (DWORD) FILE_FLAG_BACKUP_SEMANTICS, NULL);
+		hDir = CreateFile(W2T(pPartial), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 		if (hDir == INVALID_HANDLE_VALUE)
 		{
+			if (forceExists != TRUE)
+			{
+				delete[] pPartial;
+				return FALSE;
+			}
+
 			if (!CreateDirectory(W2T(pPartial), NULL))
 			{
 				delete[] pPartial;
 				return FALSE;
 			}
-			hDir = CreateFile(W2T(pPartial), (DWORD) GENERIC_READ, (DWORD) (FILE_SHARE_READ|FILE_SHARE_DELETE), NULL, (DWORD) OPEN_EXISTING, (DWORD) FILE_FLAG_BACKUP_SEMANTICS, NULL);
+			hDir = CreateFile(W2T(pPartial), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 			if (hDir == INVALID_HANDLE_VALUE)
 			{
 				delete[] pPartial;
@@ -111,21 +117,32 @@ BOOL LogFileWriter::Open(LPCWSTR filename, BOOL append)
 	//Open the file for writing
 	if (append)
 	{
-		m_hFile = CreateFile(W2T(filename), (DWORD) GENERIC_WRITE, (DWORD) NULL, NULL, (DWORD) OPEN_ALWAYS, (DWORD) FILE_ATTRIBUTE_NORMAL, NULL);
-		LARGE_INTEGER li;
-		li.QuadPart = 0;
-		::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, FILE_END);
+		if (forceExists == TRUE)
+			m_hFile = CreateFile(W2T(filename), GENERIC_WRITE, NULL, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		else
+			m_hFile = CreateFile(W2T(filename), GENERIC_WRITE, NULL, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+		if (m_hFile != INVALID_HANDLE_VALUE)
+		{
+			LARGE_INTEGER li;
+			li.QuadPart = 0;
+			::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, FILE_END);
+		}
 	}
 	else
 	{
-		m_hFile = CreateFile(W2T(filename), (DWORD) GENERIC_WRITE, (DWORD) NULL, NULL, (DWORD) CREATE_ALWAYS, (DWORD) FILE_ATTRIBUTE_NORMAL, NULL);
+		if (forceExists == TRUE)
+			m_hFile = CreateFile(W2T(filename), GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		else
+			m_hFile = CreateFile(W2T(filename), GENERIC_WRITE, NULL, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	}
 	return (m_hFile != INVALID_HANDLE_VALUE);
 }
 
 void LogFileWriter::Close()
 {
-	CloseHandle(m_hFile);
+	if (m_hFile != INVALID_HANDLE_VALUE)
+		CloseHandle(m_hFile);
 	m_hFile = INVALID_HANDLE_VALUE;
 }
 
@@ -232,6 +249,21 @@ LogFileWriter& LogFileWriter::operator<< (const LogFileWriterEOL& val)
 
 	DWORD written = 0;
 	WriteFile(m_hFile, "\r\n", 2, &written, NULL);
+	return *this;
+}
+
+//Indent
+LogFileWriter& LogFileWriter::indent(int indent)
+{
+	if (m_hFile == INVALID_HANDLE_VALUE)
+		return *this;
+
+	LPSTR val = new char[indent+1];
+	memset(val, ' ', indent);
+	val[indent] = '\0';
+
+	DWORD written = 0;
+	WriteFile(m_hFile, val, strlen(val), &written, NULL);
 	return *this;
 }
 

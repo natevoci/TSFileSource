@@ -29,38 +29,67 @@
 
 #include <vector>
 #include "FileReader.h"
-#include "TSFileSourceClock.h"
-#include "PidParser.h"
+#include "Mpeg2Parser.h"
 
-class CTSBuffer 
+class CTSBuffer : public IFileReader
 {
 public:
-	CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock);
+	CTSBuffer();
 	virtual ~CTSBuffer();
 
-	void SetFileReader(FileReader *pFileReader);
+	// IFileReader
+	virtual IFileReader* CreateFileReader();
 
-	void Clear();
-	long Count();
-	HRESULT Require(long nBytes, BOOL bIgnoreDelay = FALSE);
+	virtual HRESULT GetFileName(LPOLESTR *lpszFileName);
+	virtual HRESULT SetFileName(LPCOLESTR pszFileName);
 
-	HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
-	HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
-	BOOL CheckUpdateParser(int ver);
+	virtual HRESULT OpenFile();
+	virtual HRESULT CloseFile();
+
+	virtual HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes);
+	virtual HRESULT Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes, __int64 llDistanceToMove, DWORD dwMoveMethod);
+	virtual HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pLength);
+	virtual BOOL IsFileInvalid();
+
+	virtual DWORD SetFilePointer(__int64 llDistanceToMove, DWORD dwMoveMethod);
+	virtual __int64 GetFilePointer();
+
+	virtual HRESULT get_ReadOnly(WORD *ReadOnly);
+	virtual HRESULT get_DelayMode(WORD *DelayMode);
+	virtual HRESULT set_DelayMode(WORD DelayMode);
+
+	// TSBuffer methods
+
+	virtual void Clear();
+	virtual long Count();
+	virtual HRESULT Require(long nBytes, BOOL bIgnoreDelay = FALSE);
+
+	virtual HRESULT DequeFromBuffer(BYTE *pbData, long lDataLength);
+	virtual HRESULT ReadFromBuffer(BYTE *pbData, long lDataLength, long lOffset);
+
+	virtual void OnNewDataAvailable();
+
+	// Parser methods
+	virtual HRESULT ParseData();
+
+private:
 	int m_loopCount;
 
 protected:
-	FileReader *m_pFileReader;
-	CTSFileSourceClock *m_pClock;
-	PidParser *m_pPidParser;
+	IFileReader *m_pFileReader;
+
 	std::vector<BYTE *> m_Array;
+
+	__int64 m_lFilePosition;
 	long m_lItemOffset;
 	CCritSec m_BufferLock;
 
 	long m_lTSBufferItemSize;
 	int debugcount;
-	int m_PATVersion;
-	int m_ParserLock;
+
+
+	BOOL m_bParseData;
+	Mpeg2Parser *m_pParser;
 
 };
 

@@ -53,7 +53,8 @@ class CTSFileSourceFilter;
 #include "StreamParser.h"
 #include "NetRender.h"
 #include "NetInfo.h"
-#include "DVBMpeg2DataParser.h"
+#include "TSBuffer.h"
+#include "TSThread.h"
 #include <comdef.h>
 
 
@@ -86,7 +87,6 @@ private:
 
 	// Overriden to say what interfaces we support where
 	STDMETHODIMP NonDelegatingQueryInterface(REFIID riid, void ** ppv);
-//	STDMETHODIMP_(ULONG) NonDelegatingRelease();
 	HRESULT AddGraphToRot(IUnknown *pUnkGraph, DWORD *pdwRegister); 
 	void RemoveGraphFromRot(DWORD pdwRegister);
 	void set_ROTMode();
@@ -105,16 +105,16 @@ public:
 	STDMETHODIMP Stop();
 
 
-	HRESULT FileSeek(REFERENCE_TIME seektime);
+	//HRESULT FileSeek(REFERENCE_TIME seektime);
 
 	HRESULT LoadPgmReg(void);
-	HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition);
+	//HRESULT GetFileSize(__int64 *pStartPosition, __int64 *pEndPosition);
 	HRESULT OnConnect();
-	HRESULT RefreshPids();
-	HRESULT RefreshDuration();
+	//HRESULT RefreshPids();
+	//HRESULT RefreshDuration();
 	STDMETHODIMP ShowFilterProperties();
 	STDMETHODIMP Refresh();
-	HRESULT UpdatePidParser(FileReader *pFileReader);
+	//HRESULT UpdatePidParser(FileReader *pFileReader);
 	BOOL get_AutoMode();
 	BOOL get_PinMode();
 	NetInfoArray netArray;
@@ -252,9 +252,9 @@ protected:
 	HRESULT set_RegProgram();
 	HRESULT showEPGInfo();
 
+	CTSBuffer *m_pTSBuffer;
 
 	SharedMemory* m_pSharedMemory;
-	DVBMpeg2DataParser *m_pMpeg2DataParser;
 	CTSFileSourcePin *m_pPin;          // A simple rendered output pin
 	CTSFileSourceClock *m_pClock;
 	CRegStore *m_pRegStore;
@@ -288,7 +288,6 @@ protected:
     BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
 
 	ParserFunctions parserFunctions;
-	DVBTChannels *m_pDVBTChannels;
 
 //*****************************************************************************************
 //ASync Additions

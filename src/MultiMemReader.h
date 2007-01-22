@@ -47,7 +47,7 @@ public:
 	MultiMemReader(SharedMemory* pSharedMemory = NULL);
 	virtual ~MultiMemReader();
 
-	virtual FileReader* CreateFileReader();
+	virtual IFileReader* CreateFileReader();
 
 	virtual HRESULT GetFileName(LPOLESTR *lpszFileName);
 	virtual HRESULT SetFileName(LPCOLESTR pszFileName);

@@ -35,9 +35,9 @@
 typedef CGenericList<IBaseFilter> CFilterList;
 
 #include "TSFileSource.h"
-#include "PidParser.h"
 #include "TSBuffer.h"
- 
+#include "PidInfo.h" 
+#include "PidParser.h"
 
 /**********************************************
  *
@@ -45,8 +45,7 @@ typedef CGenericList<IBaseFilter> CFilterList;
  *
  **********************************************/
 class CTSFileSourcePin : public CSourceStream,
-						 public CSourceSeeking,
-						 public PidParser
+						 public CSourceSeeking
 {
 public:
 
@@ -65,7 +64,6 @@ public:
 	HRESULT CheckConnect(IPin *pReceivePin);
 	HRESULT CompleteConnect(IPin *pReceivePin);
 	HRESULT BreakConnect();
-	BOOL checkUpdateParser(int ver);
 	HRESULT FillBuffer(IMediaSample *pSample);
 	HRESULT OnThreadStartPlay();
 	HRESULT Run(REFERENCE_TIME tStart);
@@ -83,11 +81,11 @@ public:
 	HRESULT ChangeStart();
 	HRESULT ChangeStop();
 	HRESULT ChangeRate();
-	void ClearBuffer(void);
 	void UpdateFromSeek(BOOL updateStartPosition = FALSE);
 
 	HRESULT setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			     , LONGLONG *pStop, DWORD StopFlags);
+	HRESULT SetAccuratePos2(REFERENCE_TIME seektime);
 	HRESULT SetAccuratePos(REFERENCE_TIME seektime);
 	HRESULT UpdateDuration(FileReader *pFileReader);
 	void WaitPinLock(void);
@@ -121,7 +119,6 @@ protected:
 
 protected:
 	CTSFileSourceFilter * const m_pTSFileSourceFilter;
-	CTSBuffer *m_pTSBuffer;
 	PidInfo *m_pPids;
 	
 	CCritSec  m_FillLock;
@@ -131,6 +128,8 @@ protected:
 	REFERENCE_TIME m_rtStartTime;
 	REFERENCE_TIME m_rtPrevTime;
 	REFERENCE_TIME m_rtLastSeekStart;
+
+	BOOL m_bDiscontinuity;
 
 	__int64 m_llBasePCR;
 	__int64 m_llNextPCR;
@@ -167,6 +166,8 @@ protected:
 	int m_PinTypeSave;
 	BOOL m_bGetAvailableMode;
 	__int64 m_currPosition;
+
+	BYTE *m_pcrSeekData;
 
 	ParserFunctions parserFunctions;
 	ParserFunctions fillFunctions;

@@ -23,9 +23,9 @@
 *    http://forums.dvbowners.com/
 */
 
+#include <streams.h>
 #include "NetInfo.h"
 #include <crtdbg.h>
-//#include <streams.h>
 
 NetInfo::NetInfo() 
 {

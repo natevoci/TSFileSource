@@ -56,8 +56,6 @@ public:
 	HRESULT ParsePMT(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, long pos);
 
 private:
-	CCritSec  m_ParserLock;
-	CCritSec  m_ConvertLock;
 
 	BOOL CheckEsDescriptorForAC3(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
 	BOOL CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
@@ -69,14 +67,14 @@ class PidParser :public ParserFunctions
 {
 
 public:
-	PidParser(FileReader *pFileReader);
+	PidParser(IFileReader *pFileReader);
 	virtual ~PidParser();
 
 
 	HRESULT ParsePinMode(__int64 fileStartPointer = 0);
 	HRESULT ParseFromFile(__int64 fileStartPointer);
 	HRESULT RefreshPids();
-	HRESULT RefreshDuration(BOOL bStoreInArray, FileReader *pFileReader);
+	HRESULT RefreshDuration(BOOL bStoreInArray, IFileReader *pFileReader);
 	HRESULT get_EPGFromFile();
 	HRESULT set_ProgramSID();
 //	HRESULT FindSyncByte(PBYTE pbData, ULONG ulDataLength, ULONG* a, int step);
@@ -128,8 +126,8 @@ protected:
 	HRESULT ACheckVAPids(PBYTE pData, ULONG ulDataLength);
 	HRESULT CheckVAStreams(PBYTE pData, ULONG ulDataLength);
 	HRESULT CheckEPGFromFile();
-	HRESULT CheckNIDInFile(FileReader *pFileReader);
-	HRESULT CheckONIDInFile(FileReader *pFileReader);
+	HRESULT CheckNIDInFile(IFileReader *pFileReader);
+	HRESULT CheckONIDInFile(IFileReader *pFileReader);
 	HRESULT ParseEISection (ULONG ulDataLength);
 	HRESULT ParseShortEvent(int start, ULONG ulDataLength);
 	HRESULT ParseExtendedEvent(int start, ULONG ulDataLength);
@@ -140,7 +138,7 @@ protected:
 		__int64 filelength,
 		__int64* pStartFilePos,
 		__int64* pEndFilePos,
-		FileReader *pFileReader);
+		IFileReader *pFileReader);
 
 //	HRESULT CheckForPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
 //	HRESULT CheckForOPCR(PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime);
@@ -157,8 +155,8 @@ protected:
 	bool CheckForNID(PBYTE pData, int pos, bool *extPacket, int *sectlen);
 	bool CheckForONID(PBYTE pData, int pos, bool *extpacket, int *sectlen);
 
-	REFERENCE_TIME GetPCRFromFile(FileReader *pFileReader, int step);
-	REFERENCE_TIME GetFileDuration(PidInfo *pPids, FileReader *pFileReader);
+	REFERENCE_TIME GetPCRFromFile(IFileReader *pFileReader, int step);
+	REFERENCE_TIME GetFileDuration(PidInfo *pPids, IFileReader *pFileReader);
 
 	int		m_buflen;
 	BYTE	m_pDummy[0x4000];
@@ -171,7 +169,7 @@ protected:
 	__int64	m_fileStartOffset;
 	__int64 m_FileStartPointer;
 
-	FileReader *m_pFileReader;
+	IFileReader *m_pFileReader;
 	CCritSec m_ParserLock;
 };
 

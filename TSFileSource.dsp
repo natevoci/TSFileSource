@@ -388,14 +388,6 @@ SOURCE=.\src\TunerEvent.h
 # PROP Default_Filter ""
 # Begin Source File
 
-SOURCE=.\src\DVBMpeg2DataParser.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\src\DVBMpeg2DataParser.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\src\DVBTChannels.cpp
 # End Source File
 # Begin Source File
@@ -445,6 +437,46 @@ SOURCE=.\src\LogMessageWriter.cpp
 # Begin Source File
 
 SOURCE=.\src\LogMessageWriter.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\LogProfiler.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\LogProfiler.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\Mpeg2Parser.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\Mpeg2Parser.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\Mpeg2Section.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\Mpeg2Section.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\Mpeg2TSPacket.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\Mpeg2TSPacket.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\PidTableHash.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\PidTableHash.h
 # End Source File
 # Begin Source File
 

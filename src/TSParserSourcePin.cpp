@@ -87,7 +87,7 @@ CTSParserSourcePin::CTSParserSourcePin(LPUNKNOWN pUnk, CTSParserSourceFilter *pF
 		m_BitRateStore[i] = 0;
 	}
 
-	m_pTSBuffer = new CTSBuffer(this, m_pTSParserSourceFilter->m_pClock);
+	m_pTSBuffer = new CTSBuffer();
 	m_pPids = new PidInfo();
 	debugcount = 0;
 
@@ -389,7 +389,7 @@ HRESULT CTSParserSourcePin::BreakConnect()
 	m_pTSParserSourceFilter->m_pFileReader->CloseFile();
 	m_pTSParserSourceFilter->m_pFileDuration->CloseFile();
 
-	m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+	//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 	{
 		CAutoLock fillLock(&m_FillLock);
 		m_pTSBuffer->Clear();
@@ -424,10 +424,10 @@ HRESULT CTSParserSourcePin::BreakConnect()
 	return hr;
 }
 
-BOOL CTSParserSourcePin::checkUpdateParser(int ver)
-{
-	return m_pTSBuffer->CheckUpdateParser(ver);
-}
+//BOOL CTSParserSourcePin::checkUpdateParser(int ver)
+//{
+//	return m_pTSBuffer->CheckUpdateParser(ver);
+//}
 
 HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 {
@@ -467,7 +467,7 @@ HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 	}
 	lDataLength = pSample->GetActualDataLength();
 
-	m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+	//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 	hr = m_pTSBuffer->Require(lDataLength);
 	if (FAILED(hr))
 	{
@@ -513,7 +513,7 @@ HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 		}
 
 		//Read from buffer
-		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+		//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
 
 		m_IntLastStreamTime = REFERENCE_TIME(cTime);
@@ -622,7 +622,7 @@ HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 
 	if (m_bInjectMode && !m_TSIDSave && !m_PinTypeSave) 
 	{
-		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+		//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength - m_PacketSave*3);
 
 		ULONG pos = 0; 
@@ -668,7 +668,7 @@ HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 		}
 		else
 		{
-			m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+			//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 			m_pTSBuffer->DequeFromBuffer(pData + lDataLength - m_PacketSave*3, m_PacketSave*3);
 		}
 
@@ -678,7 +678,7 @@ HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 
 	{
 		//Normal Read from buffer
-		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+		//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		m_pTSBuffer->DequeFromBuffer(pData, lDataLength);
 	}
 
@@ -894,10 +894,10 @@ fillFunctions.PrintTime(TEXT("rtNextTime:"), (__int64)rtNextTime, 10000, &debugc
 
 HRESULT CTSParserSourcePin::OnThreadStartPlay( )
 {
-	m_currPosition = m_pTSParserSourceFilter->m_pFileReader->getFilePointer();
+	m_currPosition = m_pTSParserSourceFilter->m_pFileReader->GetFilePointer();
 	m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 	m_llPrevPCR = -1;
-	m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+	//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 	{
 		CAutoLock fillLock(&m_FillLock);
 		m_pTSBuffer->Clear();
@@ -1176,7 +1176,7 @@ HRESULT CTSParserSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 			m_DataRate = m_pTSParserSourceFilter->m_pPidParser->pids.bitrate;
 			m_llPrevPCR = -1;
 
-			m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+			//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 			m_pTSBuffer->Clear();
 			SetAccuratePos(rtCurrent);
 			if (CurrentFlags & AM_SEEKING_PositioningBitsMask)
@@ -1291,7 +1291,7 @@ HRESULT CTSParserSourcePin::ChangeRate()
 void CTSParserSourcePin::ClearBuffer(void)
 {
 	CAutoLock fillLock(&m_FillLock);
-	m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+	//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 	m_pTSBuffer->Clear();
 }
 
@@ -1308,7 +1308,7 @@ void CTSParserSourcePin::UpdateFromSeek(BOOL updateStartPosition)
 		m_llPrevPCR = -1;
 		if (updateStartPosition == TRUE)
 		{
-			m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+			//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 			m_pTSBuffer->Clear();
 			SetAccuratePos(m_rtStart);
 			//m_pTSParserSourceFilter->FileSeek(m_rtStart);
@@ -1335,8 +1335,8 @@ seekFunctions.PrintTime(TEXT("seekin"), (__int64) seektime, 10000, &debugcount);
 		nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSParserSourceFilter->m_pPidParser->pids.dur>>14);
 
 	nFileIndex = (__int64)max(m_pTSParserSourceFilter->m_pPidParser->get_StartOffset(), (__int64)nFileIndex);
-	m_pTSParserSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
-	m_currPosition = m_pTSParserSourceFilter->m_pFileReader->getFilePointer();
+	m_pTSParserSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+	m_currPosition = m_pTSParserSourceFilter->m_pFileReader->GetFilePointer();
 
 	//Return as quick as possible if cold starting
 	if(filelength < MIN_FILE_SIZE)
@@ -1386,8 +1386,8 @@ seekFunctions.PrintTime(TEXT("seekin"), (__int64) seektime, 10000, &debugcount);
 			nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSParserSourceFilter->m_pPidParser->pids.dur>>14);
 
 		nFileIndex = (__int64)max(m_pTSParserSourceFilter->m_pPidParser->get_StartOffset(), (__int64)nFileIndex);
-		m_pTSParserSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
-		m_currPosition = m_pTSParserSourceFilter->m_pFileReader->getFilePointer();
+		m_pTSParserSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+		m_currPosition = m_pTSParserSourceFilter->m_pFileReader->GetFilePointer();
 
 		m_IntCurrentTimePCR = m_IntStartTimePCR + (__int64)((__int64)((__int64)seektime * (__int64)9) / (__int64)1000);
 		return S_OK;
@@ -1412,7 +1412,7 @@ seekFunctions.PrintTime(TEXT("our pcr Delta SeekTime"), (__int64)pcrDeltaSeekTim
 	long lDataLength = (long)min(filelength, MIN_FILE_SIZE*2);//1000000;
 	PBYTE pData = new BYTE[MIN_FILE_SIZE*2];
 	//Set Pointer to end of file to get end pcr
-	m_pTSParserSourceFilter->m_pFileReader->setFilePointer((__int64) - ((__int64)lDataLength), FILE_END);
+	m_pTSParserSourceFilter->m_pFileReader->SetFilePointer((__int64) - ((__int64)lDataLength), FILE_END);
 	hr = m_pTSParserSourceFilter->m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
 //	if (ulBytesRead != lDataLength)
 	if (FAILED(hr))
@@ -1460,8 +1460,8 @@ seekFunctions.PrintTime(TEXT("get first pcr failed as well SEEK ERROR AT START")
 				nFileIndex = filelength * (__int64)(seektime>>14) / (__int64)(m_pTSParserSourceFilter->m_pPidParser->pids.dur>>14);
 
 			nFileIndex = (__int64)max(m_pTSParserSourceFilter->m_pPidParser->get_StartOffset(), (__int64)nFileIndex);
-			m_pTSParserSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
-			m_currPosition = m_pTSParserSourceFilter->m_pFileReader->getFilePointer();
+			m_pTSParserSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+			m_currPosition = m_pTSParserSourceFilter->m_pFileReader->GetFilePointer();
 
 			m_IntCurrentTimePCR = m_IntStartTimePCR + (__int64)((__int64)((__int64)seektime * (__int64)9) / (__int64)1000);
 			delete[] pData;
@@ -1513,7 +1513,7 @@ wsprintf(sz, TEXT("our recalculated pcr Byte Rate :%lu\n"), pcrByteRate);
 
 	//Set Pointer to the predicted file position to get end pcr
 	nFileIndex = max(0, nFileIndex);
-	m_pTSParserSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+	m_pTSParserSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 	m_pTSParserSourceFilter->m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
 	__int64 pcrPos;
 	pos = 0;
@@ -1542,7 +1542,7 @@ seekFunctions.PrintTime(TEXT("seek+++++++++++++"), (__int64) pcrPos, 90, &debugc
 		nFileIndex = (__int64)(filelength - (__int64)lDataLength);
 
 	nFileIndex = max(0, nFileIndex);
-	m_pTSParserSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+	m_pTSParserSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
 	ulBytesRead = 0;
 	m_pTSParserSourceFilter->m_pFileReader->Read(pData, lDataLength, &ulBytesRead);
 
@@ -1606,8 +1606,8 @@ seekFunctions.PrintTime(TEXT("seekend"), (__int64) pcrPos, 90, &debugcount);
 seekFunctions.PrintTime(TEXT("SEEK ERROR AT END"), (__int64)pcrPos, 90, &debugcount);
 	}
 		nFileIndex = max(m_pTSParserSourceFilter->m_pPidParser->get_StartOffset(), nFileIndex);
-		m_pTSParserSourceFilter->m_pFileReader->setFilePointer((__int64)(nFileIndex - filelength), FILE_END);
-		m_currPosition = m_pTSParserSourceFilter->m_pFileReader->getFilePointer();
+		m_pTSParserSourceFilter->m_pFileReader->SetFilePointer((__int64)(nFileIndex - filelength), FILE_END);
+		m_currPosition = m_pTSParserSourceFilter->m_pFileReader->GetFilePointer();
 
 	delete[] pData;
 
@@ -1743,7 +1743,7 @@ parserFunctions.PrintTime(TEXT("UpdateDuration1"), (__int64) m_rtDuration, 10000
 				pcrPos = -1;
 
 				//Set Pointer to start of file to get end pcr
-				pFileReader->setFilePointer(m_pTSParserSourceFilter->m_pPidParser->get_StartOffset(), FILE_BEGIN);
+				pFileReader->SetFilePointer(m_pTSParserSourceFilter->m_pPidParser->get_StartOffset(), FILE_BEGIN);
 				PBYTE pData = new BYTE[lDataLength];
 //				pFileReader->Read(pData, lDataLength, &ulBytesRead);
 				if FAILED(hr = pFileReader->Read(pData, lDataLength, &ulBytesRead))
@@ -1815,7 +1815,7 @@ parserFunctions.PrintTime(TEXT("UpdateDuration3"), (__int64) m_rtDuration, 10000
 				pcrPos = -1;
 
 				//Set Pointer to end of file to get end pcr
-				pFileReader->setFilePointer((__int64)-lDataLength, FILE_END);
+				pFileReader->SetFilePointer((__int64)-lDataLength, FILE_END);
 				PBYTE pData = new BYTE[lDataLength];
 				if FAILED(hr = pFileReader->Read(pData, lDataLength, &ulBytesRead))
 				{
@@ -1958,7 +1958,7 @@ parserFunctions.PrintTime(TEXT("UpdateDuration6"), (__int64) m_rtDuration, 10000
 						return hr;
 
 					//Set Pointer to end of file to get end pcr
-					pFileReader->setFilePointer((__int64)-lDataLength, FILE_END);
+					pFileReader->SetFilePointer((__int64)-lDataLength, FILE_END);
 					PBYTE pData = new BYTE[lDataLength];
 					pFileReader->Read(pData, lDataLength, &ulBytesRead);
 					pos = ulBytesRead - m_pTSParserSourceFilter->m_pPidParser->get_PacketSize();
@@ -2178,7 +2178,7 @@ HRESULT CTSParserSourcePin::FindNextPCR(__int64 *pcrtime, long *byteOffset, long
 	{
 		bytesToRead = min(bytesToRead, maxOffset-*byteOffset);
 
-		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+		//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		hr = m_pTSBuffer->ReadFromBuffer(pData, bytesToRead, *byteOffset);
 		if (FAILED(hr))
 			break;
@@ -2214,7 +2214,7 @@ HRESULT CTSParserSourcePin::FindPrevPCR(__int64 *pcrtime, long *byteOffset)
 
 		bytesToRead += m_PacketSave;
 
-		m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
+		//m_pTSBuffer->SetFileReader(m_pTSParserSourceFilter->m_pFileReader);
 		hr = m_pTSBuffer->ReadFromBuffer(pData, bytesToRead, *byteOffset);
 		if (FAILED(hr))
 			break;

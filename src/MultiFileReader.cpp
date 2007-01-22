@@ -28,12 +28,33 @@
 #include "MultiFileReader.h"
 #include <atlbase.h>
 
+MultiFileReader::MultiFileReader():
+	FileReader(),
+	m_TSBufferFile(),
+	m_TSFile()
+{
+	m_pSharedMemory = new SharedMemory(64000);
+
+	m_startPosition = 0;
+	m_endPosition = 0;
+	m_currentPosition = 0;
+	m_filesAdded = 0;
+	m_filesRemoved = 0;
+	m_TSFileId = 0;
+	m_bReadOnly = 1;
+	m_bDelay = 0;
+	m_llBufferPointer = 0;	
+}
+
 MultiFileReader::MultiFileReader(SharedMemory* pSharedMemory):
 	FileReader(pSharedMemory),
 	m_TSBufferFile(pSharedMemory),
 	m_TSFile(pSharedMemory),
 	m_pSharedMemory(pSharedMemory) 
 {
+	if (m_pSharedMemory == NULL)
+		m_pSharedMemory = new SharedMemory(64000);
+
 	m_startPosition = 0;
 	m_endPosition = 0;
 	m_currentPosition = 0;
@@ -64,9 +85,9 @@ MultiFileReader::~MultiFileReader()
 */
 }
 
-FileReader* MultiFileReader::CreateFileReader()
+IFileReader* MultiFileReader::CreateFileReader()
 {
-	return (FileReader *)new MultiFileReader(m_pSharedMemory);
+	return new MultiFileReader(m_pSharedMemory);
 }
 
 HRESULT MultiFileReader::GetFileName(LPOLESTR *lpszFileName)

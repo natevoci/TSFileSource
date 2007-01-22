@@ -65,7 +65,7 @@ public:
 	HRESULT CheckConnect(IPin *pReceivePin);
 	HRESULT CompleteConnect(IPin *pReceivePin);
 	HRESULT BreakConnect();
-	BOOL checkUpdateParser(int ver);
+	//BOOL checkUpdateParser(int ver);
 	HRESULT FillBuffer(IMediaSample *pSample);
 	HRESULT OnThreadStartPlay();
 	HRESULT Run(REFERENCE_TIME tStart);

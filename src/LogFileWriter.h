@@ -31,7 +31,7 @@ public:
 	LogFileWriter();
 	virtual ~LogFileWriter();
 
-	BOOL Open(LPCWSTR filename, BOOL append = FALSE);
+	BOOL Open(LPCWSTR filename, BOOL append = FALSE, BOOL forceExists = TRUE);
 	void Close();
 
 	LogFileWriter& operator<< (const int& val);
@@ -52,6 +52,8 @@ public:
 	} EOL;
 
 	LogFileWriter& operator<< (const LogFileWriterEOL& val);
+
+	LogFileWriter& indent(int indent);
 
 private:
 	HANDLE m_hFile;

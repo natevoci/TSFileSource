@@ -54,7 +54,6 @@ class CTSParserSourceFilter;
 #include "StreamParser.h"
 #include "NetRender.h"
 #include "NetInfo.h"
-#include "DVBMpeg2DataParser.h"
 #include <comdef.h>
 #include "BDAiface.h"
 #include "SharedMemory.h"
@@ -265,7 +264,6 @@ protected:
 
 
 	SharedMemory* m_pSharedMemory;
-	DVBMpeg2DataParser *m_pMpeg2DataParser;
 	CTSParserSourcePin *m_pPin;          // A simple rendered output pin
 	CTSParserInputPin *m_pInpPin;         // A simple rendered Input pin
 	CTSFileSourceClock *m_pClock;
@@ -300,7 +298,6 @@ protected:
     BOOL    CheckRequest(Command *pCom) { return CAMThread::CheckRequest( (DWORD *) pCom); }
 
 	ParserFunctions parserFunctions;
-	DVBTChannels *m_pDVBTChannels;
 
 
 //*****************************************************************************************

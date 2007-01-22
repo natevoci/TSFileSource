@@ -36,7 +36,7 @@ public:
 	MemReader(SharedMemory* pSharedMemory);
 	virtual ~MemReader();
 
-	virtual FileReader* CreateFileReader();
+	virtual IFileReader* CreateFileReader();
 
 	// Open and write to the file
 	virtual HRESULT GetFileName(LPOLESTR *lpszFileName);
