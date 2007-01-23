@@ -174,39 +174,27 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			}
 		}
 
-//		m_loopCount = 20;
-//		m_pPidParser->pidArray.Clear();
-//		ULONG pos = 0;
-//		hr = S_OK;
-//		m_ParserLock = TRUE;
-//		while (hr == S_OK)
-//		{
-//			//search at the head of the file
-//			hr = m_pPidParser->FindSyncByte(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, &pos, 1);
-//			if (hr == S_OK)
-//			{
-//				//parse next packet for the PAT
-//				if (m_pPidParser->ParsePAT(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, pos) == S_OK)
-//				{
-////					if (m_PATVersion && m_pPidParser->m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
-//					if (m_PATVersion && m_PATVersion != m_pPidParser->m_PATVersion)
-//					{
-////						m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
-////						delete[] newItem;
-////						newItem = NULL;
-////						Clear();
-////						bytesAvailable = Count();
-////			m_Array.push_back(newItem);
-////			bytesAvailable += m_lTSBufferItemSize;
-////						return S_OK;
-//					}
-//					break;
-//				}
-//			}
-//			pos += m_pPidParser->m_PacketSize;
-//		};
-//
-//		m_ParserLock = FALSE;
+		m_loopCount = 20;
+		m_pPidParser->pidArray.Clear();
+		ULONG pos = 0;
+		hr = S_OK;
+		m_ParserLock = TRUE;
+		while (hr == S_OK)
+		{
+			//search at the head of the file
+			hr = m_pPidParser->FindSyncByte(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, &pos, 1);
+			if (hr == S_OK)
+			{
+				//parse next packet for the PAT
+				if (m_pPidParser->ParsePAT(m_pPidParser, newItem, ulBytesRead-m_pPidParser->m_PacketSize, pos) == S_OK)
+				{
+					break;
+				}
+			}
+			pos += m_pPidParser->m_PacketSize;
+		};
+
+		m_ParserLock = FALSE;
 		if (newItem)
 		{
 			m_Array.push_back(newItem);

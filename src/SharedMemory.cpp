@@ -156,35 +156,10 @@ SharedMemParam* SharedMemory::GetSharedMemParam(LPVOID pShared_Memory)
 		return NULL;
 	}
 
-CAutoLock memLock(&m_MemoryLock);
+	CAutoLock memLock(&m_MemoryLock);
 	SharedMemParam *pMemParm = new SharedMemParam();
 
 	SharedMemParam *pMemParmLocal = (SharedMemParam *)pShared_Memory;
-/*
-	memcpy(pMemParm, pShared_Memory, sizeof(SharedMemParam));
-
-	int count = 0;
-
-	while (pMemParm->lock == TRUE || pMemParm->version != (__int64)2280)
-	{
-		Sleep(1);
-		memcpy(pMemParm, pShared_Memory, sizeof(SharedMemParam));
-		if (count > 1000)
-		{
-			if (pMemParm->lock)
-				::SetLastError(ERROR_OPEN_FILES);
-			else
-				::SetLastError(ERROR_BAD_FORMAT);
-
-			delete pMemParm;
-			return NULL;
-		}
-		count++;
-	}
-
-	//Lock the file
-	pMemParm->lock = TRUE;
-*/
 
 	int count = 0;
 
@@ -227,7 +202,6 @@ CAutoLock memLock(&m_MemoryLock);
 	memcpy(pShared_Memory, pMemParm, sizeof(SharedMemParam));
 
 	pMemParm->lock = FALSE;
-//	memcpy(pShared_Memory, pMemParm, sizeof(SharedMemParam));
 
 	//free the file
 	SharedMemParam *pMemParmLocal = (SharedMemParam *)pShared_Memory;
@@ -243,7 +217,7 @@ int SharedMemory::FindHandleCount(LPCSTR lpFileName)
 	if (!name)
 		return -1;
 
-CAutoLock memLock(&m_MemoryLock);
+	CAutoLock memLock(&m_MemoryLock);
 	HANDLE hFile = ::OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, name);
 	delete[] name;
 
@@ -493,7 +467,7 @@ HANDLE SharedMemory::OpenExistingFile(
 			return hFile;
 	}
 
-CAutoLock memLock(&m_MemoryLock);
+	CAutoLock memLock(&m_MemoryLock);
 	//if the file exists then compare the share mode
 	if (hFile != INVALID_HANDLE_VALUE || !dwErr)
 	{
@@ -527,7 +501,7 @@ CAutoLock memLock(&m_MemoryLock);
 				PutSharedMemParam(pMemParm, pShared_Memory);
 				delete pMemParm;
 
-CAutoLock memLock(&m_MemoryLock);
+				CAutoLock memLock(&m_MemoryLock);
 				m_ViewList.push_back(item);
 				return item->hFile;
 			}
@@ -536,18 +510,18 @@ CAutoLock memLock(&m_MemoryLock);
 				//Wait for the file to become free
 				int handleCount = pMemParm->handleCount;
 
-				if (m_bBuffOvld && FALSE)
+				if (m_bBuffOvld && TRUE)
 				{
 					int loop = 0;
 					while (handleCount > 0 && loop < 100)
 					{
 						loop++;
 						Sleep(10);
-						SharedMemParam* pMemParm = GetSharedMemParam(pShared_Memory);
-						handleCount = pMemParm->handleCount;
-						delete pMemParm;
+						SharedMemParam* pMemParm2 = (SharedMemParam*)pShared_Memory;
+						handleCount = pMemParm2->handleCount;
 					}
-					pMemParm->handleCount = handleCount;
+					pMemParm->handleCount = 0;//handleCount; Got to get this working sometime ????????
+//					pMemParm->handleCount = handleCount;
 				}
 
 				// now check if not already open
@@ -569,7 +543,7 @@ CAutoLock memLock(&m_MemoryLock);
 					pMemParm->dwFlagsAndAttributes = dwFlagsAndAttributes;
 					PutSharedMemParam(pMemParm, pShared_Memory);
 					delete pMemParm;
-CAutoLock memLock(&m_MemoryLock);
+					CAutoLock memLock(&m_MemoryLock);
 					m_ViewList.push_back(item);
 					return item->hFile;
 				}
@@ -579,19 +553,18 @@ CAutoLock memLock(&m_MemoryLock);
 				//Wait for the file to become free
 				int handleCount = pMemParm->handleCount;
 
-				if (m_bBuffOvld && FALSE)
+				if (m_bBuffOvld && TRUE)
 				{
 					int loop = 0;
 					while (handleCount > 0 && loop < 100)
 					{
 						loop++;
 						Sleep(10);
-						SharedMemParam* pMemParm = GetSharedMemParam(pShared_Memory);
-						handleCount = pMemParm->handleCount;
-						delete pMemParm;
+						SharedMemParam* pMemParm2 = (SharedMemParam*)pShared_Memory;
+						handleCount = pMemParm2->handleCount;
 					}
-					pMemParm->handleCount = 0;//handleCount; Got to get this working sometime ????????
-					pMemParm->handleCount = handleCount; //Got to get this working sometime ????????
+					pMemParm->handleCount = 0;//handleCount; Got this working.
+//					pMemParm->handleCount = handleCount; 
 				}
 
 				// now check if not already open
@@ -613,7 +586,7 @@ CAutoLock memLock(&m_MemoryLock);
 					pMemParm->dwFlagsAndAttributes = dwFlagsAndAttributes;
 					PutSharedMemParam(pMemParm, pShared_Memory);
 					delete pMemParm;
-CAutoLock memLock(&m_MemoryLock);
+					CAutoLock memLock(&m_MemoryLock);
 					m_ViewList.push_back(item);
 					return item->hFile;
 				}
@@ -652,6 +625,7 @@ HANDLE SharedMemory::CreateFile(LPCSTR lpFileName,
 	DWORD dwErr = NO_ERROR;
 	HANDLE hFile = INVALID_HANDLE_VALUE;
 
+CAutoLock memLock(&m_MemoryLock);//6/1/07
 	if (dwCreationDisposition == OPEN_EXISTING || dwCreationDisposition == OPEN_ALWAYS)
 	{
 		//return fail now if were just after a read as these are always writing
@@ -844,7 +818,7 @@ HANDLE SharedMemory::CreateFile(LPCSTR lpFileName,
 		item->shareMode = dwShareMode;
 
 		//store in storage array
-CAutoLock memLock(&m_MemoryLock);
+		CAutoLock memLock(&m_MemoryLock);
 		m_CreateList.push_back(item);
 	}
 	else

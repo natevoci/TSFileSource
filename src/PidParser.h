@@ -61,6 +61,8 @@ private:
 	BOOL CheckEsDescriptorForTeletext(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
 	BOOL CheckEsDescriptorForDTS(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
 	BOOL CheckEsDescriptorForSubtitle(PBYTE pData, ULONG ulDataLength, int pos, int lastpos);
+	CCritSec m_ParserLock;
+	CCritSec  m_ConvertLock;
 };
 
 class PidParser :public ParserFunctions
@@ -170,7 +172,6 @@ protected:
 	__int64 m_FileStartPointer;
 
 	FileReader *m_pFileReader;
-	CCritSec m_ParserLock;
 };
 
 #endif

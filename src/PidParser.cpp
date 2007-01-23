@@ -2670,16 +2670,19 @@ void ParserFunctions::PrintLongLong(LPCTSTR lstring, __int64 value, int *debugco
 
 __int64 ParserFunctions::ConvertPCRtoRT(__int64 pcrtime)
 {
+	CAutoLock lock(&m_ConvertLock);
 	return (__int64)(pcrtime / (__int64)9) * (__int64)1000;
 }
 
 __int64 ParserFunctions::SubConvertPCRtoRT(__int64 pcrTime, __int64 pcrSubTime)
 {
+	CAutoLock lock(&m_ConvertLock);
 	return (__int64)((SubtractPCR(pcrTime, pcrSubTime)/ (__int64)9) * (__int64)1000);
 }
 
 __int64 ParserFunctions::SubtractPCR(__int64 pcrTime, __int64 pcrSubTime)
 {
+	CAutoLock lock(&m_ConvertLock);
 	if (!pcrSubTime || !pcrTime)
 		return (__int64)(pcrTime - pcrSubTime);
 	else if (pcrTime < pcrSubTime)
@@ -2690,20 +2693,32 @@ __int64 ParserFunctions::SubtractPCR(__int64 pcrTime, __int64 pcrSubTime)
 
 HRESULT ParserFunctions::FindFirstPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos)
 {
+	if (!pPidParser)
+		return E_POINTER;
+
+	CAutoLock lock(&m_ParserLock);
 	*pulPos = 0;
 	return FindNextPCR(pPidParser, pData, ulDataLength, pPids, pcrtime, pulPos, 1);
 }
 
 HRESULT ParserFunctions::FindLastPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos)
 {
+	if (!pPidParser)
+		return E_POINTER;
+
+	CAutoLock lock(&m_ParserLock);
 	*pulPos = ulDataLength - pPidParser->m_PacketSize;
 	return FindNextPCR(pPidParser, pData, ulDataLength, pPids, pcrtime, pulPos, -1);
 }
 
 HRESULT ParserFunctions::FindNextPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step)
 {
+	if (!pPidParser)
+		return E_POINTER;
+
 	HRESULT hr = S_OK;
 
+	CAutoLock lock(&m_ParserLock);
 	*pcrtime = 0;
 
 	while( *pcrtime == 0 && hr == S_OK)
@@ -2726,6 +2741,10 @@ HRESULT ParserFunctions::FindNextPCR(PidParser *pPidParser, PBYTE pData, ULONG u
 
 HRESULT ParserFunctions::CheckForPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime)
 {
+	if (!pPidParser)
+		return E_POINTER;
+
+	CAutoLock lock(&m_ParserLock);
 	if (pPidParser->m_ProgPinMode)
 	{
 		// Get PTS
@@ -2814,6 +2833,10 @@ HRESULT ParserFunctions::CheckForPCR(PidParser *pPidParser, PBYTE pData, ULONG u
 
 HRESULT ParserFunctions::CheckForOPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, int pos, REFERENCE_TIME* pcrtime)
 {
+	if (!pPidParser)
+		return E_POINTER;
+
+	CAutoLock lock(&m_ParserLock);
 	if (((WORD)((0x1F&pData[pos+1])<<8)|(0xFF&pData[pos+2])) == pPids->opcr
 		&& (pData[pos+1]&0xF0) == 0x40)
 	{
@@ -2857,8 +2880,12 @@ HRESULT ParserFunctions::CheckForOPCR(PidParser *pPidParser, PBYTE pData, ULONG 
 
 HRESULT ParserFunctions::FindNextOPCR(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, PidInfo *pPids, REFERENCE_TIME* pcrtime, ULONG* pulPos, int step)
 {
+	if (!pPidParser)
+		return E_POINTER;
+
 	HRESULT hr = S_OK;
 
+	CAutoLock lock(&m_ParserLock);
 	*pcrtime = 0;
 
 	while( *pcrtime == 0 && hr == S_OK)
@@ -2881,6 +2908,10 @@ HRESULT ParserFunctions::FindNextOPCR(PidParser *pPidParser, PBYTE pData, ULONG 
 
 HRESULT ParserFunctions::FindSyncByte(PidParser *pPidParser, PBYTE pbData, ULONG ulDataLength, ULONG* a, int step)
 {
+	if (!pPidParser)
+		return E_POINTER;
+
+	CAutoLock lock(&m_ParserLock);
 	//look for Program Pin Mode
 	if (pPidParser->m_ProgPinMode)
 	{
@@ -2965,8 +2996,12 @@ HRESULT ParserFunctions::FindSyncByte(PidParser *pPidParser, PBYTE pbData, ULONG
 
 HRESULT ParserFunctions::ParsePAT(PidParser *pPidParser, PBYTE pData, ULONG lDataLength, long pos)
 {
+	if (!pPidParser)
+		return E_POINTER;
+
 	HRESULT hr = S_FALSE;
 
+	CAutoLock lock(&m_ParserLock);
 	if ((WORD)(((0x1F & pData[pos+1])<<8) | (0xFF & pData[pos+2])) != 0) //must be pid 0 for PAT
 		return S_FALSE;
 
@@ -3025,8 +3060,12 @@ HRESULT ParserFunctions::ParsePAT(PidParser *pPidParser, PBYTE pData, ULONG lDat
 
 PBYTE ParserFunctions::ParseExtendedPacket(PidParser *pPidParser, int tableID, PBYTE pData, ULONG ulDataLength, ULONG pos)
 {
+	if (!pPidParser)
+		return NULL;
+
 	HRESULT hr = S_OK;
 
+	CAutoLock lock(&m_ParserLock);
 	if ((0x40&pData[pos+1])!=0x40 || (0x10&pData[pos+3])!=0x10)
 		return NULL;
 
@@ -3080,6 +3119,9 @@ PBYTE ParserFunctions::ParseExtendedPacket(PidParser *pPidParser, int tableID, P
 
 HRESULT ParserFunctions::ParsePMT(PidParser *pPidParser, PBYTE pData, ULONG ulDataLength, long pos)
 {
+	if (!pPidParser)
+		return E_POINTER;
+
 	WORD pid;
 	WORD channeloffset;
 	WORD EsDescLen;
@@ -3087,6 +3129,7 @@ HRESULT ParserFunctions::ParsePMT(PidParser *pPidParser, PBYTE pData, ULONG ulDa
 	WORD privatepid = 0;
 	WORD sectionLen = 0;
 
+	CAutoLock lock(&m_ParserLock);
 	PBYTE pSection = ParseExtendedPacket(pPidParser, 2, pData, ulDataLength, pos);
 	if (pSection == NULL)
 		return S_FALSE;
