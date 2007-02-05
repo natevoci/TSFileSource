@@ -24,7 +24,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "TSParserSink.h"
 #include "SharedMemory.h"
 
@@ -303,7 +303,7 @@ STDMETHODIMP CTSParserSink::GetCurFile(LPOLESTR * ppszFileName, AM_MEDIA_TYPE *p
 
         if (*ppszFileName != NULL)
         {
-            lstrcpyW(*ppszFileName, m_pFileName);
+            wcscpy(*ppszFileName, m_pFileName);
         }
     }
 
@@ -431,7 +431,7 @@ STDMETHODIMP CTSParserSink::GetBufferFileName(LPWSTR fileName)
 	// Take a copy of the filename
 	if (m_pFileName)
 	{
-		wsprintfW(fileName, L"%S", m_pFileName);
+		swprintf(fileName, L"%S", m_pFileName);
 		return NOERROR;
 //		sprintf((char *)fileName, "%S", m_pFileName);
 //		return NOERROR;
@@ -441,7 +441,7 @@ STDMETHODIMP CTSParserSink::GetBufferFileName(LPWSTR fileName)
 	if (fileName == NULL)
 		return E_OUTOFMEMORY;
 	
-	lstrcpyW(fileName, m_pFileName);
+	wcscpy(fileName, m_pFileName);
 //	sprintf((char *)fileName, "%S", m_pFileName);
 //	sprintf((char *)fileName, "%S", m_pFileWriter->getBufferFileName());
 */
@@ -466,7 +466,7 @@ STDMETHODIMP CTSParserSink::SetBufferFileName(LPWSTR fileName)
 	if (m_pFileName == NULL)
 		return E_OUTOFMEMORY;
 
-	lstrcpyW(m_pFileName, fileName);
+	wcscpy(m_pFileName, fileName);
 
     return NOERROR;
 }

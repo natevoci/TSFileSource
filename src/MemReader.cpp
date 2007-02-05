@@ -24,7 +24,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "MemReader.h"
 #include "global.h"
 
@@ -81,7 +81,7 @@ HRESULT MemReader::SetFileName(LPCOLESTR pszFileName)
 	if (m_pFileName == NULL)
 		return E_OUTOFMEMORY;
 
-	lstrcpyW(m_pFileName, pszFileName);
+	wcscpy(m_pFileName, pszFileName);
 
 	return S_OK;
 }

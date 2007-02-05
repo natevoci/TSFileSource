@@ -24,7 +24,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "MultiMemReader.h"
 #include <atlbase.h>
 
@@ -378,8 +378,8 @@ HRESULT MultiMemReader::RefreshTSBufferFile()
 			{
 				temp++;
 				pFilename = new wchar_t[wcslen(path)+wcslen(temp)+1];
-				lstrcpyW(pFilename, path);
-				lstrcatW(pFilename, temp);
+				wcscpy(pFilename, path);
+				wcscat(pFilename, temp);
 			}
 			else
 			{

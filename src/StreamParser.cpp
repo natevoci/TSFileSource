@@ -28,7 +28,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "StreamParser.h"
 
 //////////////////////////////////////////////////////////////////////
@@ -244,12 +244,12 @@ HRESULT StreamParser::ParsePidArray()
 	streams.Clear();
 	LoadStreamArray(count);
 	AddStreamArray();
-	wsprintfW(StreamArray[index].name, L"  File Menu:");
+	swprintf(StreamArray[index].name, L"  File Menu:");
 	index++;
 	streams.Clear();
 	LoadStreamArray(count);
 	AddStreamArray();
-	wsprintfW(StreamArray[index].name, L"  Open Browse Window");
+	swprintf(StreamArray[index].name, L"  Open Browse Window");
 	index++;
 	count++;
 
@@ -258,7 +258,7 @@ HRESULT StreamParser::ParsePidArray()
 		streams.Clear();
 		LoadStreamArray(count);
 		AddStreamArray();
-		wsprintfW(StreamArray[index].name, L"  Active Multicast Streams:");
+		swprintf(StreamArray[index].name, L"  Active Multicast Streams:");
 		index++;
 
 		int offset = count;
@@ -268,7 +268,7 @@ HRESULT StreamParser::ParsePidArray()
 			streams.Clear();
 			LoadStreamArray(count);
 			AddStreamArray();
-			wsprintfW(StreamArray[index].name, L"UDP@ %S : %S : %S [%lukb/s]",
+			swprintf(StreamArray[index].name, L"UDP@ %S : %S : %S [%lukb/s]",
 												(*m_pNetArray)[i].strIP,
 												(*m_pNetArray)[i].strPort,
 												(*m_pNetArray)[i].strNic,

@@ -26,7 +26,7 @@
 
 #include <math.h>
 #include <crtdbg.h>
-#include <streams.h>
+#include "stdafx.h"
 #include "TSParserSource.h"
 #include "TSParserSourceGuids.h"
 #include "BDATYPES.H"
@@ -285,7 +285,7 @@ HRESULT CTSParserInputPin::Load()
 		if (wsz == NULL)
 			return E_OUTOFMEMORY;
 
-		lstrcpyW(wsz, m_pFileName);
+		wcscpy(wsz, m_pFileName);
 		m_pTSParserSourceFilter->ReLoad(wsz, NULL);
 
 		REFERENCE_TIME stop, start = (__int64)max(0,(__int64)(m_pTSParserSourceFilter->m_pPidParser->pids.dur - RT_2_SECOND));
@@ -860,7 +860,7 @@ STDMETHODIMP CTSParserInputPin::GetCurFile(LPOLESTR * ppszFileName, AM_MEDIA_TYP
 
         if (*ppszFileName != NULL)
         {
-            lstrcpyW(*ppszFileName, m_pFileName);
+            wcscpy(*ppszFileName, m_pFileName);
         }
     }
 
@@ -882,7 +882,7 @@ STDMETHODIMP CTSParserInputPin::GetCurFile(LPOLESTR * ppszFileName, AM_MEDIA_TYP
 		if (wsz == NULL)
 			return E_OUTOFMEMORY;
 
-		lstrcpyW(wsz, m_pFileName);
+		wcscpy(wsz, m_pFileName);
 		m_pTSParserSourceFilter->Load(wsz, NULL);
 		delete[] wsz;
 	}

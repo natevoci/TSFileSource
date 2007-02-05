@@ -24,7 +24,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "TSFileSink.h"
 
 CUnknown * WINAPI CTSFileSink::CreateInstance(LPUNKNOWN punk, HRESULT *phr)
@@ -427,7 +427,7 @@ STDMETHODIMP CTSFileSink::GetBufferFileName(LPWSTR fileName)
 	// Take a copy of the filename
 	if (m_pFileName)
 	{
-		wsprintfW(fileName, L"%S", m_pFileName);
+		swprintf(fileName, L"%S", m_pFileName);
 		return NOERROR;
 //		sprintf((char *)fileName, "%S", m_pFileName);
 //		return NOERROR;

@@ -24,11 +24,11 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
+#include "Global.h"
 #include "TSBuffer.h"
 #include <crtdbg.h>
 #include <math.h>
-#include "global.h"
 
 CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 {

@@ -28,7 +28,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "TSFileSource.h"
 #include "TSFileSourceGuids.h"
 #include "DvbFormats.h"
@@ -1598,7 +1598,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos2(REFERENCE_TIME seektime)
 				//Bitrate calculation to guess how far to jump back
 				double byterate = (byteRateCalcMaxPos-byteRateCalcMinPos) / (double)(byteRateCalcMaxPCR-byteRateCalcMinPCR);
 				__int64 jumpTime = firstPCRAdjusted - seektimePCR;
-				__int64 jumpBytes = jumpTime * byterate;
+				__int64 jumpBytes = (__int64)(jumpTime * byterate);
 				__int64 jumpIndexes = (jumpBytes / (__int64)blockSize) + 1;
 
 				fileSeekPosIndex -= jumpIndexes;
@@ -1631,7 +1631,7 @@ HRESULT CTSFileSourcePin::SetAccuratePos2(REFERENCE_TIME seektime)
 				//Bitrate calculation to guess how far to jump back
 				double byterate = (byteRateCalcMaxPos-byteRateCalcMinPos) / (double)(byteRateCalcMaxPCR-byteRateCalcMinPCR);
 				__int64 jumpTime = seektimePCR - lastPCRAdjusted;
-				__int64 jumpBytes = jumpTime * byterate;
+				__int64 jumpBytes = (__int64)(jumpTime * byterate);
 				__int64 jumpIndexes = (jumpBytes / (__int64)blockSize) + 1;
 
 				fileSeekPosIndex += jumpIndexes + findPCROffset;
@@ -2273,18 +2273,18 @@ parserFunctions.PrintTime(TEXT("UpdateDuration4"), (__int64) m_pTSFileSourceFilt
 						m_rtStop = m_pTSFileSourceFilter->m_pPidParser->pids.dur;
 				}
 
-parserFunctions.PrintTime(TEXT("UpdateDuration: m_IntBaseTimePCR"), (__int64)m_IntBaseTimePCR, 90, &debugcount);
-parserFunctions.PrintTime(TEXT("UpdateDuration: m_IntStartTimePCR"), (__int64)m_IntStartTimePCR, 90, &debugcount);
-parserFunctions.PrintTime(TEXT("UpdateDuration: m_IntEndTimePCR"), (__int64)m_IntEndTimePCR, 90, &debugcount);
-parserFunctions.PrintTime(TEXT("UpdateDuration: pids.start"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start, 90, &debugcount);
-parserFunctions.PrintTime(TEXT("UpdateDuration: pids.end"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end, 90, &debugcount);
-parserFunctions.PrintTime(TEXT("UpdateDuration: pids.dur"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur, 10000, &debugcount);
+//parserFunctions.PrintTime(TEXT("UpdateDuration: m_IntBaseTimePCR"), (__int64)m_IntBaseTimePCR, 90, &debugcount);
+//parserFunctions.PrintTime(TEXT("UpdateDuration: m_IntStartTimePCR"), (__int64)m_IntStartTimePCR, 90, &debugcount);
+//parserFunctions.PrintTime(TEXT("UpdateDuration: m_IntEndTimePCR"), (__int64)m_IntEndTimePCR, 90, &debugcount);
+//parserFunctions.PrintTime(TEXT("UpdateDuration: pids.start"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.start, 90, &debugcount);
+//parserFunctions.PrintTime(TEXT("UpdateDuration: pids.end"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.end, 90, &debugcount);
+//parserFunctions.PrintTime(TEXT("UpdateDuration: pids.dur"), (__int64)m_pTSFileSourceFilter->m_pPidParser->pids.dur, 10000, &debugcount);
 
 				if (!m_bSeeking)
 				{
 					m_rtLastCurrentTime = (REFERENCE_TIME)((REFERENCE_TIME)timeGetTime() * (REFERENCE_TIME)10000);
 					m_pTSFileSourceFilter->NotifyEvent(EC_LENGTH_CHANGED, NULL, NULL);
-parserFunctions.PrintTime(TEXT("UpdateDuration6"), (__int64) m_rtDuration, 10000, &debugcount);
+//parserFunctions.PrintTime(TEXT("UpdateDuration6"), (__int64) m_rtDuration, 10000, &debugcount);
 					return S_OK;
 				}
 			}

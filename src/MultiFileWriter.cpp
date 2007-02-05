@@ -24,7 +24,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "MultiFileWriter.h"
 #include <atlbase.h>
 #include <windows.h>
@@ -92,7 +92,7 @@ HRESULT MultiFileWriter::OpenFile(LPCWSTR pszFileName)
 	m_pTSBufferFileName = new WCHAR[1+lstrlenW(pszFileName)];
 	if (m_pTSBufferFileName == NULL)
 		return E_OUTOFMEMORY;
-	lstrcpyW(m_pTSBufferFileName, pszFileName);
+	wcscpy(m_pTSBufferFileName, pszFileName);
 	
 	//check disk space first
 	__int64 llDiskSpaceAvailable = 0;
@@ -613,7 +613,7 @@ void MultiFileWriter::setBufferFileName(LPWSTR fileName)
 	if (m_pTSBufferFileName == NULL)
 		return;// E_OUTOFMEMORY;
 
-	lstrcpyW(m_pTSBufferFileName, fileName);
+	wcscpy(m_pTSBufferFileName, fileName);
 }
 
 FileWriter* MultiFileWriter::getCurrentTSFile(void)

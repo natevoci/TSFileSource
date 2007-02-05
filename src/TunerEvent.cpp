@@ -23,7 +23,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "TunerEvent.h"
 //#include "ITSFileSource.h"
 

@@ -25,7 +25,7 @@
 */
 
 #include <Winsock2.h>
-#include <streams.h>
+#include "stdafx.h"
 #include "NetRender.h"
 #include "TSFileSinkGuids.h"
 #include "TSParserSinkGuids.h"
@@ -228,7 +228,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	netAddr->tmTime = localtime(&netAddr->time);
 	wcsftime(wfileName, 32, L"(%Y-%m-%d %H-%M-%S)", netAddr->tmTime);
 
-	wsprintfW(netAddr->fileName, L"%S%S UDP (%S-%S-%S).tsbuffer",
+	swprintf(netAddr->fileName, L"%S%S UDP (%S-%S-%S).tsbuffer",
 								netAddr->pathName,
 								wfileName,
 								netAddr->strIP,
@@ -348,7 +348,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 		DeleteNetworkGraph(netAddr);
 		return hr;
 	}
-	wsprintfW(netAddr->fileName, L"%S", pwFileName);
+	swprintf(netAddr->fileName, L"%S", pwFileName);
 	if (pwFileName)
 		delete[] pwFileName;
 	
@@ -521,7 +521,7 @@ BOOL CNetRender::IsMulticastActive(NetInfo *netAddr, NetInfoArray *netArray, int
 			//
 			// return the filename of the found graph
 			//
-			lstrcpyW(netAddr->fileName, (*netArray)[*pos].fileName);
+			wcscpy(netAddr->fileName, (*netArray)[*pos].fileName);
 //MessageBoxW(NULL, netAddr->fileName, L"IsMulticastActive", NULL);
 			return TRUE;
 		}
@@ -639,7 +639,7 @@ BOOL CNetRender::IsMulticastAddress(LPOLESTR lpszFileName, NetInfo *netAddr)
 
 //MessageBoxW(NULL, netAddr->pathName,L"netAddr->pathName", NULL);
 	//Addon in Multicast Address
-	wsprintfW(netAddr->fileName, L"%SUDP (%S-%S-%S).tsbuffer",
+	swprintf(netAddr->fileName, L"%SUDP (%S-%S-%S).tsbuffer",
 								netAddr->pathName,
 								netAddr->strIP,
 								netAddr->strPort,
@@ -679,7 +679,7 @@ HRESULT CNetRender::AddGraphToRot(
     if (FAILED(GetRunningObjectTable(0, &pROT)))
         return E_FAIL;
 
-    wsprintfW(wsz, L"FilterGraph %08x pid %08x\0", (DWORD_PTR) pUnkGraph, 
+    swprintf(wsz, L"FilterGraph %08x pid %08x\0", (DWORD_PTR) pUnkGraph, 
               GetCurrentProcessId());
 	
 	//Search the ROT for the same reference

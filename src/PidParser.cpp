@@ -28,7 +28,7 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <streams.h>
+#include "stdafx.h"
 #include "PidParser.h"
 #include "LogProfiler.h"
 #include "Global.h"

@@ -27,7 +27,7 @@
 *  bear and nate can be reached on the forums at
 *    http://forums.dvbowners.com/
 */
-#include <streams.h>
+#include "stdafx.h"
 
 #include "bdaiface.h"
 #include "ks.h"
@@ -3312,7 +3312,7 @@ HRESULT CTSFileSourceFilter::AddGraphToRot(
     if (FAILED(GetRunningObjectTable(0, &pROT)))
         return E_FAIL;
 
-    wsprintfW(wsz, L"FilterGraph %08x pid %08x\0", (DWORD_PTR) pUnkGraph, 
+    swprintf(wsz, L"FilterGraph %08x pid %08x\0", (DWORD_PTR) pUnkGraph, 
               GetCurrentProcessId());
 /*	
 	//Search the ROT for the same reference

@@ -27,7 +27,7 @@
 *  bear and nate can be reached on the forums at
 *    http://forums.dvbowners.com/
 */
-#include <streams.h>
+#include "stdafx.h"
 
 #include "bdaiface.h"
 #include "ks.h"
@@ -442,7 +442,7 @@ HRESULT CTSParserSourceFilter::DoProcessingLoop(void)
 							LPOLESTR pFileName = new WCHAR[1+lstrlenW(pszFileName)];
 							if (pFileName != NULL)
 							{
-								lstrcpyW(pFileName, pszFileName);
+								wcscpy(pFileName, pszFileName);
 								load(pFileName, NULL);
 								if (pFileName)
 									delete[] pFileName;
@@ -950,7 +950,7 @@ STDMETHODIMP  CTSParserSourceFilter::Enable(long lIndex, DWORD dwFlags) //IAMStr
 	else if (lIndex > m_pStreamParser->StreamArray.Count() - indexOffset) //Select multicast streams
 	{
 		WCHAR wfilename[MAX_PATH];
-		lstrcpyW(wfilename, netArray[lIndex - (m_pStreamParser->StreamArray.Count() - netArray.Count())].fileName);
+		wcscpy(wfilename, netArray[lIndex - (m_pStreamParser->StreamArray.Count() - netArray.Count())].fileName);
 		if (SUCCEEDED(load(wfilename, NULL)))
 		{
 //			m_pFileReader->set_DelayMode(TRUE);
@@ -1265,7 +1265,7 @@ HRESULT CTSParserSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *
 	CheckPointer(pszFileName,E_POINTER);
 
 	LPOLESTR wFileName = new WCHAR[lstrlenW(pszFileName)+1];
-	lstrcpyW(wFileName, pszFileName);
+	wcscpy(wFileName, pszFileName);
 
 	if (_wcsicmp(wFileName, L"") == 0)
 	{
@@ -1292,7 +1292,7 @@ HRESULT CTSParserSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *
 				delete[] wFileName;
 
 			wFileName = new WCHAR[1+lstrlenW(T2W(ptFilename))];
-			lstrcpyW(wFileName, T2W(ptFilename));
+			wcscpy(wFileName, T2W(ptFilename));
 		}
 		else
 		{
@@ -1342,7 +1342,7 @@ HRESULT CTSParserSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *
 				delete[] wFileName;
 
 			wFileName = new WCHAR[1+lstrlenW(netAddr->fileName)];
-			lstrcpyW(wFileName, netAddr->fileName);
+			wcscpy(wFileName, netAddr->fileName);
 //			m_pFileReader->set_DelayMode(TRUE);
 //			m_pFileDuration->set_DelayMode(TRUE);
 			m_pFileReader->set_DelayMode(FALSE);
@@ -1355,7 +1355,7 @@ HRESULT CTSParserSourceFilter::load(LPCOLESTR pszFileName, const AM_MEDIA_TYPE *
 				delete[] wFileName;
 
 			wFileName = new WCHAR[1+lstrlenW(netArray[pos].fileName)];
-			lstrcpyW(wFileName, netArray[pos].fileName);
+			wcscpy(wFileName, netArray[pos].fileName);
 			delete netAddr;
 		}
 	}
@@ -2297,7 +2297,7 @@ STDMETHODIMP CTSParserSourceFilter::GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_
 
 		if (*ppszFileName != NULL)
 		{
-			lstrcpyW(*ppszFileName, pFileName);
+			wcscpy(*ppszFileName, pFileName);
 		}
 	}
 
@@ -3410,7 +3410,7 @@ HRESULT CTSParserSourceFilter::AddGraphToRot(
     if (FAILED(GetRunningObjectTable(0, &pROT)))
         return E_FAIL;
 
-    wsprintfW(wsz, L"FilterGraph %08x pid %08x\0", (DWORD_PTR) pUnkGraph, 
+    swprintf(wsz, L"FilterGraph %08x pid %08x\0", (DWORD_PTR) pUnkGraph, 
               GetCurrentProcessId());
 /*	
 	//Search the ROT for the same reference

@@ -26,7 +26,7 @@
 
 #include <math.h>
 #include <crtdbg.h>
-#include <streams.h>
+#include "stdafx.h"
 #include "TSFileSink.h"
 #include "TSFileSinkGuids.h"
 #include "BDATYPES.H"
