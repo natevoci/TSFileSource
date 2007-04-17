@@ -734,18 +734,21 @@ void CTSParserInputPin::PrintLongLong(LPCTSTR lstring, __int64 value)
 	double dVal = (double)value;
 	double len = log10(dVal);
 	int pos = (int)len;
-	sz[pos+1] = '\0';
-	while (pos >= 0)
+	if (pos>=0)
 	{
-		int val = (int)(value % 10);
-		sz[pos] = '0' + val;
-		value /= 10;
-		pos--;
+		sz[pos+1] = '\0';
+		while (pos >= 0)
+		{
+			int val = (int)(value % 10);
+			sz[pos] = '0' + val;
+			value /= 10;
+			pos--;
+		}
+		TCHAR szout[100];
+		wsprintf(szout, TEXT("%05i - %s %s\n"), debugcount, lstring, sz);
+		::OutputDebugString(szout);
+		debugcount++;
 	}
-	TCHAR szout[100];
-	wsprintf(szout, TEXT("%05i - %s %s\n"), debugcount, lstring, sz);
-	::OutputDebugString(szout);
-	debugcount++;
 }
 
 HRESULT CTSParserInputPin::OpenFile()

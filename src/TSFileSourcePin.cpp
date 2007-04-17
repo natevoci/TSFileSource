@@ -84,6 +84,10 @@ CTSFileSourcePin::CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter,
 	else
 		m_lTSPacketDeliverySize = m_pTSFileSourceFilter->m_pPidParser->m_PacketSize * 100; //65536/4;//188000;
 
+	m_lTSPacketDeliverySize = 65536/4;
+	//round to nearest byte boundary.
+	m_lTSPacketDeliverySize -= (m_lTSPacketDeliverySize % m_pTSFileSourceFilter->m_pPidParser->m_PacketSize);
+
 	m_DataRate = 10000000;
 	m_DataRateTotal = 0;
 	m_BitRateCycle = 0;
@@ -1015,31 +1019,31 @@ HRESULT CTSFileSourcePin::Run(REFERENCE_TIME tStart)
 
 STDMETHODIMP CTSFileSourcePin::GetCurrentPosition(LONGLONG *pCurrent)
 {
-////::OutputDebugString(TEXT("GetCurrentPosition In\n"));
-//	if (pCurrent)
-//	{
-//		CAutoLock seekLock(&m_SeekLock);
-//
-//		//Get the FileReader Type
-//		WORD bMultiMode;
-//		m_pTSFileSourceFilter->m_pFileReader->get_ReaderMode(&bMultiMode);
-//		//Do MultiFile timeshifting mode
-//		if (m_bGetAvailableMode && bMultiMode)
-//		{
-//			*pCurrent = max(0, (__int64)positionFunctions.SubConvertPCRtoRT(m_IntCurrentTimePCR, m_IntBaseTimePCR));
-////			*pCurrent = max(0, (__int64)parserFunctions.ConvertPCRtoRT(m_IntCurrentTimePCR));
-//
+//::OutputDebugString(TEXT("GetCurrentPosition In\n"));
+	if (pCurrent)
+	{
+		CAutoLock seekLock(&m_SeekLock);
+
+		//Get the FileReader Type
+		WORD bMultiMode;
+		m_pTSFileSourceFilter->m_pFileReader->get_ReaderMode(&bMultiMode);
+		//Do MultiFile timeshifting mode
+		if (m_bGetAvailableMode && bMultiMode)
+		{
+			*pCurrent = max(0, (__int64)positionFunctions.SubConvertPCRtoRT(m_IntCurrentTimePCR, m_IntBaseTimePCR));
+//			*pCurrent = max(0, (__int64)parserFunctions.ConvertPCRtoRT(m_IntCurrentTimePCR));
+
 //#ifdef DEBUG_POSITIONS
 //			positionFunctions.PrintTime(TEXT("GetCurrentPosition                "), (__int64) *pCurrent, 10000, &debugcount);
 //#endif
-//
-//			REFERENCE_TIME current, stop;
-//			return CSourceSeeking::GetPositions(&current, &stop);
-//		}
-//
-//		REFERENCE_TIME stop;
-//		return GetPositions(pCurrent, &stop);
-//	}
+
+			REFERENCE_TIME current, stop;
+			return CSourceSeeking::GetPositions(&current, &stop);
+		}
+
+		REFERENCE_TIME stop;
+		return GetPositions(pCurrent, &stop);
+	}
 
 
 //	IFilterGraph * piFilterGraph = m_pTSFileSourceFilter->GetFilterGraph();
@@ -1277,7 +1281,7 @@ HRESULT CTSFileSourcePin::setPositions(LONGLONG *pCurrent, DWORD CurrentFlags
 
 			//m_pTSBuffer->Clear();		// this is not needed because it's cleared in OnThreadStartPlay 
 
-			SetAccuratePos2(rtCurrent);
+			SetAccuratePos(rtCurrent);
 
 			profile.AddTimeStamp(L"SetAccuratePos");
 
@@ -2660,18 +2664,21 @@ void CTSFileSourcePin::PrintLongLong(LPCTSTR lstring, __int64 value)
 	double dVal = (double)value;
 	double len = log10(dVal);
 	int pos = (int)len;
-	sz[pos+1] = '\0';
-	while (pos >= 0)
+	if (pos>=0)
 	{
-		int val = (int)(value % 10);
-		sz[pos] = '0' + val;
-		value /= 10;
-		pos--;
+		sz[pos+1] = '\0';
+		while (pos >= 0)
+		{
+			int val = (int)(value % 10);
+			sz[pos] = '0' + val;
+			value /= 10;
+			pos--;
+		}
+		TCHAR szout[100];
+		wsprintf(szout, TEXT("%05i - %s %s\n"), debugcount, lstring, sz);
+		::OutputDebugString(szout);
+		debugcount++;
 	}
-	TCHAR szout[100];
-	wsprintf(szout, TEXT("%05i - %s %s\n"), debugcount, lstring, sz);
-	::OutputDebugString(szout);
-	debugcount++;
 }
 */
 HRESULT CTSFileSourcePin::DisconnectDemux()

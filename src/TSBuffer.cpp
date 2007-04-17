@@ -36,7 +36,7 @@ CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 	m_pFileReader = NULL;
 	m_pClock = pClock;
 	m_lItemOffset = 0;
-	m_lTSBufferItemSize = 65536;
+	m_lTSBufferItemSize = 65536/4;
 
 	//round to nearest byte boundary.
 	m_lTSBufferItemSize -= (m_lTSBufferItemSize % pPidParser->m_PacketSize);
@@ -94,7 +94,10 @@ long CTSBuffer::Count()
 HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 {
 	if (!m_pFileReader)
+	{
+		Sleep(1);
 		return E_POINTER;
+	}
 
 	CAutoLock BufferLock(&m_BufferLock);
 	long bytesAvailable = Count();
@@ -106,11 +109,30 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 		BYTE *newItem = new BYTE[m_lTSBufferItemSize];
 		ULONG ulBytesRead = 0;
 
-		__int64 currPosition = m_pFileReader->GetFilePointer();
+		__int64 llStartPosition, llfilelength = 0;
+		if (FAILED(m_pFileReader->GetFileSize(&llStartPosition, &llfilelength)))
+		{ 
+			m_loopCount = 20;
+			delete[] newItem;
+			Sleep(1);
+			return E_FAIL;
+		}
+
+		__int64 currPosition = m_pFileReader->getFilePointer();
+		DWORD dwErr = GetLastError();
+		if ((DWORD)currPosition == (DWORD)0xFFFFFFFF && dwErr)
+		{
+			m_loopCount = 20;
+			delete[] newItem;
+			Sleep(1);
+			return E_FAIL;
+		}
+
 		HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulBytesRead);
 		if (FAILED(hr)){
 
 			delete[] newItem;
+			Sleep(1);
 			return hr;
 		}
 
@@ -142,18 +164,41 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 						{
 							m_loopCount = 20;
 							delete[] newItem;
+							Sleep(1);
 							return hr;
 						}
+//						m_pFileReader->SetFilePointer(0, FILE_END);
 						Sleep(100);
 					}
 
 					ULONG ulNextBytesRead = 0;				
-					m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
-					HRESULT hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulNextBytesRead);
-					if (FAILED(hr) && !m_loopCount){
 
+					__int64 llStartPosition2 = 0;
+					if (FAILED(m_pFileReader->GetFileSize(&llStartPosition2, &llfilelength)))
+					{ 
 						m_loopCount = 20;
 						delete[] newItem;
+						Sleep(1);
+						return E_FAIL;
+					}
+
+					llStartPosition2 = llStartPosition - llStartPosition2;
+
+					hr = m_pFileReader->SetFilePointer(currPosition + llStartPosition2, FILE_BEGIN);
+					dwErr = GetLastError();
+					if ((DWORD)hr == (DWORD)0xFFFFFFFF && dwErr)
+					{
+						m_loopCount = 20;
+						delete[] newItem;
+						Sleep(1);
+						return E_FAIL;
+					}
+					
+					hr = m_pFileReader->Read(newItem, m_lTSBufferItemSize, &ulNextBytesRead);
+					if (FAILED(hr) && !m_loopCount){
+
+						delete[] newItem;
+						Sleep(1);
 						return hr;
 					}
 
@@ -161,6 +206,7 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 
 						m_loopCount = 20;
 						delete[] newItem;
+						Sleep(1);
 						return E_FAIL;
 					}
 
@@ -169,7 +215,9 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			}
 			else
 			{
+				m_loopCount = 20;
 				delete[] newItem;
+				Sleep(1);
 				return E_FAIL;
 			}
 		}

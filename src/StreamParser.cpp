@@ -268,7 +268,7 @@ HRESULT StreamParser::ParsePidArray()
 			streams.Clear();
 			LoadStreamArray(count);
 			AddStreamArray();
-			swprintf(StreamArray[index].name, L"UDP@ %S : %S : %S [%lukb/s]",
+			swprintf(StreamArray[index].name, L"UDP@ %s : %s : %s [%lukb/s]",
 												(*m_pNetArray)[i].strIP,
 												(*m_pNetArray)[i].strPort,
 												(*m_pNetArray)[i].strNic,

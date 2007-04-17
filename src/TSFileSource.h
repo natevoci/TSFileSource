@@ -82,7 +82,7 @@ public:
 private:
 	//private contructor because CreateInstance creates this object
 	CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr);
-	~CTSFileSourceFilter();
+	virtual ~CTSFileSourceFilter();
 
 	// Overriden to say what interfaces we support where
 	STDMETHODIMP NonDelegatingQueryInterface(REFIID riid, void ** ppv);
@@ -253,6 +253,7 @@ protected:
 	HRESULT showEPGInfo();
 
 
+    CPosPassThru *m_pPosition;      // Renderer position controls
 	SharedMemory* m_pSharedMemory;
 	DVBMpeg2DataParser *m_pMpeg2DataParser;
 	CTSFileSourcePin *m_pPin;          // A simple rendered output pin

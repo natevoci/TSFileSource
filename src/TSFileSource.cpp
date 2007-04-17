@@ -58,6 +58,7 @@ CUnknown * WINAPI CTSFileSourceFilter::CreateInstance(LPUNKNOWN punk, HRESULT *p
 // Constructor
 CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 	CSource(NAME("CTSFileSourceFilter"), pUnk, CLSID_TSFileSource),
+    m_pPosition(NULL),
 	m_bRotEnable(FALSE),
 	m_bSharedMode(FALSE),
 	m_pPin(NULL),
@@ -124,18 +125,28 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 
 CTSFileSourceFilter::~CTSFileSourceFilter()
 {
+	::OutputDebugString(TEXT("CTSFileSourceFilter::~CTSFileSourceFilter() About to stop UpdateThread.\n"));
+
 	//Make sure the worker thread is stopped before we exit.
+	if (m_WriteThreadActive)
+	{
+		UpdateThread::StopThread(100);
+		m_WriteThreadActive = FALSE;
+	}
+
+	::OutputDebugString(TEXT("CTSFileSourceFilter::~CTSFileSourceFilter() About to stop CAMThread.\n"));
 	//Also closes the files.m_hThread
 	if (CAMThread::ThreadExists())
 	{
 		CAMThread::CallWorker(CMD_STOP);
-		int count = 200;
-		while (m_bThreadRunning && count--)
-			Sleep(10);
+//		int count = 100;
+//		while (m_bThreadRunning && count--)
+//			Sleep(10);
 
 		CAMThread::CallWorker(CMD_EXIT);
 		CAMThread::Close();
 	}
+	::OutputDebugString(TEXT("CTSFileSourceFilter::~CTSFileSourceFilter() CAMThread complete.\n"));
 
 	//Clear the filter list;
 	POSITION pos = m_FilterRefList.GetHeadPosition();
@@ -173,6 +184,7 @@ CTSFileSourceFilter::~CTSFileSourceFilter()
 	if (m_pSettingsStore) delete  m_pSettingsStore;
 	if (m_pPidParser) delete  m_pPidParser;
 	if (m_pStreamParser) delete	m_pStreamParser;
+	if (m_pPosition) {delete m_pPosition; m_pPosition = NULL;}
 	if (m_pPin) delete	m_pPin;
 	if (m_pFileReader) delete	m_pFileReader;
 	if (m_pFileDuration) delete  m_pFileDuration;
@@ -277,9 +289,11 @@ void CTSFileSourceFilter::UpdateThreadProc(void)
 //			Sleep (1000);
 		}
 
-//		Sleep(100);
+		if (m_bColdStart)
+			Sleep(100);
 	}
 	m_WriteThreadActive = FALSE;
+	::OutputDebugString(TEXT("CTSFileSourceFilter::UpdateThreadProc() Exiting.\n"));
 }
 
 DWORD CTSFileSourceFilter::ThreadProc(void)
@@ -373,8 +387,9 @@ DWORD CTSFileSourceFilter::ThreadProc(void)
     } while(cmd != CMD_EXIT);
 
 	m_pFileDuration->CloseFile();
+	::OutputDebugString(TEXT("CTSFileSourceFilter::ThreadProc() Worker thread exiting.\n"));
+//    DbgLog((LOG_TRACE, 1, TEXT("Worker thread exiting")));
 	m_bThreadRunning = FALSE;
-    DbgLog((LOG_TRACE, 1, TEXT("Worker thread exiting")));
     return 0;
 }
 
@@ -548,6 +563,7 @@ HRESULT CTSFileSourceFilter::DoProcessingLoop(void)
 		m_pMpeg2DataParser->ReleaseFilter();
 
 	m_bThreadRunning = FALSE;
+	::OutputDebugString(TEXT("CTSFileSourceFilter::DoProcessingLoop() Exiting.\n"));
 
     return S_FALSE;
 }
@@ -1021,6 +1037,7 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 
 //	if (m_bThreadRunning && CAMThread::ThreadExists())
 //		CAMThread::CallWorker(CMD_STOP);
+
 //	HRESULT hr = CSource::Stop();
 	HRESULT hr = CBaseFilter::Stop();
 
@@ -1029,6 +1046,7 @@ STDMETHODIMP CTSFileSourceFilter::Stop()
 
 	m_pFileReader->CloseFile();
 	m_pFileDuration->CloseFile();
+	if (m_pSharedMemory) m_pSharedMemory->Destroy();    
 
 	return hr;
 }

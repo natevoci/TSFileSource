@@ -215,8 +215,8 @@ HRESULT FileWriter::Write(PBYTE pbData, ULONG lDataLength)
 	DWORD written = 0;
 	hr = WriteFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, &written, NULL);
 
-	if (FAILED(hr))
-		return hr;
+	if (hr)
+		return E_FAIL;
 	if (written < (ULONG)lDataLength)
 		return S_FALSE;
 

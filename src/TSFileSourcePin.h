@@ -51,7 +51,7 @@ class CTSFileSourcePin : public CSourceStream,
 public:
 
 	CTSFileSourcePin(LPUNKNOWN pUnk, CTSFileSourceFilter *pFilter, HRESULT *phr);
-	~CTSFileSourcePin();
+	virtual ~CTSFileSourcePin();
 
 	STDMETHODIMP NonDelegatingQueryInterface( REFIID riid, void ** ppv );
 

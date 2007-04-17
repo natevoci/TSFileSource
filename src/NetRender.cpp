@@ -226,9 +226,9 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	_tzset();
 	time(&netAddr->time);
 	netAddr->tmTime = localtime(&netAddr->time);
-	wcsftime(wfileName, 32, L"(%Y-%m-%d %H-%M-%S)", netAddr->tmTime);
+	wcsftime(wfileName, 32, L"(%Y-%m-%d %H-%M-%s)", netAddr->tmTime);
 
-	swprintf(netAddr->fileName, L"%S%S UDP (%S-%S-%S).tsbuffer",
+	swprintf(netAddr->fileName, L"%s%s UDP (%s-%s-%s).tsbuffer",
 								netAddr->pathName,
 								wfileName,
 								netAddr->strIP,
@@ -348,11 +348,11 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 		DeleteNetworkGraph(netAddr);
 		return hr;
 	}
-	swprintf(netAddr->fileName, L"%S", pwFileName);
+	swprintf(netAddr->fileName, L"%s", pwFileName);
+//MessageBoxW(NULL, netAddr->fileName, pwFileName, NULL);
 	if (pwFileName)
 		delete[] pwFileName;
 	
-//MessageBoxW(NULL, netAddr->fileName, ptFileName, NULL);
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
     return hr;
@@ -639,7 +639,7 @@ BOOL CNetRender::IsMulticastAddress(LPOLESTR lpszFileName, NetInfo *netAddr)
 
 //MessageBoxW(NULL, netAddr->pathName,L"netAddr->pathName", NULL);
 	//Addon in Multicast Address
-	swprintf(netAddr->fileName, L"%SUDP (%S-%S-%S).tsbuffer",
+	swprintf(netAddr->fileName, L"%sUDP (%s-%s-%s).tsbuffer",
 								netAddr->pathName,
 								netAddr->strIP,
 								netAddr->strPort,

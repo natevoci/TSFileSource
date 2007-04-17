@@ -431,7 +431,7 @@ STDMETHODIMP CTSParserSink::GetBufferFileName(LPWSTR fileName)
 	// Take a copy of the filename
 	if (m_pFileName)
 	{
-		swprintf(fileName, L"%S", m_pFileName);
+		swprintf(fileName, L"%s", m_pFileName);
 		return NOERROR;
 //		sprintf((char *)fileName, "%S", m_pFileName);
 //		return NOERROR;

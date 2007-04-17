@@ -361,7 +361,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 	__int64 fileStart, filelength;
 	ULONG ulDataRead = 0;
 	pFileReader->GetFileSize(&fileStart, &filelength);
-	ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE, filelength);
+	ULONG ulDataLength = (ULONG)min((ULONG)MIN_FILE_SIZE*2, filelength);
 
 	{
 		fileStartPointer = min((__int64)(filelength - (__int64)ulDataLength), fileStartPointer);
@@ -639,7 +639,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				int curr_sid = pidArray[i].sid;
 
 				a = ulDataLength - m_PacketSize;
-				while (hr == S_OK)
+				while (pids.pmt != curr_pmt && hr == S_OK)
 				{
 					//search at the head of the file
 					hr = FindSyncByte(this, pData, ulDataLength, &a, -1);
@@ -649,27 +649,30 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 					pids.Clear();
 					if (ParsePMT(this, pData, ulDataLength, a) == S_OK)
 					{
-						pmtfound++;
 						//Check PMT & SID matches program & only do second occurance
-						if ((pids.pmt == curr_pmt) && (pids.sid == curr_sid) && (pmtfound > 1))
+						if (pids.pmt == curr_pmt && pids.sid == curr_sid)
 						{
-							//Search for valid A/V pids
-							if (IsValidPMT(pData, ulDataLength) == S_OK)
+							//Check PMT & SID matches program & only do second occurance
+							if (pmtfound)
 							{
-								//Set pcr & Store pids from PMT
-								RefreshDuration(FALSE, pFileReader);
-								SetPidArray(i);
-								i++;
+								//Search for valid A/V pids
+								if (IsValidPMT(pData, ulDataLength) == S_OK)
+								{
+									//Set pcr & Store pids from PMT
+									RefreshDuration(FALSE, pFileReader);
+									SetPidArray(i);
+									i++;
+								}
+								else	//Failed to find any matching A/V Pids
+								{
+									pids.pmt = 0;
+									pids.sid = 0;
+								}
 								break;
 							}
-
-							// If we've found 5 invalid PMT's then we give up
-							if (pmtfound > 6)
-							{
-								pids.pmt = 0;
-								pids.sid = 0;
-								break;
-							}
+							pmtfound++;
+							pids.pmt = 0;
+							pids.sid = 0;
 						}
 					}
 					a -= m_PacketSize;
@@ -678,8 +681,6 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 				// We remove the program from the pidarray here because it's not in the TS
 				if ((pids.pmt != curr_pmt) || (pids.sid != curr_sid) || (hr != S_OK)) //Make sure we have a correct packet
 					pidArray.RemoveAt(i);
-				else
-					i++;
 			}
 
 			profile.AddTimeStamp(L"Validate PMT's and Get Duration");
@@ -2654,18 +2655,21 @@ void ParserFunctions::PrintLongLong(LPCTSTR lstring, __int64 value, int *debugco
 	double dVal = (double)value;
 	double len = log10(dVal);
 	int pos = (int)len;
-	sz[pos+1] = '\0';
-	while (pos >= 0)
+	if (pos>=0)
 	{
-		int val = (int)(value % 10);
-		sz[pos] = '0' + val;
-		value /= 10;
-		pos--;
+		sz[pos+1] = '\0';
+		while (pos >= 0)
+		{
+			int val = (int)(value % 10);
+			sz[pos] = '0' + val;
+			value /= 10;
+			pos--;
+		}
+		TCHAR szout[100];
+		wsprintf(szout, TEXT("%05i - %s %s\n"), *debugcount, lstring, sz);
+		::OutputDebugString(szout);
+		*debugcount = *debugcount + 1;
 	}
-	TCHAR szout[100];
-	wsprintf(szout, TEXT("%05i - %s %s\n"), *debugcount, lstring, sz);
-	::OutputDebugString(szout);
-	*debugcount = *debugcount + 1;
 }
 
 __int64 ParserFunctions::ConvertPCRtoRT(__int64 pcrtime)
@@ -2908,8 +2912,9 @@ HRESULT ParserFunctions::FindNextOPCR(PidParser *pPidParser, PBYTE pData, ULONG 
 
 HRESULT ParserFunctions::FindSyncByte(PidParser *pPidParser, PBYTE pbData, ULONG ulDataLength, ULONG* a, int step)
 {
-	if (!pPidParser)
+	if (!pPidParser || ulDataLength < (pPidParser->m_PacketSize*3))
 		return E_POINTER;
+
 
 	CAutoLock lock(&m_ParserLock);
 	//look for Program Pin Mode
@@ -2938,10 +2943,10 @@ HRESULT ParserFunctions::FindSyncByte(PidParser *pPidParser, PBYTE pbData, ULONG
 
 					if (*a-pPidParser->m_PacketSize > 0)
 					{
-						if ((ULONG)((0xFF&pbData[*a - pPidParser->m_PacketSize])<<24
-						| (0xFF&pbData[*a+1 - pPidParser->m_PacketSize])<<16
-						| (0xFF&pbData[*a+2 - pPidParser->m_PacketSize])<<8
-						| (0xFF&pbData[*a+3 - pPidParser->m_PacketSize])) == 0x1BA)
+						if ((ULONG)((0xFF&pbData[max(0, *a - pPidParser->m_PacketSize)])<<24
+						| (0xFF&pbData[max(0, *a+1 - pPidParser->m_PacketSize)])<<16
+						| (0xFF&pbData[max(0, *a+2 - pPidParser->m_PacketSize)])<<8
+						| (0xFF&pbData[max(0, *a+3 - pPidParser->m_PacketSize)])) == 0x1BA)
 							return S_OK;
 					}
 				}
@@ -3072,7 +3077,7 @@ PBYTE ParserFunctions::ParseExtendedPacket(PidParser *pPidParser, int tableID, P
 	int pos_save = pos;
 	WORD pid = (WORD)(0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2]);
 
-	if ((0x30&pData[pos+3]) == 0x30)	//adaptation field + payload
+	if ((0x20&pData[pos+3]) == 0x20)	//adaptation field + payload
 //	if ((0xf0&pData[pos+3]) == 0x30 && pData[pos+5] == 0)
 			pos += pData[pos+4] + 1;
 
@@ -3084,7 +3089,7 @@ PBYTE ParserFunctions::ParseExtendedPacket(PidParser *pPidParser, int tableID, P
 
 	PBYTE pSectionData = new BYTE[4096];
 	PBYTE pSectionDataSave = pSectionData;
-	memcpy(pSectionData, pData+pos, 188); //save first pmt data packet
+	memcpy(pSectionData, pData+pos_save, 188); //save first pmt data packet
 	pSectionData += pPidParser->m_PacketSize;
 	pos += pPidParser->m_PacketSize;
 

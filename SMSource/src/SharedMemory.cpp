@@ -3,10 +3,10 @@
 *  Copyright (C) 2005      nate
 *  Copyright (C) 2006      bear
 *
-*  This file is part of TSFileSource, a directshow push source filter that
+*  This file is part of SMSource, a directshow Shared Memory push source filter that
 *  provides an MPEG transport stream output.
 *
-*  TSFileSource is free software; you can redistribute it and/or modify
+*  SMSource is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
 *  the Free Software Foundation; either version 2 of the License, or
 *  (at your option) any later version.
@@ -17,7 +17,7 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with TSFileSource; if not, write to the Free Software
+*  along with SMSource; if not, write to the Free Software
 *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 *
 *  nate can be reached on the forums at
@@ -409,7 +409,11 @@ TCHAR* SharedMemory::GetSharedFileName(LPCSTR lpFileName)
 		else
 			filename[i] = lpFileName[i];
 	}
-	return _strlwr(filename);
+
+	_strlwr_s(filename, strlen(lpFileName)+1);
+	return filename;
+	
+//	return _strlwr(filename);
 }
 
 HANDLE  SharedMemory::openFileMapping(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName)
@@ -942,7 +946,7 @@ CAutoLock memLock(&m_MemoryLock);//6/1/07
 	memParm.version = (__int64)2280;
 	memParm.lock = FALSE;
 	memParm.handleCount = 0;
-	sprintf(memParm.memID,"%s", lpFileName);
+	sprintf_s(memParm.memID,"%s", lpFileName);
 	memParm.dwShareMode = dwShareMode;
 	memParm.dwCreationDisposition = dwCreationDisposition;
 	memParm.dwDesiredAccess = dwDesiredAccess;
@@ -1299,7 +1303,7 @@ BOOL SharedMemory::ReadFile(HANDLE hFile,
 	PBYTE mem = (BYTE*) item->pShared_Memory;
 	mem += pMemParm->memStartOffset;
 	mem += item->sharedFilePosition;
-	memmove(lpBuffer, mem, (UINT)(*lpNumberOfBytesRead));
+	memcpy(lpBuffer, mem, (UINT)(*lpNumberOfBytesRead));
 
 	item->sharedFilePosition += (__int64)(*lpNumberOfBytesRead);
 
@@ -1564,7 +1568,7 @@ void SharedMemory::PrintError(LPCTSTR lstring)
 	if (!pMsg)
 		return;
 
-	sprintf(sz, TEXT("%05i - %s %s\n"), debugcount, lstring, pMsg);
+	sprintf_s(sz, TEXT("%05i - %s %s\n"), debugcount, lstring, pMsg);
 	::OutputDebugString(sz);
 	LocalFree(pMsg);
 }

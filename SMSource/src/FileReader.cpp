@@ -3,10 +3,10 @@
 *  Copyright (C) 2005      nate
 *  Copyright (C) 2006      bear
 *
-*  This file is part of TSFileSource, a directshow push source filter that
+*  This file is part of SMSource, a directshow Shared Memory push source filter that
 *  provides an MPEG transport stream output.
 *
-*  TSFileSource is free software; you can redistribute it and/or modify
+*  SMSource is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
 *  the Free Software Foundation; either version 2 of the License, or
 *  (at your option) any later version.
@@ -17,14 +17,14 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with TSFileSource; if not, write to the Free Software
+*  along with SMSource; if not, write to the Free Software
 *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 *
 *  nate can be reached on the forums at
 *    http://forums.dvbowners.com/
 */
 
-#include "stdafx.h"
+#include <streams.h>
 #include "FileReader.h"
 #include "global.h"
 
@@ -80,7 +80,7 @@ HRESULT FileReader::SetFileName(LPCOLESTR pszFileName)
 	if (m_pFileName == NULL)
 		return E_OUTOFMEMORY;
 
-	wcscpy(m_pFileName, pszFileName);
+	lstrcpyW(m_pFileName, pszFileName);
 
 	return S_OK;
 }
@@ -157,8 +157,8 @@ HRESULT FileReader::OpenFile()
 	}
 
 	TCHAR infoName[512];
-	strcpy(infoName, pFileName);
-	strcat(infoName, ".info");
+	strcpy_s(infoName, pFileName);
+	strcat_s(infoName, ".info");
 
 	m_hInfoFile = m_pSharedMemory->CreateFile((LPCTSTR) infoName, // The filename
 			(DWORD) GENERIC_READ,    // File access
@@ -395,6 +395,11 @@ __int64 FileReader::GetFilePointer()
 	LARGE_INTEGER li;
 	li.QuadPart = 0;
 	li.LowPart = m_pSharedMemory->SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
+	DWORD dwErr = GetLastError();
+	if ((DWORD)li.LowPart == (DWORD)0xFFFFFFFF && dwErr)
+	{
+		return li.LowPart;
+	}
 
 	__int64 start;
 	__int64 length = 0;
@@ -420,7 +425,7 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 
 	// If the file has already been closed, don't continue
 	if (m_hFile == INVALID_HANDLE_VALUE)
-		return E_FAIL;
+		return S_FALSE;
 
 //	BoostThread Boost;
 
@@ -428,11 +433,6 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 	LARGE_INTEGER li;
 	li.QuadPart = 0;
 	li.LowPart = m_pSharedMemory->SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
-	DWORD dwErr = ::GetLastError();
-	if ((DWORD)li.LowPart == (DWORD)0xFFFFFFFF && dwErr)
-	{
-		return E_FAIL;
-	}
 	__int64 m_filecurrent = li.QuadPart;
 
 	if (m_hInfoFile != INVALID_HANDLE_VALUE)
@@ -448,43 +448,37 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 
 			if (length < (__int64)(m_filecurrent + (__int64)lDataLength) && m_filecurrent > startPos)
 			{
+
 				hr = m_pSharedMemory->ReadFile(m_hFile, (PVOID)pbData, (DWORD)max(0,(length - m_filecurrent)), dwReadBytes, NULL);
-				if (!hr)
-					return E_FAIL;
+				if (FAILED(hr))
+					return hr;
 
 				LARGE_INTEGER li;
 				li.QuadPart = 0;
-				hr = m_pSharedMemory->SetFilePointer(m_hFile, li.LowPart, &li.HighPart, FILE_BEGIN);
-				DWORD dwErr = ::GetLastError();
-				if ((DWORD)hr == (DWORD)0xFFFFFFFF && dwErr)
-				{
-					return E_FAIL;
-				}
+				m_pSharedMemory->SetFilePointer(m_hFile, li.LowPart, &li.HighPart, FILE_BEGIN);
 
 				ULONG dwRead = 0;
 
 				hr = m_pSharedMemory->ReadFile(m_hFile,
-					(PVOID)(pbData + (DWORD)max(0,(length - m_filecurrent))),
-					(DWORD)max(0,((__int64)lDataLength -(__int64)(length - m_filecurrent))),
+					(PVOID)(pbData + (DWORD)*dwReadBytes),
+					(DWORD)max(0,((__int64)lDataLength -(__int64)(*dwReadBytes))),
 					&dwRead,
 					NULL);
 
 				*dwReadBytes = *dwReadBytes + dwRead;
 
 			}
-			else if (startPos < (__int64)(m_filecurrent + (__int64)lDataLength) && m_filecurrent < startPos)
+			else if (startPos <= (__int64)(m_filecurrent + (__int64)lDataLength) && m_filecurrent < startPos)
 				hr = m_pSharedMemory->ReadFile(m_hFile, (PVOID)pbData, (DWORD)max(0,(startPos - m_filecurrent)), dwReadBytes, NULL);
 
 			else
 				hr = m_pSharedMemory->ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, dwReadBytes, NULL);
 
-			if (!hr)
-				return S_FALSE;
+			if (FAILED(hr))
+				return hr;
 
 			if (*dwReadBytes < (ULONG)lDataLength)
-			{
-				return E_FAIL;
-			}
+				return S_FALSE;
 
 			return S_OK;
 		}
@@ -500,11 +494,8 @@ HRESULT FileReader::Read(PBYTE pbData, ULONG lDataLength, ULONG *dwReadBytes)
 	else
 		hr = m_pSharedMemory->ReadFile(m_hFile, (PVOID)pbData, (DWORD)lDataLength, dwReadBytes, NULL);//Read file data into buffer
 
-	if (!hr)
-	{
-		return E_FAIL;
-	}
-
+	if (FAILED(hr))
+		return hr;
 	if (*dwReadBytes < (ULONG)lDataLength)
 		return S_FALSE;
 
