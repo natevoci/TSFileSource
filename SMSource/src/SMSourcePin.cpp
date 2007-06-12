@@ -37,9 +37,9 @@ CSMStreamPin::CSMStreamPin(LPUNKNOWN pUnk,
 //						   CCritSec *pLock,
 //						   CCritSec *pReceiveLock,
 						   HRESULT *phr) :
-		CSourceSeeking(NAME("MPEG2 Source Output"), pUnk, phr, &m_pReceiveLock),
         CSourceStream(NAME("MPEG2 Source Output"), phr, pFilter, L"Out"),
-        m_pSMSourceFilter(pFilter),
+ 		CSourceSeeking(NAME("MPEG2 Source Output"), pUnk, phr, &m_pReceiveLock),
+       m_pSMSourceFilter(pFilter),
 		m_biMpegDemux(FALSE)//,
 //	    m_pReceiveLock(pReceiveLock)
 			
@@ -70,6 +70,7 @@ CSMStreamPin::~CSMStreamPin()
 
 STDMETHODIMP CSMStreamPin::NonDelegatingQueryInterface( REFIID riid, void ** ppv )
 {
+    CAutoLock cAutoLock(m_pFilter->pStateLock());
 	if (riid == IID_ISMSource)
 	{
 		return GetInterface((ISMSource*)m_pSMSourceFilter, ppv);
@@ -267,7 +268,7 @@ HRESULT CSMStreamPin::ConvertTimeFormat( LONGLONG * pTarget, const GUID * pTarge
 HRESULT CSMStreamPin::SetPositions( LONGLONG * pCurrent,  DWORD CurrentFlags
                       , LONGLONG * pStop,  DWORD StopFlags )
 {
-    DWORD StopPosBits = StopFlags & AM_SEEKING_PositioningBitsMask;
+   DWORD StopPosBits = StopFlags & AM_SEEKING_PositioningBitsMask;
     DWORD StartPosBits = CurrentFlags & AM_SEEKING_PositioningBitsMask;
 
     if(StopFlags) {
@@ -537,7 +538,7 @@ HRESULT CSMStreamPin::FillBuffer(IMediaSample *pSample)
         return NOERROR;
 	}
 
-    CAutoLock lock(&m_pReceiveLock);
+    CAutoLock lock(&m_FillLock);
 
     // Access the sample's data buffer
     HRESULT hr = pSample->GetPointer(&pData);
@@ -678,19 +679,29 @@ HRESULT CSMStreamPin::FillBuffer(IMediaSample *pSample)
 
 HRESULT CSMStreamPin::OnThreadStartPlay( )
 {
-    DeliverNewSegment(m_rtStart, m_rtStop, 1.0 );
+ 	CAutoLock fillLock(&m_FillLock);
+ 	CAutoLock lock(&m_pReceiveLock);
+  DeliverNewSegment(m_rtStart, m_rtStop, 1.0 );
     return CSourceStream::OnThreadStartPlay( );
 }
 
+HRESULT CSMStreamPin::Run(REFERENCE_TIME tStart)
+{
+	CAutoLock fillLock(&m_FillLock);
+	CAutoLock lock(&m_pReceiveLock);
+
+//	CBasePin::m_tStart = tStart;
+	return CBaseOutputPin::Run(tStart);
+}
 
 void CSMStreamPin::UpdateFromSeek()
 {
 	if (ThreadExists())
 	{
 		DeliverBeginFlush();
-		Stop();
+		CSourceStream::Stop();
 		DeliverEndFlush();
-		Run();
+		CSourceStream::Run();
 	}
 }
 
@@ -725,11 +736,11 @@ HRESULT CSMStreamPin::ChangeStart( )
 	{
 		m_bSeeking = TRUE;
 		DeliverBeginFlush();
-		Stop();
+		CSourceStream::Stop();
 		m_pSMSourceFilter->FileSeek(m_rtStart);
 		DeliverEndFlush();
 		m_bSeeking = FALSE;
-		Run();
+		CSourceStream::Run();
 	}
     return S_OK;
 }

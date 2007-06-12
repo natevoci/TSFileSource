@@ -3234,7 +3234,7 @@ HRESULT ParserFunctions::ParsePMT(PidParser *pPidParser, PBYTE pData, ULONG ulDa
 				if (pPidParser->pids.sub == 0)
 					pPidParser->pids.sub = pid;
 
-			if (StreamType == 0x0f) // AAC
+			if (StreamType == 0x0f || StreamType == 0x11) // AAC
 				if (pPidParser->pids.aac == 0)
 					pPidParser->pids.aac = pid;
 				else

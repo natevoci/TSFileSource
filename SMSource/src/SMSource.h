@@ -37,6 +37,7 @@
 
 class CSMSourceFilter;
 
+#include "SMSourceClock.h"
 #include "SMSourcePin.h"
 #include "SharedMemory.h"
 #include "FileReader.h"
@@ -119,6 +120,7 @@ public:
 
 protected:
 
+	CSMSourceClock *m_pClock;
 	CSMStreamPin * m_pPin;          // A simple rendered input pin
 	SharedMemory *m_pSharedMemory;
 	FileReader *m_pFileReader;

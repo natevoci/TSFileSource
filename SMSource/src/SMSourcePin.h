@@ -48,7 +48,8 @@ class CSMStreamPin : public CSourceSeeking,
 protected:
 
     CSMSourceFilter  * m_pSMSourceFilter;             // Main renderer object    
-    CCritSec   m_pReceiveLock;          // Protects our internal state
+    CCritSec  m_pReceiveLock;          // Protects our internal state
+	CCritSec  m_FillLock;
 	BOOL m_bSeeking;
     CCritSec m_ReceiveLock;         // Sublock for received samples
 
@@ -101,6 +102,7 @@ public:
     HRESULT DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROPERTIES *pRequest);
     HRESULT FillBuffer(IMediaSample *pSample);
 	HRESULT OnThreadStartPlay( );
+	HRESULT Run(REFERENCE_TIME tStart);
 	HRESULT SetDuration(REFERENCE_TIME duration);
     REFERENCE_TIME GetStartTime();
 	HRESULT SetStartTime(REFERENCE_TIME start);

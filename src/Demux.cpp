@@ -414,7 +414,8 @@ HRESULT Demux::UpdateDemuxPins(IBaseFilter* pDemux)
 
 
 		// Update Audio Pin
-		if (!(m_StreamAC3 | m_StreamMP2)) {
+		if ((get_AAC_AudioPid()|get_DTS_AudioPid()) &&
+			!((m_StreamAC3&&get_AC3_AudioPid()) | (m_StreamMP2&&get_MP2AudioPid()))) {
 
 			USHORT pPid;
 			pPid = get_AAC_AudioPid();
@@ -3970,12 +3971,15 @@ BOOL Demux::get_AC3Mode()
 
 void Demux::set_AC3Mode(BOOL bAC3Mode)
 {
-	m_StreamMP2 = !bAC3Mode;
-//	m_StreamAAC = 0;
-//	m_StreamDTS = 0;
+	m_bAC3Mode = bAC3Mode;
+
+	if (m_StreamAAC)
+		return;
+	else if (m_StreamDTS)
+		return;
+
 	m_StreamMP2 = !bAC3Mode;
 	m_StreamAC3 = bAC3Mode;
-	m_bAC3Mode = bAC3Mode;
 }
 
 BOOL Demux::get_FixedAspectRatio()

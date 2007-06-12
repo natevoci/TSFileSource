@@ -67,6 +67,14 @@ CSMSourceFilter::CSMSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 {
     ASSERT(phr);
 
+	m_pClock = new CSMSourceClock( NAME(""), GetOwner(), phr );
+	if (m_pClock == NULL)
+	{
+		if (phr)
+			*phr = E_OUTOFMEMORY;
+		return;
+	}
+
     m_pPin = new CSMStreamPin(GetOwner(),
                               this,
 //                              &m_Lock,
@@ -127,6 +135,10 @@ STDMETHODIMP CSMSourceFilter::NonDelegatingQueryInterface(REFIID riid, void ** p
 	if (riid == IID_IMediaPosition || riid == IID_IMediaSeeking)
 	{
 		return m_pPin->NonDelegatingQueryInterface(riid, ppv);
+	}
+	if (riid == IID_IReferenceClock)
+	{
+		return GetInterface((IReferenceClock*)m_pClock, ppv);
 	}
 //    if (riid == IID_IAMFilterMiscFlags)
 //    {
@@ -189,22 +201,14 @@ STDMETHODIMP CSMSourceFilter::FindPin(LPCWSTR Id, IPin ** ppPin)
 //
 STDMETHODIMP CSMSourceFilter::Stop()
 {
-//	CAutoLock lock(&m_Lock);
-    CAutoLock cObjectLock(m_pLock);
-//TCHAR sz[128];
-//sprintf(sz, "%u", 0);
-//MessageBox(NULL, sz,"about to stop", NULL);
+	CAutoLock lock(&m_Lock);
+	CAutoLock cObjectLock(m_pLock);
 
-//	HRESULT hr = CBaseFilter::Stop();
-//sprintf(sz, "hr = %u", hr);
-//MessageBox(NULL, sz,"have to stopped", NULL);
-    HRESULT hr = CSource::Stop();
+	HRESULT hr = CBaseFilter::Stop();
+
 	hr = CloseFile();
-//sprintf(sz, "hr = %u", hr);
-//MessageBox(NULL, sz,"have closed", NULL);
+
 	if (m_pSharedMemory) m_pSharedMemory->Destroy();  
-//sprintf(sz, "%u", hr);
-//MessageBox(NULL, sz,"have destroyed", NULL);
 
 	return hr;
 }
@@ -215,7 +219,7 @@ STDMETHODIMP CSMSourceFilter::Stop()
 //
 STDMETHODIMP CSMSourceFilter::Pause()
 {
-    CAutoLock cObjectLock(m_pLock);
+	CAutoLock cObjectLock(m_pLock);
 
 	if(!((m_State == State_Paused) || (m_State == State_Running)))
 	{
@@ -227,7 +231,7 @@ STDMETHODIMP CSMSourceFilter::Pause()
 		}
 		m_pFileReader->SetFilePointer(0, FILE_END);
 	}
-//    return CSource::Pause();
+
 	return CBaseFilter::Pause();
 }
 
@@ -253,7 +257,6 @@ STDMETHODIMP CSMSourceFilter::Run(REFERENCE_TIME tStart)
 		m_pFileReader->SetFilePointer(0, FILE_END);
 	}
 
-//    return CSource::Run(tStart);
 	return CBaseFilter::Run(tStart);
 }
 
@@ -349,9 +352,6 @@ HRESULT CSMSourceFilter::SetAccuratePos(REFERENCE_TIME tStart)
 	}
 	return S_OK;
 }
-
-
-
 
 STDMETHODIMP CSMSourceFilter::GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TYPE *pmt)
 {
@@ -1005,6 +1005,9 @@ STDMETHODIMP CSMSourceFilter::Load(LPCOLESTR pszFileName,const AM_MEDIA_TYPE *pm
 //    }
 
 	CloseFile();
+
+	if(GetFilterGraph())
+		GetFilterGraph()->SetDefaultSyncSource();
 
     return hr;
 
