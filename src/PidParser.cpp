@@ -612,7 +612,7 @@ HRESULT PidParser::ParseFromFile(__int64 fileStartPointer)
 									break;
 								}
 							}
-							if (!pmtfound)
+							if (!pmtfound && pids.pcr != 0) //modification to drop missing services
 								AddPidArray();
 
 							pids.sid = 0x00;

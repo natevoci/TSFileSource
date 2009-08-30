@@ -1,7 +1,7 @@
 #pragma once
 
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
-#define _WIN32_WINNT 0x400
+//#define _WIN32_WINNT 0x400
 
 #pragma warning (disable : 4995)
 #pragma warning (disable : 4996)
