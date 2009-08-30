@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="TSFileSource"
 	ProjectGUID="{322E3738-29BB-4E09-A87F-69FCF787535D}"
+	RootNamespace="TSFileSource"
 	>
 	<Platforms>
 		<Platform
@@ -488,6 +489,10 @@
 			</File>
 			<File
 				RelativePath="src\SettingsStore.h"
+				>
+			</File>
+			<File
+				RelativePath=".\stdafx.h"
 				>
 			</File>
 			<File
@@ -1514,5 +1519,9 @@
 		</Filter>
 	</Files>
 	<Globals>
+		<Global
+			Name="RESOURCE_FILE"
+			Value="src\PropPage.rc"
+		/>
 	</Globals>
 </VisualStudioProject>
