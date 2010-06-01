@@ -24,8 +24,9 @@
 *    http://forums.dvbowners.com/
 */
 
-#include <Winsock2.h>
 #include "stdafx.h"
+#include <Winsock2.h>
+
 #include "NetRender.h"
 #include "TSFileSinkGuids.h"
 #include "TSParserSinkGuids.h"

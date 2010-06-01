@@ -51,7 +51,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;TSFILESOURCE_EXPORTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="1"
+				RuntimeLibrary="3"
 				PrecompiledHeaderFile=".\obj\Debug/TSFileSource.pch"
 				AssemblerListingLocation=".\obj\Debug/"
 				ObjectFile=".\obj\Debug/"
@@ -60,8 +60,6 @@
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
-				CallingConvention="0"
-				DisableSpecificWarnings="4996"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -76,15 +74,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				RegisterOutput="false"
-				UseLibraryDependencyInputs="true"
-				UseUnicodeResponseFiles="false"
-				AdditionalDependencies="&quot;kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib strmbasd.lib WINMM.LIB ws2_32.lib shlwapi.lib version.lib"
+				AdditionalDependencies="odbc32.lib odbccp32.lib strmbasd_mbcs.lib WINMM.LIB ws2_32.lib shlwapi.lib version.lib"
 				OutputFile="bin/TSFileSource.ax"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;C:\DX90SDK\Samples\C++\DirectShow\BaseClasses\Debug&quot;"
-				IgnoreAllDefaultLibraries="false"
+				IgnoreDefaultLibraryNames=""
 				ModuleDefinitionFile=".\src\TSFileSource.def"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\obj\Debug/TSFileSource.pdb"
@@ -155,7 +149,7 @@
 				InlineFunctionExpansion="1"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;TSFILESOURCE_EXPORTS"
 				StringPooling="true"
-				RuntimeLibrary="0"
+				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				PrecompiledHeaderFile=".\obj\Release/TSFileSource.pch"
 				AssemblerListingLocation=".\obj\Release/"
@@ -164,7 +158,6 @@
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
-				DisableSpecificWarnings="4996"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -179,11 +172,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="odbc32.lib odbccp32.lib strmbase.lib WINMM.LIB ws2_32.lib shlwapi.lib version.lib"
+				AdditionalDependencies="strmbase_mbcs.lib odbc32.lib odbccp32.lib WINMM.LIB ws2_32.lib shlwapi.lib version.lib"
 				OutputFile="bin/TSFileSource.ax"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;C:\DX90SDK\Samples\C++\DirectShow\BaseClasses\Release&quot;"
 				ModuleDefinitionFile=".\src\TSFileSource.def"
 				ProgramDatabaseFile=".\obj\Release/TSFileSource.pdb"
 				ImportLibrary=".\obj\Release/TSFileSource.lib"
@@ -387,6 +379,26 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="src\stdafx.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="src\StreamInfo.cpp"
 				>
 				<FileConfiguration
@@ -492,7 +504,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\stdafx.h"
+				RelativePath="src\stdafx.h"
 				>
 			</File>
 			<File
@@ -880,11 +892,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\FilterGraphTools.cpp"
+				RelativePath="src\FilterGraphTools.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\FilterGraphTools.h"
+				RelativePath="src\FilterGraphTools.h"
 				>
 			</File>
 			<File
@@ -1140,35 +1152,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\LogProfiler.cpp"
+				RelativePath="src\LogProfiler.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\LogProfiler.h"
-				>
-			</File>
-			<File
-				RelativePath="src\stdafx.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="src\stdafx.h"
+				RelativePath="src\LogProfiler.h"
 				>
 			</File>
 		</Filter>

@@ -24,7 +24,7 @@
 */
 
 #include "stdafx.h"
-//#include <ksuuids.h>
+
 #include <bdaiface.h>
 #include <ks.h>
 #include <ksmedia.h>
