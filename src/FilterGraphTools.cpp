@@ -1617,13 +1617,13 @@ HRESULT FilterGraphTools::GetAACMedia(AM_MEDIA_TYPE *pintype)
 
 	ZeroMemory(pintype, sizeof(AM_MEDIA_TYPE));
 	pintype->majortype = MEDIATYPE_Audio;
-	pintype->subtype = MEDIASUBTYPE_AAC;
+	pintype->subtype = MEDIASUBTYPE_AAC; //MEDIASUBTYPE_AAC4;
 	pintype->formattype = FORMAT_WaveFormatEx; 
-	pintype->cbFormat = sizeof(AACAudioFormat);
-	pintype->pbFormat = AACAudioFormat;
-	pintype->bFixedSizeSamples = TRUE;
+	pintype->cbFormat = sizeof(AACAudioFormat4);
+	pintype->pbFormat = AACAudioFormat4;
+	pintype->bFixedSizeSamples = FALSE;
 	pintype->bTemporalCompression = 0;
-	pintype->lSampleSize = 1;
+	pintype->lSampleSize = 0;
 	pintype->pUnk = NULL;
 
 	return S_OK;
