@@ -345,11 +345,16 @@ HRESULT MultiFileReader::RefreshTSBufferFile()
 			return E_FAIL;
 		}
 
+		// Nate: I'm commenting this out because I don't know what it achieves.
+		//       What HDD clogging can be caused by the Reader?
+		//       A problem with parking at the beginning of the file is that it locks the
+		//       first file and can force new ones to be created even if you're watching
+		//       near the end of the buffer.
 		//randomly park the file pointer to help minimise HDD clogging
-		if(currentPosition&1)
-			m_TSBufferFile.SetFilePointer(0, FILE_BEGIN);
-		else
-			m_TSBufferFile.SetFilePointer(0, FILE_END);
+		//if(currentPosition&1)
+		//	m_TSBufferFile.SetFilePointer(0, FILE_BEGIN);
+		//else
+		//	m_TSBufferFile.SetFilePointer(0, FILE_END);
 
 		//Get the real path of the buffer file
 		LPWSTR wfilename;

@@ -27,9 +27,15 @@
 #ifndef TSFILESINKGUIDS_H
 #define TSFILESINKGUIDS_H
 
+#ifdef _DEBUG
+// {473FD9E1-E15E-4047-A1CC-59E987040C76}
+DEFINE_GUID(CLSID_TSFileSink,
+0x473fd9e1, 0xe15e, 0x4047, 0xa1, 0xcc, 0x59, 0xe9, 0x87, 0x4, 0xc, 0x76);
+#else
 // {5cdd5c68-80dc-43e1-9e44-c849ca8026e7}
 DEFINE_GUID(CLSID_TSFileSink,
 0x5cdd5c68, 0x80dc, 0x43e1, 0x9e, 0x44, 0xc8, 0x49, 0xca, 0x80, 0x26, 0xe7);
+#endif
 
 // {8b8f3d25-8533-4a0a-b8a8-4eef620c7573}
 DEFINE_GUID(CLSID_TSFileSinkProp, 

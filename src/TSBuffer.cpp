@@ -30,6 +30,8 @@
 #include <crtdbg.h>
 #include <math.h>
 
+//#define DEBUG_TSBUFFER
+
 CTSBuffer::CTSBuffer(PidParser *pPidParser, CTSFileSourceClock *pClock)
 {
 	m_pPidParser = 	pPidParser;
@@ -104,6 +106,12 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 	if (nBytes <= bytesAvailable)
 		return S_OK;
 
+#ifdef DEBUG_TSBUFFER
+	static int requireCount = 0;
+	static int requireWaiting = 0;
+	DebugString(TEXT("CTSBuffer::Require() - %i\n"), requireCount++);
+#endif
+
 	while (nBytes > bytesAvailable)
 	{
 		BYTE *newItem = new BYTE[m_lTSBufferItemSize];
@@ -118,7 +126,7 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 			return E_FAIL;
 		}
 
-		__int64 currPosition = m_pFileReader->getFilePointer();
+		__int64 currPosition = m_pFileReader->GetFilePointer();
 		DWORD dwErr = GetLastError();
 		if ((DWORD)currPosition == (DWORD)0xFFFFFFFF && dwErr)
 		{
@@ -147,14 +155,15 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 //				int count = 220; // 2 second max delay
 				while (ulBytesRead < (ULONG)m_lTSBufferItemSize && m_loopCount) 
 				{
-//					::OutputDebugString(TEXT("TSBuffer::Require() Waiting for file to grow.\n"));
-
 					WORD bDelay = 0;
 					m_pFileReader->get_DelayMode(&bDelay);
 					m_loopCount--;
 
 					if (bDelay > 0)
 					{
+#ifdef DEBUG_TSBUFFER
+						DebugString(TEXT("TSBuffer::Require() Waiting 2000ms for file to grow. - %i\n"), requireWaiting++);
+#endif
 						Sleep(2000);
 						m_loopCount = 0;
 					}
@@ -167,24 +176,15 @@ HRESULT CTSBuffer::Require(long nBytes, BOOL bIgnoreDelay)
 							Sleep(1);
 							return hr;
 						}
-//						m_pFileReader->SetFilePointer(0, FILE_END);
+#ifdef DEBUG_TSBUFFER
+						DebugString(TEXT("CTSBuffer::Require() Waiting 100ms for file to grow. - %i\n"), requireWaiting++);//						m_pFileReader->SetFilePointer(0, FILE_END);
+#endif
 						Sleep(100);
 					}
 
 					ULONG ulNextBytesRead = 0;				
 
-					__int64 llStartPosition2 = 0;
-					if (FAILED(m_pFileReader->GetFileSize(&llStartPosition2, &llfilelength)))
-					{ 
-						m_loopCount = 20;
-						delete[] newItem;
-						Sleep(1);
-						return E_FAIL;
-					}
-
-					llStartPosition2 = llStartPosition - llStartPosition2;
-
-					hr = m_pFileReader->SetFilePointer(currPosition + llStartPosition2, FILE_BEGIN);
+					hr = m_pFileReader->SetFilePointer(currPosition, FILE_BEGIN);
 					dwErr = GetLastError();
 					if ((DWORD)hr == (DWORD)0xFFFFFFFF && dwErr)
 					{

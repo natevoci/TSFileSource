@@ -227,7 +227,7 @@ HRESULT CNetRender::CreateNetworkGraph(NetInfo *netAddr)
 	_tzset();
 	time(&netAddr->time);
 	netAddr->tmTime = localtime(&netAddr->time);
-	wcsftime(wfileName, 32, L"(%Y-%m-%d %H-%M-%s)", netAddr->tmTime);
+	wcsftime(wfileName, 32, L"(%Y-%m-%d %H-%M-%S)", netAddr->tmTime);
 
 	swprintf(netAddr->fileName, L"%s%s UDP (%s-%s-%s).tsbuffer",
 								netAddr->pathName,

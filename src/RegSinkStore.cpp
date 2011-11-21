@@ -74,6 +74,11 @@ BOOL CRegSinkStore::getSettingsInfo(CSettingsSinkStore *setStore)
 	if(REG_CREATED_NEW_KEY == action_result)
 	{
 		RegCloseKey(settingsKey);
+
+		// If we're creating the key then we'll save the default
+		// values there so that they can be easily edited.
+		setSettingsInfo(setStore);
+
 		return FALSE;
 	}
 	DWORD datalen;
@@ -166,16 +171,16 @@ BOOL CRegSinkStore::setSettingsInfo(CSettingsSinkStore *setStore)
 	resp = RegSetValueEx(settingsKey, "DefaultName", NULL, REG_SZ, (BYTE*)szFileName.c_str(), MAX_PATH);
 
 	long lMinFiles = setStore->getMinTSFilesReg();
-	resp = RegSetValueEx(settingsKey, "MinNumbFiles", NULL, REG_BINARY, (BYTE*)&lMinFiles, 4);
+	resp = RegSetValueEx(settingsKey, "MinNumbFiles", NULL, REG_DWORD, (BYTE*)&lMinFiles, 4);
 
 	long lMaxFiles = setStore->getMaxTSFilesReg();
-	resp = RegSetValueEx(settingsKey, "MaxNumbFiles", NULL, REG_BINARY, (BYTE*)&lMaxFiles, 4);
+	resp = RegSetValueEx(settingsKey, "MaxNumbFiles", NULL, REG_DWORD, (BYTE*)&lMaxFiles, 4);
 
 	__int64 llMaxSize = setStore->getMaxTSFileSizeReg();
-	resp = RegSetValueEx(settingsKey, "MaxFileSize", NULL, REG_BINARY, (BYTE*)&llMaxSize, 8);
+	resp = RegSetValueEx(settingsKey, "MaxFileSize", NULL, REG_QWORD, (BYTE*)&llMaxSize, 8);
 
 	__int64 llChunkSize = setStore->getChunkReserveReg();
-	resp = RegSetValueEx(settingsKey, "ChunkSize", NULL, REG_BINARY, (BYTE*)&llChunkSize, 8);
+	resp = RegSetValueEx(settingsKey, "ChunkSize", NULL, REG_QWORD, (BYTE*)&llChunkSize, 8);
 
 	RegCloseKey(settingsKey);
 

@@ -47,19 +47,35 @@
 #include "TSParserSink.h"
 #include "TSParserSinkProp.h"
 
+#ifdef _DEBUG
+#define TSFILESOURCENAME			L"TS File Source (Debug)"
+#else
 #define TSFILESOURCENAME			L"TS File Source"
+#endif
 #define TSFILESOURCEPROPERTIES		L"TS File Source Properties"
 #define TSFILESOURCEINTERFACE		L"TS File Source Interface"
 
+#ifdef _DEBUG
+#define TSFILESINKNAME				L"TS File Sink (Debug)"
+#else
 #define TSFILESINKNAME				L"TS File Sink"
+#endif
 #define TSFILESINKPROPERTIES		L"TS File Sink Properties"
 #define TSFILESINKINTERFACE			L"TS File Sink Interface"
 
+#ifdef _DEBUG
+#define TSPARSERSOURCENAME			L"TS Parser Source (Debug)"
+#else
 #define TSPARSERSOURCENAME			L"TS Parser Source"
+#endif
 #define TSPARSERSOURCEPROPERTIES	L"TS Parser Source Properties"
 #define TSPARSERSOURCEINTERFACE		L"TS Parser Source Interface"
 
+#ifdef _DEBUG
+#define TSPARSERSINKNAME			L"TS Parser Sink (Debug)"
+#else
 #define TSPARSERSINKNAME			L"TS Parser Sink"
+#endif
 #define TSPARSERSINKPROPERTIES		L"TS Parser Sink Properties"
 #define TSPARSERSINKINTERFACE		L"TS Parser Sink Interface"
 

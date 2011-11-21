@@ -79,6 +79,18 @@
 #endif
 
 
+
+static char logbuffer[2000]; 
+
+#ifndef CSIDL_COMMON_APPDATA
+#define CSIDL_COMMON_APPDATA 0x0023
+#endif
+
+extern void LogDebug(const char *fmt, ...);
+
+extern void DebugString(const char *fmt, ...);
+
+
 /**********************************************
  *
  *  CBufferInfo Class

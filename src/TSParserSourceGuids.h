@@ -31,9 +31,15 @@
 #ifndef TSParserSourceGUIDS_H
 #define TSParserSourceGUIDS_H
 
+#ifdef _DEBUG
+// {B0E4DAD8-1F11-4B26-9E8B-4CBB3A133FE2}
+DEFINE_GUID(CLSID_TSParserSource,
+0xb0e4dad8, 0x1f11, 0x4b26, 0x9e, 0x8b, 0x4c, 0xbb, 0x3a, 0x13, 0x3f, 0xe2);
+#else
 // {71EB60C5-0877-47d2-AE58-C2055D44B6D3}
 DEFINE_GUID(CLSID_TSParserSource, 
 0x71eb60c5, 0x877, 0x47d2, 0xae, 0x58, 0xc2, 0x5, 0x5d, 0x44, 0xb6, 0xd3);
+#endif
 
 // {769FCA9D-D78E-4fb7-9CB3-FF1A56411D60}
 DEFINE_GUID(CLSID_TSParserSourceProp, 
