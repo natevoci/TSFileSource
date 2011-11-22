@@ -34,8 +34,13 @@
 CTSFileSourceClock::CTSFileSourceClock( TCHAR *pName, LPUNKNOWN pUnk, HRESULT *phr ) :
 	CBaseReferenceClock(pName, pUnk, phr, NULL),
 	m_dRateSeeking(1.0),
-	m_baseTime(0)
+	m_baseTime(0),
+	m_baseRefTime(0)
 {
+	m_ticksPerSecond.QuadPart = 0;
+	QueryPerformanceFrequency(&m_ticksPerSecond);
+	m_baseTicks.QuadPart = 0;
+	QueryPerformanceCounter(&m_baseTicks);
 }
 
 CTSFileSourceClock::~CTSFileSourceClock()
@@ -44,39 +49,51 @@ CTSFileSourceClock::~CTSFileSourceClock()
 
 REFERENCE_TIME CTSFileSourceClock::GetPrivateTime()
 {
-	// The standard CBaseReferenceClock::GetPrivateTime() method doesn't always start at zero
-	// which seems cause problems sometimes. This method is basically the same except it
-	// stores the very first value and then subtracts it from every subsequent value
-	// to make the times start from zero.
-
     CAutoLock cObjectLock(this);
 
-    DWORD dwTime = timeGetTime();
+    DWORD dwTime;
+	REFERENCE_TIME rtTime;
+	GetTimes(dwTime, rtTime);
+    return rtTime;
+}
 
-	REFERENCE_TIME rtPrivateTime;
-    rtPrivateTime = Int32x32To64(UNITS / MILLISECONDS, (DWORD)(dwTime));
+void CTSFileSourceClock::GetTimes(DWORD &dwTime, REFERENCE_TIME &rtTime)
+{
+    CAutoLock cObjectLock(this);
 
-	rtPrivateTime = (REFERENCE_TIME)(rtPrivateTime *m_dRateSeeking);
+	LARGE_INTEGER ticks;
+	QueryPerformanceCounter(&ticks);
+	dwTime = (DWORD)((ticks.QuadPart - m_baseTicks.QuadPart) * 1000LL / m_ticksPerSecond.QuadPart);
 
-	if (m_baseTime == 0)
-	{
-		m_baseTime = rtPrivateTime;
-	}
+	DWORD dwTimeDelta = dwTime - m_baseTime;
 
-	rtPrivateTime -= m_baseTime;
+    rtTime = Int32x32To64(UNITS / MILLISECONDS, (DWORD)(dwTimeDelta));
+	rtTime = (REFERENCE_TIME)(rtTime * m_dRateSeeking);
 
-    return rtPrivateTime;
+	// Nate: By slowing the clock slightly I get a lot less breaks in the audio when doing near live playback.
+	//       The problem will be that our viewing will slowly get behind live tv. I'm pretty sure we can
+	//       do rate matching to compare (bitrate recieved/bitrate delivered) to auto-adjust this value.
+	//rtTime = (REFERENCE_TIME)(rtTime * 0.995);
+
+	rtTime += m_baseRefTime;
 }
 
 void CTSFileSourceClock::SetClockRate(double dRateSeeking)
 {
     CAutoLock cObjectLock(this);
-	REFERENCE_TIME deltaTime = GetPrivateTime();
-	if (m_dRateSeeking < dRateSeeking)
-		m_baseTime = m_baseTime - deltaTime;
-	else
-		m_baseTime = m_baseTime - deltaTime;
+
+	DWORD dwTime;
+	REFERENCE_TIME rtTime;
+	GetTimes(dwTime, rtTime);
+
+	m_baseTime = dwTime;
+	m_baseRefTime = rtTime;
 
 	m_dRateSeeking = dRateSeeking;
+
+	GetTimes(dwTime, rtTime);
+
+	DWORD dwTimeDelta = dwTime - m_baseTime;
+	REFERENCE_TIME rtTimeDelta = rtTime - m_baseRefTime;
 }
 

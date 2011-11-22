@@ -38,7 +38,14 @@ public:
 	virtual void SetClockRate(double dRateSeeking);
 
 private:
-	REFERENCE_TIME m_baseTime;
+	void GetTimes(DWORD &dwTime, REFERENCE_TIME &rtTime);
+
+private:
+	LARGE_INTEGER m_ticksPerSecond;
+	LARGE_INTEGER m_baseTicks;
+
+	DWORD m_baseTime;
+	REFERENCE_TIME m_baseRefTime;
 	double m_dRateSeeking;
 
 };
