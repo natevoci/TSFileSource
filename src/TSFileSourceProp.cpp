@@ -30,6 +30,7 @@
 
 #include "stdafx.h"
 #include "TSFileSourceProp.h"
+#include "GlobalFunctions.h"
 #include "resource.h"
 #include <string>
 #include "global.h"
@@ -279,6 +280,19 @@ BOOL CTSFileSourceProp::PopulateDialog()
 	m_pProgram->GetPgmNumb(&PidNr);
 	wsprintf(sz, TEXT("%u"), PidNr);
 	Edit_SetText(GetDlgItem(m_hwnd, IDC_PGM), sz);
+
+
+	TCHAR version[50];
+	GetCurrentModuleFileVersion((LPTSTR)&version);
+
+	LPTSTR pDescription = new TCHAR[1024];
+#if _DEBUG
+	wsprintf(pDescription, TEXT("TSFileSource Version %s DEBUG\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com."), version);
+#else
+	wsprintf(pDescription, TEXT("TSFileSource Version %s\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com."), version);
+#endif
+	SetWindowText(GetDlgItem(m_hwnd, IDC_DESCRIPTION), pDescription);
+	delete[] pDescription;
 
 	CComPtr <IMediaSeeking> pIMediaSeeking;
 	if SUCCEEDED(m_pProgram->QueryInterface(&pIMediaSeeking))

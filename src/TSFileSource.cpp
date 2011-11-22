@@ -102,7 +102,11 @@ CTSFileSourceFilter::CTSFileSourceFilter(IUnknown *pUnk, HRESULT *phr) :
 
 	m_pTunerEvent = new TunerEvent(this);
 
+#ifdef _DEBUG
+	m_pRegStore = new CRegStore("SOFTWARE\\TSFileSource_Debug");
+#else
 	m_pRegStore = new CRegStore("SOFTWARE\\TSFileSource");
+#endif
 	m_pSettingsStore = new CSettingsStore();
 
 	// Load Registry Settings data
@@ -3174,6 +3178,7 @@ STDMETHODIMP CTSFileSourceFilter::SetRegStore(LPTSTR nameReg)
 		m_pSettingsStore->setROTModeReg((int)m_bRotEnable);
 		m_pSettingsStore->setClockModeReg((BOOL)m_pDemux->get_ClockMode());
 		m_pSettingsStore->setCreateTxtPinOnDemuxReg((BOOL)m_pDemux->get_CreateTxtPinOnDemux());
+		m_pSettingsStore->setCreateSubPinOnDemuxReg((BOOL)m_pDemux->get_CreateSubPinOnDemux());
 
 		m_pRegStore->setSettingsInfo(m_pSettingsStore);
 	}

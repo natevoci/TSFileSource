@@ -40,6 +40,9 @@ void SetdRectEmpty(dRECT* bounds);
 
 void GetCommandPath(LPWSTR pPath);
 void GetCommandExe(LPWSTR pExe);
+void GetCommandExeFileVersion(LPTSTR dest);
+void GetCurrentModuleFileVersion(LPTSTR dest);
+void GetFileVersion(LPTSTR dest, LPTSTR filename);
 
 long wcsToColor(LPWSTR string);
 

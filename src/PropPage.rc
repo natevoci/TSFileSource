@@ -155,7 +155,7 @@ BEGIN
     CONTROL         "Packet Inject Enable",IDC_INJECTMODE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,210,139,85,10
     LTEXT           "Clock Speed",IDC_STATIC,202,149,23,18
     CONTROL         "Use Shared Mem",IDC_SHAREDMODE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,127,150,70,10
-    CTEXT           "TSFileSource Version 2.2.1.0\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",IDC_STATIC,22,265,241,26
+    CTEXT           "TSFileSource Version 2.2.1.0\nThis filter is published under Gnu Public Licence © 2003. Written by\nDH, bear@forums.dvbowners.com and nate@forums.dvbowners.com.",IDC_DESCRIPTION,22,265,241,26
 END
 
 IDD_SINKPROPPAGE DIALOGEX 0, 0, 302, 212
@@ -411,12 +411,12 @@ BEGIN
         BEGIN
             VALUE "Comments", "Push Source & TimeShifting File Writer filter for MPEG-2 Transport Stream Files.(BDA Compatable)"
             VALUE "FileDescription", "TS File Source(AU)"
-            VALUE "FileVersion", "2, 2, 1, 0"
+            VALUE "FileVersion", "2.2.1.0"
             VALUE "InternalName", "TS File Source(AU)"
             VALUE "LegalCopyright", "This filter is published under Gnu Public Licence © 2003. Written by DH & bear@forums.dvbowners.com & nate@forums.dvbowners.com."
             VALUE "OriginalFilename", "TSFileSource.ax"
             VALUE "ProductName", "TS File Source(AU)"
-            VALUE "ProductVersion", "2, 2, 1, 0"
+            VALUE "ProductVersion", "2.2.1.0"
         END
     END
     BLOCK "VarFileInfo"

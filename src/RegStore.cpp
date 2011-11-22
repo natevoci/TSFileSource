@@ -53,6 +53,11 @@ CRegStore::CRegStore(LPCSTR lpSubKey)
 
 }
 
+void FixBool(BOOL &value)
+{
+	value = (value != 0);
+}
+
 BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 {
 	std::string keyName = "settings\\" + setStore->getName();
@@ -74,6 +79,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 	if(REG_CREATED_NEW_KEY == action_result)
 	{
 		RegCloseKey(settingsKey);
+
+		// If we're creating the key then we'll save the default
+		// values there so that they can be easily edited.
+		setSettingsInfo(setStore);
+
 		return FALSE;
 	}
 
@@ -83,7 +93,7 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 	if ((strcmp(setStore->getName().c_str(), "user")!=0) && (strcmp(setStore->getName().c_str(), "default")!=0))
 	{
 		int regSID = 0;
-		datalen = 4;
+		datalen = sizeof(int);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "ProgramSID", NULL, &type, (BYTE*)&regSID, &datalen);
@@ -97,7 +107,7 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 	else
 	{
 		BOOL regAuto(TRUE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableAuto", NULL, &type, (BYTE*)&regAuto, &datalen);
@@ -106,10 +116,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regAuto);
 		setStore->setAutoModeReg(regAuto);
 
 		BOOL regNPControl(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableNPControl", NULL, &type, (BYTE*)&regNPControl, &datalen);
@@ -118,10 +129,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regNPControl);
 		setStore->setNPControlReg(regNPControl);
 
 		BOOL regNPSlave(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableNPSlave", NULL, &type, (BYTE*)&regNPSlave, &datalen);
@@ -130,10 +142,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regNPSlave);
 		setStore->setNPSlaveReg(regNPSlave);
 
 		BOOL regMP2(TRUE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableMP2", NULL, &type, (BYTE*)&regMP2, &datalen);
@@ -142,10 +155,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regMP2);
 		setStore->setMP2ModeReg(regMP2);
 
 		BOOL regFixedAR(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableFixedAR", NULL, &type, (BYTE*)&regFixedAR, &datalen);
@@ -154,10 +168,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regFixedAR);
 		setStore->setFixedAspectRatioReg(regFixedAR);
 
 		BOOL regTSPin(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableTSPin", NULL, &type, (BYTE*)&regTSPin, &datalen);
@@ -166,10 +181,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regTSPin);
 		setStore->setCreateTSPinOnDemuxReg(regTSPin);
 
 		BOOL regDelay(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableDelay", NULL, &type, (BYTE*)&regDelay, &datalen);
@@ -178,10 +194,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regDelay);
 		setStore->setDelayModeReg(regDelay);
 
 		BOOL regShared(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableSharedMode", NULL, &type, (BYTE*)&regShared, &datalen);
@@ -190,10 +207,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regShared);
 		setStore->setSharedModeReg(regShared);
 
 		BOOL regInject(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableInjectMode", NULL, &type, (BYTE*)&regInject, &datalen);
@@ -202,10 +220,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regInject);
 		setStore->setInjectModeReg(regInject);
 
 		BOOL regRate(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableRateControl", NULL, &type, (BYTE*)&regRate, &datalen);
@@ -214,10 +233,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regRate);
 		setStore->setRateControlModeReg(regRate);
 
 		int regSID = 0;
-		datalen = 4;
+		datalen = sizeof(int);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "ProgramSID", NULL, &type, (BYTE*)&regSID, &datalen);
@@ -229,7 +249,7 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		setStore->setProgramSIDReg(regSID);
 
 		BOOL regROT(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableROT", NULL, &type, (BYTE*)&regROT, &datalen);
@@ -238,10 +258,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regROT);
 		setStore->setROTModeReg(regROT);
 
 		int regClock = 1; //TSFileSource clock
-		datalen = 4;
+		datalen = sizeof(int);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "clockType", NULL, &type, (BYTE*)&regClock, &datalen);
@@ -253,7 +274,7 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		setStore->setClockModeReg(regClock);
 
 		BOOL regTxtPin(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableTxtPin", NULL, &type, (BYTE*)&regTxtPin, &datalen);
@@ -262,10 +283,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regTxtPin);
 		setStore->setCreateTxtPinOnDemuxReg(regTxtPin);
 
 		BOOL regSubPin(FALSE);
-		datalen = 1;
+		datalen = sizeof(BOOL);
 		type = 0;
 
 		resp = RegQueryValueEx(settingsKey, "enableSubPin", NULL, &type, (BYTE*)&regSubPin, &datalen);
@@ -274,11 +296,12 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 			RegCloseKey(settingsKey);
 			return FALSE;
 		}
+		FixBool(regSubPin);
 		setStore->setCreateSubPinOnDemuxReg(regSubPin);
 	}
 	
 	BOOL regAC3(FALSE);//(TRUE)
-	datalen = 1;
+	datalen = sizeof(BOOL);
 	type = 0;
 
 	resp = RegQueryValueEx(settingsKey, "enableAC3", NULL, &type, (BYTE*)&regAC3, &datalen);
@@ -287,10 +310,11 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		RegCloseKey(settingsKey);
 		return FALSE;
 	}
+	FixBool(regAC3);
 	setStore->setAC3ModeReg(regAC3);
 
 	BOOL regAudio2(FALSE);
-	datalen = 1;
+	datalen = sizeof(BOOL);
 	type = 0;
 
 	resp = RegQueryValueEx(settingsKey, "enableAudio2", NULL, &type, (BYTE*)&regAudio2, &datalen);
@@ -299,6 +323,7 @@ BOOL CRegStore::getSettingsInfo(CSettingsStore *setStore)
 		RegCloseKey(settingsKey);
 		return FALSE;
 	}
+	FixBool(regAudio2);
 	setStore->setAudio2ModeReg(regAudio2);
 
 	RegCloseKey(settingsKey);
@@ -328,61 +353,61 @@ BOOL CRegStore::setSettingsInfo(CSettingsStore *setStore)
 	if ((strcmp(setStore->getName().c_str(), "user")!=0) && (strcmp(setStore->getName().c_str(), "default")!=0))
 	{
 		int regSID = setStore->getProgramSIDReg();
-		resp = RegSetValueEx(settingsKey, "ProgramSID", NULL, REG_BINARY, (BYTE*)&regSID, 4);
+		resp = RegSetValueEx(settingsKey, "ProgramSID", NULL, REG_DWORD, (BYTE*)&regSID, sizeof(int));
 
 	}
 	else
 	{
 		BOOL regAuto = setStore->getAutoModeReg();
-		resp = RegSetValueEx(settingsKey, "enableAuto", NULL, REG_BINARY, (BYTE*)&regAuto, 1);
+		resp = RegSetValueEx(settingsKey, "enableAuto", NULL, REG_DWORD, (BYTE*)&regAuto, sizeof(DWORD));
 
 		BOOL regNPControl = setStore->getNPControlReg();
-		resp = RegSetValueEx(settingsKey, "enableNPControl", NULL, REG_BINARY, (BYTE*)&regNPControl, 1);
+		resp = RegSetValueEx(settingsKey, "enableNPControl", NULL, REG_DWORD, (BYTE*)&regNPControl, sizeof(DWORD));
 
 		BOOL regNPSlave = setStore->getNPSlaveReg();
-		resp = RegSetValueEx(settingsKey, "enableNPSlave", NULL, REG_BINARY, (BYTE*)&regNPSlave, 1);
+		resp = RegSetValueEx(settingsKey, "enableNPSlave", NULL, REG_DWORD, (BYTE*)&regNPSlave, sizeof(DWORD));
 
 		BOOL regMP2 = setStore->getMP2ModeReg();
-		resp = RegSetValueEx(settingsKey, "enableMP2", NULL, REG_BINARY, (BYTE*)&regMP2, 1);
+		resp = RegSetValueEx(settingsKey, "enableMP2", NULL, REG_DWORD, (BYTE*)&regMP2, sizeof(DWORD));
 
 		BOOL regFixedAR = setStore->getFixedAspectRatioReg();
-		resp = RegSetValueEx(settingsKey, "enableFixedAR", NULL, REG_BINARY, (BYTE*)&regFixedAR, 1);
+		resp = RegSetValueEx(settingsKey, "enableFixedAR", NULL, REG_DWORD, (BYTE*)&regFixedAR, sizeof(DWORD));
 
 		BOOL regTSPin = setStore->getCreateTSPinOnDemuxReg();
-		resp = RegSetValueEx(settingsKey, "enableTSPin", NULL, REG_BINARY, (BYTE*)&regTSPin, 1);
+		resp = RegSetValueEx(settingsKey, "enableTSPin", NULL, REG_DWORD, (BYTE*)&regTSPin, sizeof(DWORD));
 
 		BOOL regDelay = setStore->getDelayModeReg();
-		resp = RegSetValueEx(settingsKey, "enableDelay", NULL, REG_BINARY, (BYTE*)&regDelay, 1);
+		resp = RegSetValueEx(settingsKey, "enableDelay", NULL, REG_DWORD, (BYTE*)&regDelay, sizeof(DWORD));
 
 		BOOL regShared = setStore->getSharedModeReg();
-		resp = RegSetValueEx(settingsKey, "enableSharedMode", NULL, REG_BINARY, (BYTE*)&regShared, 1);
+		resp = RegSetValueEx(settingsKey, "enableSharedMode", NULL, REG_DWORD, (BYTE*)&regShared, sizeof(DWORD));
 
 		BOOL regInject = setStore->getInjectModeReg();
-		resp = RegSetValueEx(settingsKey, "enableInjectMode", NULL, REG_BINARY, (BYTE*)&regInject, 1);
+		resp = RegSetValueEx(settingsKey, "enableInjectMode", NULL, REG_DWORD, (BYTE*)&regInject, sizeof(DWORD));
 
 		BOOL regRate = setStore->getRateControlModeReg();
-		resp = RegSetValueEx(settingsKey, "enableRateControl", NULL, REG_BINARY, (BYTE*)&regRate, 1);
+		resp = RegSetValueEx(settingsKey, "enableRateControl", NULL, REG_DWORD, (BYTE*)&regRate, sizeof(DWORD));
 
 		int regSID = setStore->getProgramSIDReg();
-		resp = RegSetValueEx(settingsKey, "ProgramSID", NULL, REG_BINARY, (BYTE*)&regSID, 4);
+		resp = RegSetValueEx(settingsKey, "ProgramSID", NULL, REG_DWORD, (BYTE*)&regSID, sizeof(int));
 
 		BOOL regROT = setStore->getROTModeReg();
-		resp = RegSetValueEx(settingsKey, "enableROT", NULL, REG_BINARY, (BYTE*)&regROT, 1);
+		resp = RegSetValueEx(settingsKey, "enableROT", NULL, REG_DWORD, (BYTE*)&regROT, sizeof(DWORD));
 
 		int regClock = setStore->getClockModeReg();
-		resp = RegSetValueEx(settingsKey, "clockType", NULL, REG_BINARY, (BYTE*)&regClock, 4);
+		resp = RegSetValueEx(settingsKey, "clockType", NULL, REG_DWORD, (BYTE*)&regClock, sizeof(int));
 
 		BOOL regTxtPin = setStore->getCreateTxtPinOnDemuxReg();
-		resp = RegSetValueEx(settingsKey, "enableTxtPin", NULL, REG_BINARY, (BYTE*)&regTxtPin, 1);
+		resp = RegSetValueEx(settingsKey, "enableTxtPin", NULL, REG_DWORD, (BYTE*)&regTxtPin, sizeof(DWORD));
 
 		BOOL regSubPin = setStore->getCreateSubPinOnDemuxReg();
-		resp = RegSetValueEx(settingsKey, "enableSubPin", NULL, REG_BINARY, (BYTE*)&regSubPin, 1);
+		resp = RegSetValueEx(settingsKey, "enableSubPin", NULL, REG_DWORD, (BYTE*)&regSubPin, sizeof(DWORD));
 	}
 	BOOL regAudio2 = setStore->getAudio2ModeReg();
-	resp = RegSetValueEx(settingsKey, "enableAudio2", NULL, REG_BINARY, (BYTE*)&regAudio2, 1);
+	resp = RegSetValueEx(settingsKey, "enableAudio2", NULL, REG_DWORD, (BYTE*)&regAudio2, sizeof(DWORD));
 
 	BOOL regAC3 = setStore->getAC3ModeReg();
-	resp = RegSetValueEx(settingsKey, "enableAC3", NULL, REG_BINARY, (BYTE*)&regAC3, 1);
+	resp = RegSetValueEx(settingsKey, "enableAC3", NULL, REG_DWORD, (BYTE*)&regAC3, sizeof(DWORD));
 
 	RegCloseKey(settingsKey);
 
@@ -399,7 +424,7 @@ BOOL CRegStore::setInt(char *name, int val)
 int CRegStore::getInt(char *name, int def)
 {
 	int val = 0;
-	DWORD datalen = 4;
+	DWORD datalen = sizeof(int);
 	DWORD type = 0;
 
 	LONG resp = RegQueryValueEx(rootkey, name, NULL, &type, (BYTE*)&val, &datalen);
@@ -475,7 +500,7 @@ BOOL CRegStore::removeOld()
 
 		if(resp == ERROR_SUCCESS)
 		{
-			DWORD datalen = 8;
+			DWORD datalen = sizeof(__int64);
 			DWORD type = 0;
 			__int64 lastUsed = 0;
 			resp = RegQueryValueEx(settingsData, "lastUsed", NULL, &type, (BYTE*)&lastUsed, &datalen);

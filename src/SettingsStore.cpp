@@ -28,6 +28,23 @@
 #include "SettingsStore.h"
 
 CSettingsStore::CSettingsStore(void)
+	: autoMode(TRUE)
+	, nPControl(FALSE)
+	, nPSlave(FALSE)
+	, mp2Mode(TRUE)
+	, ac3Mode(FALSE)
+	, fixedAR(FALSE)
+	, tsPinMode(FALSE)
+	, txtPinMode(FALSE)
+	, subPinMode(FALSE)
+	, sharedMode(FALSE)
+	, injectMode(FALSE)
+	, delayMode(FALSE)
+	, rateMode(FALSE)
+	, audio2Mode(FALSE)
+	, programSID(0)
+	, rotMode(FALSE)
+	, clockMode(1)
 {
 	lastUsed = time(NULL);
 }

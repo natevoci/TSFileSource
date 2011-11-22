@@ -116,6 +116,88 @@ void GetCommandExe(LPWSTR pExe)
 	wcscpy(pExe, cmdLine);
 }
 
+void GetCommandExeFileVersion(LPTSTR dest)
+{
+	USES_CONVERSION;
+
+	wchar_t filename[MAX_PATH];
+	GetCommandExe((LPWSTR)&filename);
+
+	GetFileVersion(dest, W2T((LPWSTR)&filename));
+}
+
+HMODULE GetCurrentModuleHandle()
+{
+	HMODULE hMod = NULL;
+	GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+		reinterpret_cast<LPCWSTR>(&GetCurrentModuleHandle),
+		&hMod);
+	return hMod;
+}
+
+void GetCurrentModuleFileVersion(LPTSTR dest)
+{
+	USES_CONVERSION;
+
+	HMODULE hModule = GetCurrentModuleHandle();
+	TCHAR filename[MAX_PATH];
+	GetModuleFileName(hModule, (LPTSTR)&filename, MAX_PATH);
+
+	GetFileVersion(dest, (LPTSTR)&filename);
+}
+
+void GetFileVersion(LPTSTR dest, LPTSTR filename)
+{
+	USES_CONVERSION;
+
+	dest[0] = '\0';
+
+	DWORD zeroHandle, size = 0;
+	while (TRUE)
+	{
+		size = GetFileVersionInfoSize(filename, &zeroHandle);
+		if (size == 0)
+			break;
+
+		LPVOID pBlock = (LPVOID) new char[size];
+		if (!GetFileVersionInfo(filename, zeroHandle, size, pBlock))
+		{
+			delete[] pBlock;
+			break;
+		}
+
+		struct LANGANDCODEPAGE
+		{
+			WORD wLanguage;
+			WORD wCodePage;
+		} *lpTranslate;
+		UINT uLen = 0;
+
+		if (!VerQueryValue(pBlock, TEXT("\\VarFileInfo\\Translation"), (LPVOID*)&lpTranslate, &uLen) || (uLen == 0))
+		{
+			delete[] pBlock;
+			break;
+		}
+
+		LPWSTR SubBlock = new wchar_t[256];
+		swprintf(SubBlock, L"\\StringFileInfo\\%04x%04x\\FileVersion", lpTranslate[0].wLanguage, lpTranslate[0].wCodePage);
+
+		LPTSTR lpBuffer;
+		UINT dwBytes = 0;
+		if (!VerQueryValue(pBlock, W2T(SubBlock), (LPVOID*)&lpBuffer, &dwBytes))
+		{
+			delete[] pBlock;
+			delete[] SubBlock;
+			break;
+		}
+		lstrcpy(dest, lpBuffer);
+
+		delete[] SubBlock;
+		delete[] pBlock;
+		break;
+	}
+}
+
 long wcsToColor(LPWSTR str)
 {
 	long result = 0;
