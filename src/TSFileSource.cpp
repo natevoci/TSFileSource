@@ -3222,6 +3222,7 @@ STDMETHODIMP CTSFileSourceFilter::GetRegStore(LPTSTR nameReg)
 			m_bRotEnable = m_pSettingsStore->getROTModeReg();
 			m_pDemux->set_ClockMode(m_pSettingsStore->getClockModeReg());
 			m_pDemux->set_CreateTxtPinOnDemux(m_pSettingsStore->getCreateTxtPinOnDemuxReg());
+			m_pDemux->set_CreateSubPinOnDemux(m_pSettingsStore->getCreateSubPinOnDemuxReg());
 		}
 	}
 
