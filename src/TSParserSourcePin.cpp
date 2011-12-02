@@ -743,7 +743,7 @@ HRESULT CTSParserSourcePin::FillBuffer(IMediaSample *pSample)
 			{
 				HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 				DWORD dwAdviseCookie = 0;
-				pReferenceClock->AdviseTime(0, rtNextTime, (HEVENT)hEvent, &dwAdviseCookie);
+				pReferenceClock->AdviseTime(0, rtNextTime, (HEVENT)hEvent, (PDWORD_PTR)&dwAdviseCookie);
 				DWORD dwWaitResult = WaitForSingleObject(hEvent, INFINITE);
 				CloseHandle(hEvent);
 			}

@@ -334,7 +334,7 @@ BOOL CTSParserSinkProp::RefreshDialog()
 	return TRUE;
 }
 
-BOOL CTSParserSinkProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CTSParserSinkProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	BOOL    bRet = FALSE;
 	TCHAR sz[10] = "";

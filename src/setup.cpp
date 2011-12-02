@@ -301,6 +301,8 @@ STDAPI DllUnregisterServer()
 	return AMovieDllRegisterServer2( FALSE );
 }
 
+//extern "C" HRESULT __declspec(dllexport) __stdcall DllGetClassObject(__in REFCLSID rclsid, __in REFIID riid, LPVOID FAR* ppv);
+//extern "C" HRESULT __declspec(dllexport) __stdcall DllCanUnloadNow(void);
 //
 // DllEntryPoint
 //

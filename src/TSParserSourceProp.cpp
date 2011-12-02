@@ -517,7 +517,7 @@ BOOL CTSParserSourceProp::RefreshDialog()
 	return TRUE;
 }
 
-BOOL CTSParserSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CTSParserSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	BOOL    bRet = FALSE;
 

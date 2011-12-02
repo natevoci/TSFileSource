@@ -334,7 +334,7 @@ BOOL CTSFileSinkProp::RefreshDialog()
 	return TRUE;
 }
 
-BOOL CTSFileSinkProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CTSFileSinkProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	BOOL    bRet = FALSE;
 	TCHAR sz[10] = "";

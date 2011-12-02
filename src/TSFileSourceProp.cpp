@@ -534,7 +534,7 @@ BOOL CTSFileSourceProp::RefreshDialog()
 	return TRUE;
 }
 
-BOOL CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CTSFileSourceProp::OnReceiveMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	BOOL    bRet = FALSE;
 

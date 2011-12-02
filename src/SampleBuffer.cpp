@@ -380,10 +380,10 @@ PBYTE CSampleBuffer::ParseExtendedPacket(int tableID, PBYTE pData, ULONG ulDataL
 	int pos_save = pos;
 	WORD pid = (WORD)(0x1F & pData[pos+1])<<8 | (0xFF & pData[pos+2]);
 
-	if ((0x30&pData[pos+3]) == 0x30)	//adaptation field + payload
+	if ((0x20&pData[pos+3]) == 0x20)	//adaptation field + payload
 			pos += pData[pos+4] + 1;
 
-	if (pData[pos+4] != 0x0 || pData[pos+5] != tableID || (0xf0&pData[pos+6])!=0xb0)
+	if (pData[pos+4] != 0x0 || pData[pos+5] != tableID || (0xC0&pData[pos+6])!=0x80)
 		return NULL;
 
 	int sectionLen	= min(4096, (WORD)((0x0F & pData[pos+6])<<8 | (0xFF & pData[pos+7])));

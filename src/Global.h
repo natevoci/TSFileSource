@@ -403,7 +403,7 @@ public:
 		#ifndef DEBUG
 			m_nAffinity = 0;
 			DWORD SystemAffinityMask = 0;
-			if (GetProcessAffinityMask(GetCurrentProcess(), &m_nAffinity, &SystemAffinityMask)
+			if (GetProcessAffinityMask(GetCurrentProcess(), (PDWORD_PTR)&m_nAffinity, (PDWORD_PTR)&SystemAffinityMask)
 				&& SystemAffinityMask > 1)
 				SetThreadAffinityMask(GetCurrentThread(), 0x01&m_nAffinity);
 		#endif
@@ -428,7 +428,7 @@ public:
 		#ifndef DEBUG
 			m_nAffinity = 0;
 			DWORD SystemAffinityMask = 0;
-			if (GetProcessAffinityMask(GetCurrentProcess(), &m_nAffinity, &SystemAffinityMask)
+			if (GetProcessAffinityMask(GetCurrentProcess(), (PDWORD_PTR)&m_nAffinity, (PDWORD_PTR)&SystemAffinityMask)
 				&& SystemAffinityMask > 1)
 				SetThreadAffinityMask(GetCurrentThread(), 0x10&m_nAffinity);
 		#endif
