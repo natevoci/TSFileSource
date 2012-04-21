@@ -81,11 +81,13 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				RegisterOutput="true"
 				AdditionalDependencies="odbc32.lib odbccp32.lib strmbasd_mbcs.lib WINMM.LIB ws2_32.lib shlwapi.lib version.lib"
-				OutputFile="bin\Debug\TSFileSource_Debug.ax"
+				OutputFile="bin\Debug\TSFileSource.ax"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="C:\DX90SDK\Samples\C++\DirectShow\BaseClasses\Debug"
+				IgnoreDefaultLibraryNames="LIBCMTD"
 				ModuleDefinitionFile=".\src\TSFileSource.def"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\obj\Debug/TSFileSource.pdb"
@@ -182,7 +184,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="odbc32.lib odbccp32.lib strmbasd_mbcs.lib WINMM.LIB ws2_32.lib shlwapi.lib version.lib Strmiids.lib"
-				OutputFile="bin\x64\Debug\TSFileSource_Debug.ax"
+				OutputFile="bin\x64\Debug\TSFileSource.ax"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;C:\Program Files\Microsoft SDKs\Windows\v6.0A\Lib\x64&quot;;&quot;C:\DX90SDK\Samples\C++\DirectShow\BaseClasses\x64\Debug&quot;"
@@ -286,6 +288,7 @@
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;C:\DX90SDK\Samples\C++\DirectShow\BaseClasses\Release&quot;"
+				IgnoreDefaultLibraryNames="LIBCMT"
 				ModuleDefinitionFile=".\src\TSFileSource.def"
 				ProgramDatabaseFile=".\obj\Release/TSFileSource.pdb"
 				RandomizedBaseAddress="1"
@@ -328,7 +331,7 @@
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="2"
 			ManagedExtensions="0"
-			WholeProgramOptimization="0"
+			WholeProgramOptimization="1"
 			EnableManagedIncrementalBuild="1"
 			>
 			<Tool
@@ -356,20 +359,25 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				WholeProgramOptimization="false"
+				EnableIntrinsicFunctions="true"
+				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="&quot;C:\Program Files\Microsoft DirectX SDK (March 2009)\Include&quot;;&quot;C:\DX90SDK\Samples\C++\DirectShow\BaseClasses&quot;"
-				PreprocessorDefinitions="WIN64;_WIN64;NDEBUG;_WINDOWS;_USRDLL;USRDLL;TSFILESOURCE_EXPORTS"
+				PreprocessorDefinitions="WIN64;_WIN64;NDEBUG;_WINDOWS;_USRDLL;USRDLL;_MBCS;TSFILESOURCE_EXPORTS"
 				StringPooling="true"
+				MinimalRebuild="false"
 				RuntimeLibrary="2"
-				EnableFunctionLevelLinking="false"
+				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=""
+				PrecompiledHeaderFile=".\obj\x64\Release/TSFileSource.pch"
 				AssemblerListingLocation=".\obj\x64\Release\"
 				ObjectFile=".\obj\x64\Release\"
 				ProgramDataBaseFileName=".\bin\x64\Release\"
-				BrowseInformation="1"
+				BrowseInformation="0"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
+				DebugInformationFormat="0"
+				CallingConvention="0"
+				OmitDefaultLibName="false"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -378,6 +386,7 @@
 				Name="VCResourceCompilerTool"
 				PreprocessorDefinitions="NDEBUG"
 				Culture="3081"
+				ResourceOutputFileName="$(IntDir)$(InputName).res"
 			/>
 			<Tool
 				Name="VCPreLinkEventTool"
@@ -389,19 +398,21 @@
 				LinkLibraryDependencies="true"
 				UseLibraryDependencyInputs="false"
 				UseUnicodeResponseFiles="true"
-				AdditionalDependencies="strmbase_mbcs.lib odbc32.lib odbccp32.lib WINMM.LIB ws2_32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib shlwapi.lib version.lib Strmiids.lib uuid.lib"
+				AdditionalDependencies="odbc32.lib odbccp32.lib strmbase_mbcs.lib WINMM.LIB ws2_32.lib shlwapi.lib version.lib Strmiids.lib"
 				ShowProgress="0"
 				OutputFile="bin\x64\Release\TSFileSource.ax"
-				LinkIncremental="1"
+				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;C:\Program Files\Microsoft SDKs\Windows\v6.0A\Lib\x64&quot;;&quot;C:\DX90SDK\Samples\C++\DirectShow\BaseClasses\x64\Release&quot;"
+				ManifestFile="$(IntDir)$(TargetFileName).intermediate.manifest"
 				IgnoreDefaultLibraryNames="LIBCMT"
 				ModuleDefinitionFile=".\src\TSFileSource.def"
 				IgnoreEmbeddedIDL="false"
-				ProgramDatabaseFile=".\obj\x64\Release/TSFileSource.pdb"
+				ProgramDatabaseFile=".\obj\x64\Release\TSFileSource.pdb"
 				LinkTimeCodeGeneration="0"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
+				TurnOffAssemblyGeneration="false"
 				ImportLibrary=".\obj\x64\Release\TSFileSource.lib"
 				TargetMachine="17"
 			/>
@@ -418,7 +429,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\obj\x64\Release/TSFileSource.bsc"
+				OutputFile=".\obj\x64\Release\TSFileSource.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -690,6 +701,8 @@
 					>
 					<Tool
 						Name="VCCLCompilerTool"
+						Optimization="2"
+						InlineFunctionExpansion="0"
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
@@ -856,7 +869,7 @@
 				>
 			</File>
 			<File
-				RelativePath="src\TSFileSource.def"
+				RelativePath=".\src\TSFileSource.def"
 				>
 			</File>
 			<File

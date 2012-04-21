@@ -30,6 +30,8 @@
 
 #include "stdafx.h"
 #include <initguid.h>
+#include <objbase.h>
+
 
 #include "TSFileSourceGuids.h"
 #include "TSFileSource.h"
@@ -47,34 +49,66 @@
 #include "TSParserSink.h"
 #include "TSParserSinkProp.h"
 
-#ifdef _DEBUG
-#define TSFILESOURCENAME			L"TS File Source (Debug)"
+#ifdef _WIN64
+	#ifdef _DEBUG
+		#define TSFILESOURCENAME			L"TS File Source x64 (Debug)"
+	#else
+		#define TSFILESOURCENAME			L"TS File Source x64"
+	#endif
 #else
-#define TSFILESOURCENAME			L"TS File Source"
+	#ifdef _DEBUG
+		#define TSFILESOURCENAME			L"TS File Source (Debug)"
+	#else
+		#define TSFILESOURCENAME			L"TS File Source"
+	#endif
 #endif
 #define TSFILESOURCEPROPERTIES		L"TS File Source Properties"
 #define TSFILESOURCEINTERFACE		L"TS File Source Interface"
 
-#ifdef _DEBUG
-#define TSFILESINKNAME				L"TS File Sink (Debug)"
+#ifdef _WIN64
+	#ifdef _DEBUG
+		#define TSFILESINKNAME				L"TS File Sink x64 (Debug)"
+	#else
+		#define TSFILESINKNAME				L"TS File Sink x64"
+	#endif
 #else
-#define TSFILESINKNAME				L"TS File Sink"
+	#ifdef _DEBUG
+		#define TSFILESINKNAME				L"TS File Sink (Debug)"
+	#else
+		#define TSFILESINKNAME				L"TS File Sink"
+	#endif
 #endif
 #define TSFILESINKPROPERTIES		L"TS File Sink Properties"
 #define TSFILESINKINTERFACE			L"TS File Sink Interface"
 
-#ifdef _DEBUG
-#define TSPARSERSOURCENAME			L"TS Parser Source (Debug)"
+#ifdef _WIN64
+	#ifdef _DEBUG
+		#define TSPARSERSOURCENAME			L"TS Parser Source x64 (Debug)"
+	#else
+		#define TSPARSERSOURCENAME			L"TS Parser Source x64"
+	#endif
 #else
-#define TSPARSERSOURCENAME			L"TS Parser Source"
+	#ifdef _DEBUG
+		#define TSPARSERSOURCENAME			L"TS Parser Source (Debug)"
+	#else
+		#define TSPARSERSOURCENAME			L"TS Parser Source"
+	#endif
 #endif
 #define TSPARSERSOURCEPROPERTIES	L"TS Parser Source Properties"
 #define TSPARSERSOURCEINTERFACE		L"TS Parser Source Interface"
 
-#ifdef _DEBUG
-#define TSPARSERSINKNAME			L"TS Parser Sink (Debug)"
+#ifdef _WIN64
+	#ifdef _DEBUG
+		#define TSPARSERSINKNAME			L"TS Parser Sink x64 (Debug)"
+	#else
+		#define TSPARSERSINKNAME			L"TS Parser Sink x64"
+	#endif
 #else
-#define TSPARSERSINKNAME			L"TS Parser Sink"
+	#ifdef _DEBUG
+		#define TSPARSERSINKNAME			L"TS Parser Sink (Debug)"
+	#else
+		#define TSPARSERSINKNAME			L"TS Parser Sink"
+	#endif
 #endif
 #define TSPARSERSINKPROPERTIES		L"TS Parser Sink Properties"
 #define TSPARSERSINKINTERFACE		L"TS Parser Sink Interface"

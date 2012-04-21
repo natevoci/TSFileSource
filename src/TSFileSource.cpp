@@ -2193,7 +2193,7 @@ HRESULT CTSFileSourceFilter::RefreshDuration()
 	return m_pPin->SetDuration(m_pPidParser->pids.dur);
 }
 
-STDMETHODIMP CTSFileSourceFilter::GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TYPE *pmt)
+STDMETHODIMP CTSFileSourceFilter::GetCurFile(LPOLESTR * ppszFileName, AM_MEDIA_TYPE *pmt)
 {
 
 	CheckPointer(ppszFileName, E_POINTER);
@@ -2206,8 +2206,7 @@ STDMETHODIMP CTSFileSourceFilter::GetCurFile(LPOLESTR * ppszFileName,AM_MEDIA_TY
 
 	if (pFileName != NULL)
 	{
-		*ppszFileName = (LPOLESTR)
-		QzTaskMemAlloc(sizeof(WCHAR) * (1+wcslen(pFileName)));
+		*ppszFileName = (LPOLESTR)QzTaskMemAlloc(sizeof(WCHAR) * (1+wcslen(pFileName)));
 
 		if (*ppszFileName != NULL)
 		{
