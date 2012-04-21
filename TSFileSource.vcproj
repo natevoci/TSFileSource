@@ -56,7 +56,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;TSFILESOURCE_EXPORTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				RuntimeLibrary="1"
 				PrecompiledHeaderFile="$(PlatformName)\$(ConfigurationName)\TSFileSource.pch"
 				AssemblerListingLocation=".\obj\Debug\"
 				ObjectFile=".\obj\Debug\"
@@ -81,13 +81,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				RegisterOutput="true"
 				AdditionalDependencies="odbc32.lib odbccp32.lib strmbasd_mbcs.lib WINMM.LIB ws2_32.lib shlwapi.lib version.lib"
-				OutputFile="bin\Debug\TSFileSource.ax"
+				OutputFile="bin\Debug\TSFileSource_Debug.ax"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="C:\DX90SDK\Samples\C++\DirectShow\BaseClasses\Debug"
-				IgnoreDefaultLibraryNames="LIBCMTD"
+				IgnoreDefaultLibraryNames="LIBCMTD.lib"
 				ModuleDefinitionFile=".\src\TSFileSource.def"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\obj\Debug/TSFileSource.pdb"
@@ -184,7 +183,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="odbc32.lib odbccp32.lib strmbasd_mbcs.lib WINMM.LIB ws2_32.lib shlwapi.lib version.lib Strmiids.lib"
-				OutputFile="bin\x64\Debug\TSFileSource.ax"
+				OutputFile="bin\x64\Debug\TSFileSource_Debug.ax"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;C:\Program Files\Microsoft SDKs\Windows\v6.0A\Lib\x64&quot;;&quot;C:\DX90SDK\Samples\C++\DirectShow\BaseClasses\x64\Debug&quot;"
@@ -259,7 +258,7 @@
 				AdditionalIncludeDirectories="&quot;C:\Program Files\Microsoft DirectX SDK (March 2009)\Include&quot;;&quot;C:\DX90SDK\Samples\C++\DirectShow\BaseClasses&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;TSFILESOURCE_EXPORTS"
 				StringPooling="true"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				PrecompiledHeaderFile=""
 				AssemblerListingLocation=".\obj\Release\"
@@ -288,7 +287,7 @@
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;C:\DX90SDK\Samples\C++\DirectShow\BaseClasses\Release&quot;"
-				IgnoreDefaultLibraryNames="LIBCMT"
+				IgnoreDefaultLibraryNames="LIBCMT.lib"
 				ModuleDefinitionFile=".\src\TSFileSource.def"
 				ProgramDatabaseFile=".\obj\Release/TSFileSource.pdb"
 				RandomizedBaseAddress="1"
@@ -318,7 +317,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy /Y &quot;$(ProjectDir)TSFileSource.bat&quot; &quot;$(TargetDir)&quot;&#x0D;&#x0A;copy /Y &quot;$(ProjectDir)TSFileSource.reg&quot; &quot;$(TargetDir)&quot;&#x0D;&#x0A;"
+				CommandLine="copy /Y &quot;$(ProjectDir)bin\TSFileSource.bat&quot; &quot;$(TargetDir)&quot;&#x0D;&#x0A;copy /Y &quot;$(ProjectDir)bin\TSFileSource.reg&quot; &quot;$(TargetDir)&quot;&#x0D;&#x0A;copy /Y &quot;$(ProjectDir)bin\install.txt&quot; &quot;$(TargetDir)&quot;&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration

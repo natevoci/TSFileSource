@@ -1,0 +1,3 @@
+
+Microsoft Visual C++ 2008 Redistributable Package (9.0.21022.8) is required to register TSFileSource
+http://www.microsoft.com/download/en/details.aspx?displaylang=en&id=29

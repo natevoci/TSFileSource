@@ -8,7 +8,7 @@ time /T
 
 if not exist "SetEnvVars.bat" (
 	copy "SetEnvVars.bat.template" "SetEnvVars.bat"
-	
+
 	call :exec ".\bin\fregex.exe" "r|VS9PATH=.*$|VS9PATH=$r|HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio\9.0\InstallDir|" -i "SetEnvVars.bat" -o "SetEnvVars.bat"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
 
@@ -44,12 +44,12 @@ echo ######################## Update-VersionNumbers ########################
 	echo Version is %VERSION%
 	del SetVersion.bat
 
-    REM back up files that hold versions so they can be restored after the build
-    REM  (this is just so that these files don't keep showing up in the svn commit dialog)
-    call :exec copy /Y "..\src\PropPage.rc" ".\Temp\PropPage.rc"
+	REM back up files that hold versions so they can be restored after the build
+	REM  (this is just so that these files don't keep showing up in the svn commit dialog)
+	call :exec copy /Y "..\src\PropPage.rc" ".\Temp\PropPage.rc"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
 
-    REM Replace the version numbers
+	REM Replace the version numbers
 	call :exec ".\bin\fregex.exe" "s/FILEVERSION .*$/FILEVERSION %VERSION_A%,%VERSION_B%,%VERSION_C%,%VERSION_D%/" "s/FileVersion\".*$/FileVersion\", \"%VERSION%\"/" -i "..\src\PropPage.rc" -o "..\src\PropPage.rc"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
 	call :exec ".\bin\fregex.exe" "s/PRODUCTVERSION .*$/PRODUCTVERSION %VERSION_A%,%VERSION_B%,%VERSION_C%,%VERSION_D%/" "s/ProductVersion\".*$/ProductVersion\", \"%VERSION%\"/" -i "..\src\PropPage.rc" -o "..\src\PropPage.rc"
@@ -65,28 +65,30 @@ echo ######################## Build-TSFileSource ########################
 
 :CreateBuildOutput
 
-    if not exist "..\builds" mkdir "..\builds"
+	if not exist "..\builds" mkdir "..\builds"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
     
-    if not exist "..\builds\TSFileSource-%VERSION%" mkdir "..\builds\TSFileSource-%VERSION%"
+	if not exist "..\builds\TSFileSource-%VERSION%" mkdir "..\builds\TSFileSource-%VERSION%"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
-    
-    copy /Y "..\bin\Release\*.ax" "..\builds\TSFileSource-%VERSION%"
+
+	copy /Y "..\bin\Release\*.ax" "..\builds\TSFileSource-%VERSION%"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
-    copy /Y "..\bin\Release\*.bat" "..\builds\TSFileSource-%VERSION%"
+	copy /Y "..\bin\Release\*.bat" "..\builds\TSFileSource-%VERSION%"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
-    copy /Y "..\bin\Release\*.reg" "..\builds\TSFileSource-%VERSION%"
+	copy /Y "..\bin\Release\*.reg" "..\builds\TSFileSource-%VERSION%"
+	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
+	copy /Y "..\bin\Release\*.txt" "..\builds\TSFileSource-%VERSION%"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
 
 :CreateSourceOutput
-    if exist "..\builds\TSFileSource-%VERSION%src" rmdir /S /Q "..\builds\TSFileSource-%VERSION%src"
+	if exist "..\builds\TSFileSource-%VERSION%src" rmdir /S /Q "..\builds\TSFileSource-%VERSION%src"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
 
 	call :export ".." ".\Temp" "..\builds\TSFileSource-%VERSION%src"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
     
-    REM restore resource files to original (unaltered version number)
-    copy /Y ".\Temp\PropPage.rc" "..\src\PropPage.rc"
+	REM restore resource files to original (unaltered version number)
+	copy /Y ".\Temp\PropPage.rc" "..\src\PropPage.rc"
 	if not %ERRORLEVEL%==0 exit /B %ERRORLEVEL%
 
     
