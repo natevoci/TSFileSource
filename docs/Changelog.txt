@@ -1,3 +1,101 @@
+Version 2.2.1.172
+=================
+nate:
+- Changed to compile in VS 2005.
+bear:
+- Minor changes to getcurrfile function
+nate:
+- Fix in TSBuffer::Require to use GetFilePointer instead of getFilePointer so that currPosition is absolute. This bug was causing playback of a tsbuffer file to appear to skip to the start of the buffer whenever it was near the end and had to wait for the file to grow.
+- Commented out some anti-HDD clogging code. I don't know what it achieves.
+    What HDD clogging can be caused by the Reader?
+    A problem with parking at the beginning of the file is that it locks the first file and can force new ones to be created even if you're watching near the end of the buffer.
+- Fixed NetRender filename generation to correctly use %S instead of %s for returning seconds from wcsftime.
+- Updated RegSinkStore to write all the registry values the first time the registry key is created. This makes it much easier to edit these settings if you want to.
+- Updated RegSinkStore to write the number values as DWORD and QWORD instead of BINARY
+- Added new CLSIDs and filter names for Debug builds so that we can test debug builds and not break our current release filter for other applications. The Debug configuration in the project file has been updated to output to .\bin\Debug\TSFileSource_Debug.ax so you'll need to register that file for debugging.
+nate:
+- Fixed saving of the Create Subtitle Pin option.
+- Changed TSFileSource registry settings to be stored as DWORDs instead of BINARY.
+- Added a separate SOFTWARE\TSFileSource_Debug\ registry key for debug builds of TSFileSource.
+- Updated CSettingsStore to initialise the variables so that we don't end up with random values.
+- Made the version number in the description on the property page automatically show the current TSFileSource.ax version.
+nate:
+- Added a build script to automatically update the version, build, and put a release of TSFileSource in the \builds folder.
+- Moved the Release build output folder from bin\ to bin\Release\
+- Removed the PropPage.aps file because it's automatically generated so doesn't need to be in version control.
+nate:
+- Updated the TSFileSourceClock to use a high precision timer.
+nate:
+- Fixed loading Enable Subtitle Pin from settings
+bear:
+- Updated to version 2.2.1.2
+- Added bug fixes to parser code. Plays monogram TS files ok now.
+- Added fixes to remove x64 compilation errors.
+- Added x64 project properties. (ATM not compiling correctly)
+bear:
+- rev.171
+nate:
+- Changed TSFileSource project to be statically linked. Hopefully this will help solve the problem of not being able to register the dll in windows xp.
+  http://forums.dvbowners.com/index.php?s=&showtopic=12186&view=findpost&p=80416
+- Added install.txt noting which version of vcredist_x86.exe should be installed.
+  Also added a copy of vcredist_x86.exe to the bin folder.
+- Reverted MediaFormats.h, TSFileSource.def, TSFileSourceGuids.h and some of the changes in TSFileSource.vcproj from bear's last commit because I don't think they were meant to be committed.
+
+Version 2.2.1.0
+=================
+bear:
+- packet injection is now optional, as well as
+  the use of the ParserSink(Shared Memory) instead of the FileSink filter for the internal network source graph.
+  The Options are available from the PropPage & ITSFileSource Interface.
+  All settings are now moved to the HKEY_CURRENT_USER registry location.
+  Also the AC3 Audio & Audio 2 Preference options now forces a audio stream change when changed.
+bear:
+- minor fixes
+- update to fix stutter while update parsing.
+- Fix for high cpu when seeking, added a sleep to the fill buffer function so it does not return when filter is seeking.
+bear:
+- Fixed a memory leak when I added the new PAT version dectector code in the sample buffer class. 
+bear:
+- Moved the UpdatePidParser code to the CTSBuffer class so that PAT version detection occurs prior to the sample passing into the fillbuffer thread. This should fix the problem where the MS Demux tries to restart the graph when it sees a loss of correct packets by updating the demux proir to the new stream loading by the fillbuffer.
+bear:
+- fix for stopping backward jumping when the stream PAT changes.
+bear:
+- fixed a bug in demux class where it would disolve the graph if you tried to change audio media types on the ms demux between an mpeg 1 pin and an ac3 pin.
+- re enabled the csource:stop/run call in the setpositions code to fix an issue with heap errors since the thread was still active during seeking. 
+bear:
+- disabled the tuner event class to stop the filtergraph crashing when it collapses without clearing any interfaces or events. See DVRview problem.
+- Removed a line of code in the TSBuffer class to stop intermittant stutter on HD.
+bear:
+- Some changes to enable the Broadcast event code if the NP Control/slave options is enabled.
+bear:
+- removed some code that may be causing release of filter references when tsfilesource destructs.
+bear:
+- Added some code to fix a problem in the SharedMemory class that was causing clogging of the multifilewriter:ReuseTSFile() function. Also added some code to allow the multifile/memwriter:ReuseTSFile() function to reuse files if the max file number is reached but is then released.
+nate:
+- Rewrote SetAccuratePos to correctly and more efficiently find the accurate position in the file. Uses much smaller data buffers which means much less data read from disk which is useful for WiFi.
+  At the moment this code will only work if there are no PCR rollovers or jumps, but it should be fine for use with TSWriter (mediaportal server).
+- Performance improvements. Includes changed buffer sizes to be on a 188 byte (packetSize) boundary.
+- Fixed some problems in PidParser::ParseFromFile. Operator precedence was not correct in some IF statements, and not all PMT's were being parsed for duration.
+  ParseFromFile needs some serious work though to improve loading time across WiFi.
+nate:
+- Added profile logging.
+  To activate the log create the file %TEMP%\TSFileSourceProfile.log and reload TSFileSource.
+  To deactivate delete TSFileSourceProfile.log
+  - Updated LogFileWriter with option to force creation or not.
+- Removed Critical Sections from ParserFunctions since they are slowing thing down slightly and aren't needed anyway.
+- Added some batch files I used for profiling TSFileSource with the VS6 command line tools.
+bear:
+- Added the code back into TSBuffer::Require() thread as well as added back in the CAutoLock lock(&m_ParserLock) lines back into the parserfunction class to fix some other small stutter issues with multithreading.
+- Added some changes to the Shared memory Class to help resolve a deadlock with multithreading systems. The shared memory will now reuse the first file again if the max buffer number of files has been reached.
+bear:
+- Some changes to the shared memory classes to improve stability.
+- Some changes to the TSBuffer Class to handle file access errors better.
+- Fixed a problem in pidparser class that was preventing parsing of correct sections lengths on extended PSI packets. 
+bear:
+- TODO: rev 154
+bear:
+- TODO: rev 156
+
 Version 2.2.0.8 Beta 6
 =================
 bear:
