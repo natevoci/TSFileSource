@@ -1,0 +1,6 @@
+/bin
+/obj
+/*.user
+/dlldata.c
+/dsnetifc_i.c
+/dsnetifc_p.c

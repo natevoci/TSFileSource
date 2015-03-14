@@ -1,0 +1,8 @@
+/bin
+/obj
+/*.ncb
+/*.opt
+/*.plg
+/*.user
+/*.suo
+/builds
